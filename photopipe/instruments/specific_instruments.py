@@ -9,7 +9,6 @@ import os
 
 
 class ratir(instrument):
-
     def __init__(self):
         instrument.__init__(self, 'ratir', 4)
 
@@ -30,7 +29,6 @@ class ratir(instrument):
         return CAM_SPLIT[idx]
         
     def change_header_keywords(self, h, cam):
-        
         cam_i = int(cam[1])
         
         # WCS relevant parameters (RATIR H2RGs have barrel distortions)
@@ -363,8 +361,8 @@ class rimas(instrument):
         return h
         
     def slice(self, cam):
-        C0_SLICE = np.s_[:,:] # NEEDS TO BE DEFINED!
-        C0_SLICE = np.s_[:,:] # NEEDS TO BE DEFINED!
+        C0_SLICE = np.s_[:,:] # TODO: NEEDS TO BE DEFINED!
+        C1_SLICE = np.s_[:,:] # TODO: NEEDS TO BE DEFINED!
         
         slicedict = {'C0': C0_SLICE, 'C1': C1_SLICE}
         
@@ -402,5 +400,6 @@ class rimas(instrument):
     def original_file_format(self):
         file_format = '????????T??????C??.fits'
         return file_format  
+
 
 instrument_dict = {'ratir': ratir(), 'lmi': lmi(), 'rimas': rimas()}

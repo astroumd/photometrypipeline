@@ -1,6 +1,7 @@
 import autoproc_steps as ap
 import os
 
+
 def autoproc(datadir=None, imdir=None, start=None, stop=None, only=None, step=None,
     nocrclean=False, nomastersky=False, redo=False, quiet=False, rmifiles=False,
     customcat=None, customcatfilt=[]):
@@ -150,28 +151,33 @@ def autoproc(datadir=None, imdir=None, start=None, stop=None, only=None, step=No
     """
     
     # Load default parameters and interpret user arguments.
-    pipevar = {'autoastrocommand':'autoastrometry', 'getsedcommand':'get_SEDs', 
-            'sexcommand':'sex' , 'swarpcommand':'swarp' , 'rmifiles':0, 
-            'prefix':'', 'datadir':'' , 'imworkingdir':'' , 'overwrite':0 , 'verbose':1,
-            'flatfail':'' , 'fullastrofail':'' ,
-            'pipeautopath':'' , 'refdatapath':'', 'defaultspath':'' }
+    pipevar = {
+        'autoastrocommand': 'autoastrometry', 'getsedcommand': 'get_SEDs',
+        'sexcommand': '/usr/bin/sextractor', 'swarpcommand': '/usr/bin/SWarp', 'rmifiles': 0,
+        'prefix': '', 'datadir': '', 'imworkingdir': '', 'overwrite': 0, 'verbose': 1,
+        'flatfail': '', 'fullastrofail': '', 'pipeautopath': '', 'refdatapath': '', 'defaultspath': ''
+    }
 
-    if imdir    != None: pipevar['imworkingdir'] = imdir if imdir[-1] == '/' else imdir + '/'
+    if imdir is not None:
+        pipevar['imworkingdir'] = imdir if imdir[-1] == '/' else imdir + '/'
 
     ap.autopipedefaults(pipevar=pipevar)
 
-
-    if redo     == True: pipevar['overwrite'] = 1
-    if quiet    == True: pipevar['verbose'] = 0
-    if datadir  != None: pipevar['datadir'] = datadir if datadir[-1] == '/' else datadir + '/'
-    if rmifiles  == True: pipevar['rmifiles'] = 1
+    if redo:
+        pipevar['overwrite'] = 1
+    if quiet:
+        pipevar['verbose'] = 0
+    if datadir is not None:
+        pipevar['datadir'] = datadir if datadir[-1] == '/' else datadir + '/'
+    if rmifiles:
+        pipevar['rmifiles'] = 1
     
     # Step options
     steps = ['prepare', 'flatten', 'makesky', 'skysub', 'crclean', 'astrometry', 'stack']
     
     # If start is specified, truncate steps to start at specified step.
     # If invalid step end program with error
-    if start != None:
+    if start is not None:
         try:
             w = steps.index(start)
             steps = steps[w:]

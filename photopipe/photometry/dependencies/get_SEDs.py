@@ -1,12 +1,12 @@
-'''
+"""
 Library to produce a catalog of fully-populated SEDs and calculating
 zeropoints for any arbitrary location on the sky, using a combination 
 of online catalogs (USNOB1, 2MASS, SDSS) and synthetic photometry.
 
-To Do:
+TODO:
 - add proper distutils setup
 
-'''
+"""
 
 
 ############################################
@@ -84,8 +84,8 @@ class online_catalog_query():
       will not attempt to query that catalog.
     '''
     def __init__(self, ra, dec, boxsize=10., ignore=None ):
-        self.coords = (ra, dec) #decimal degrees
-        self.boxsize = boxsize  #arcseconds
+        self.coords = (ra, dec)  # decimal degrees
+        self.boxsize = boxsize  # arcseconds
         self.MASS, self.SDSS, self.USNOB, self.APASS = self._query_all( ignore=ignore )
     
     def query_sdss( self ):
@@ -144,8 +144,7 @@ class online_catalog_query():
                 #  they are probably anomalous anyways.
                 pass
         return np.array(out)
-    
-    
+
     def _query_apass( self, container=None, cont_index=3 ):
         '''
         Query apass server for sources found in a box of width self.boxsize (arcsecs)
@@ -171,8 +170,7 @@ class online_catalog_query():
             return output
         else:
             container[ cont_index ] = output
-    
-    
+
     def _parse_sdss( self, s ):
         '''
         Parse findsdss8 output.
@@ -228,8 +226,8 @@ class online_catalog_query():
         out = Popen(request, shell=True, stdout=PIPE, stderr=PIPE)
         o,e = out.communicate()
         if e:
-        	if e[:8] != '#...url=':
-        		raise IOError('findsdss8 problem: '+e)
+            if e[:8] != '#...url=':
+                raise IOError('findsdss8 problem: '+e)
         # parse the response
         sdss_objects = self._parse_sdss(o)
         if len(sdss_objects) == 0:
@@ -298,8 +296,8 @@ class online_catalog_query():
         out = Popen(request, shell=True, stdout=PIPE, stderr=PIPE)
         o,e = out.communicate()
         if e:
-        	if e[:8] != '#...url=':
-        		raise IOError('find2mass problem: '+e)
+            if e[:8] != '#...url=':
+                raise IOError('find2mass problem: '+e)
         # parse the response
         mass_objects = self._parse_2mass(o)
         if len(mass_objects) == 0:
@@ -311,8 +309,7 @@ class online_catalog_query():
             return output
         else:
             container[ cont_index ] = output
-    
-    
+
     def _parse_usnob1( self, s ):
         '''
         Parse findusnob1 output.
@@ -405,8 +402,8 @@ class online_catalog_query():
         o,e = out.communicate()
 
         if e:
-        	if e[:8] != '#...url=':
-        		raise IOError('findusnob1 problem: '+e)
+            if e[:8] != '#...url=':
+                raise IOError('findusnob1 problem: '+e)
         usnob1_objects = self._parse_usnob1(o)
         if len(usnob1_objects) == 0:
             # no matches
@@ -449,7 +446,6 @@ class online_catalog_query():
             # join each thread and wait until each is completed
             t.join()
         return results
-    
 
 
 def identify_matches( queried_stars, found_stars, match_radius=3. ):
@@ -556,13 +552,10 @@ def split_field( field_center, field_width, nsplit ):
             centers.append( [ras[i],decs[j]] )
     return np.rad2deg(centers), np.rad2deg( [dr, fw/nsplit] )
 
-    
-
 
 ############################################
 # MODEL-FITTING FUNCTIONS
 ############################################
-
 def _error_C(C, model, obs, weights):
     '''
     C: number, a constant akin to distance modulus
@@ -574,6 +567,7 @@ def _error_C(C, model, obs, weights):
     '''
     nm = model+C
     return np.sum( weights*(nm-obs)**2 )
+
 
 def choose_model( obs, mask, models=MODELS, allow_cut=False ):
     '''
@@ -641,6 +635,7 @@ def choose_model( obs, mask, models=MODELS, allow_cut=False ):
     else:
         metric = sum_sqr_err/(len(mags) - 2)
     return (best_model[1:] + C, C, best_model[0], metric, i_cut )
+
 
 def fit_sources( inn, f_err=ERR_FUNCTIONS, return_cut=False ):
     '''
@@ -765,8 +760,7 @@ class catalog():
             raise ValueError( 'Field is too large. Max allowed: {}"'.format(self.MAX_SIZE) )
         else:
             self.produce_catalog()
-    
-    
+
     def produce_catalog( self ):
         '''
         Create a catalog of all objects found in field.
@@ -792,26 +786,26 @@ class catalog():
             if sdss != None:
                 sdss_matches, tmp = identify_matches( mass[:,:2], sdss[:,:2] )
                 if cmode == -1:
-                	cmask = [0,-1,1,-1,2,-1,3,-1,4,-1]
-                	cmode = 0
-                	ocat = sdss              
+                    cmask = [0,-1,1,-1,2,-1,3,-1,4,-1]
+                    cmode = 0
+                    ocat = sdss
             else:
                 sdss_matches = -9999*np.ones(len(mass), dtype='int')
                 
             if apass != None:
                 apass_matches, tmp = identify_matches( mass[:,:2], apass[:,:2] )
                 if cmode == -1:
-                	cmask = [1,-1,2,-1,3,-1,6,-1,7,-1] 
-                	cmode = 1
-                	ocat = apass           	
+                    cmask = [1,-1,2,-1,3,-1,6,-1,7,-1]
+                    cmode = 1
+                    ocat = apass
             else:
                 apass_matches = -9999*np.ones(len(mass), dtype='int')
             if usnob != None:
                 usnob_matches, tmp = identify_matches( mass[:,:2], usnob[:,:2] ) 
                 if cmode == -1:
-                	cmask = [6,-1,8,-1]
-                	cmode = 2
-                	ocat = usnob
+                    mask = [6,-1,8,-1]
+                    cmode = 2
+                    ocat = usnob
             else:
                 usnob_matches = -9999*np.ones(len(mass), dtype='int')
             
@@ -821,14 +815,14 @@ class catalog():
             serr = np.zeros([len(ocat),13])+9
             for p,val in enumerate(cmask):
                 if val != -1:
-                	scat[:,val] = ocat[:,p+2]
-                	serr[:,val] = ocat[:,p+3]
-        	
-        	self.scat = scat
-        	self.serr = serr
-        	self.ccoords = ccords
-        	self.cmodes = np.zeros(len(scat), dtype=int) + cmode
-                	          
+                    scat[:,val] = ocat[:,p+2]
+                    serr[:,val] = ocat[:,p+3]
+
+            self.scat = scat
+            self.serr = serr
+            self.ccoords = ccords
+            self.cmodes = np.zeros(len(scat), dtype=int) + cmode
+
             # Go through 2mass objects and assemble a catalog
             #  of all objects present in 2mass and (sdss or apass or usnob)
             #  Preference ranking: 2MASS + (SDSS > APASS > USNOB)
@@ -852,7 +846,6 @@ class catalog():
                 object_coords.append( obj[:2] )
         if len(object_coords) < 1:
             raise ValueError( "No good sources in this field!" )
-        
 
         # send all of these matches to the CPU pool to get modeled
         objects = zip( modes, object_mags )
@@ -884,11 +877,11 @@ class catalog():
         gmatch, tmp = identify_matches( self.coords, self.ccoords )
         
         for ind,match in enumerate(gmatch):
-        	if match > 0:
-        		self.ccoords[match] = self.coords[ind]
-        		self.scat[match] = self.SEDs[ind]
-        		self.serr[match] = self.full_errors[ind]
-        		self.cmodes[match] = self.modes[ind]
+            if match > 0:
+                self.ccoords[match] = self.coords[ind]
+                self.scat[match] = self.SEDs[ind]
+                self.serr[match] = self.full_errors[ind]
+                self.cmodes[match] = self.modes[ind]
     
     def save_catalog( self, file_name ):
         save_catalog( self.coords, self.SEDs, self.full_errors, self.modes, file_name )
@@ -975,8 +968,8 @@ def calc_zeropoint( input_coords, catalog_coords, input_mags, catalog_mags, clip
     catalog_mags = np.array(catalog_mags)
     
     matches, tmp = identify_matches( input_coords, catalog_coords )
-    matched_inputs = input_mags[ matches>=0 ]
-    matched_catalogs = catalog_mags[ matches[ matches>=0 ] ]
+    matched_inputs = input_mags[matches >= 0]
+    matched_catalogs = catalog_mags[matches[matches >= 0]]
     
     zp_estimates = []
     for i,inst_mag in enumerate(matched_inputs):
@@ -984,15 +977,14 @@ def calc_zeropoint( input_coords, catalog_coords, input_mags, catalog_mags, clip
     zp = np.array(zp_estimates)
     if clip:
         zp = clip_me( zp )
-    mad = np.median( np.abs( zp-np.median(zp) ) )
+    mad = np.median(np.abs(zp-np.median(zp)))
     if return_zps:
         return np.median(zp), mad, matches, zp
     else:
         return np.median(zp), mad, matches
-        
 
 
-def zeropoint( input_file, band, output_file=None, usnob_thresh=15, alloptstars=False, quiet=False):
+def zeropoint(input_file, band, output_file=None, usnob_thresh=15, alloptstars=False, quiet=False):
     '''
     Calculate <band> zeropoint for stars in <input_file>.
     
@@ -1019,44 +1011,47 @@ def zeropoint( input_file, band, output_file=None, usnob_thresh=15, alloptstars=
     # check to see whether we need to use USNOB sources
     mask = np.array(c.modes)<2
 
-    if sum( mask ) >= usnob_thresh:
-        if quiet == False: print 'Using',sum(mask),'APASS and/or SDSS sources.'
+    if sum(mask) >= usnob_thresh:
+        if quiet:
+            print 'Using', sum(mask), 'APASS and/or SDSS sources.'
         cat_mags = c.SEDs[:, band_index][mask]
         cat_coords = c.coords[mask]
     else:
-        if quiet == False: print 'Using',sum(mask),'USNOB, APASS, and/or SDSS sources.'
+        if quiet:
+            print 'Using',sum(mask),'USNOB, APASS, and/or SDSS sources.'
         cat_mags = c.SEDs[:, band_index]
         cat_coords = c.coords
         
     if alloptstars:
-    	zp, mad, matches, ze = calc_zeropoint( input_coords, c.ccoords, input_mags, c.scat[:,band_index], return_zps=True )
-    	errors = c.serr
-    	catmag = c.scat
-    	modes  = c.cmodes
+        zp, mad, matches, ze = calc_zeropoint(
+            input_coords, c.ccoords, input_mags, c.scat[:, band_index], return_zps=True
+        )
+        errors = c.serr
+        catmag = c.scat
+        modes = c.cmodes
     else:
-    	zp, mad, matches = calc_zeropoint( input_coords, cat_coords, input_mags, cat_mags, return_zps=False )
-    	errors = c.full_errors
-    	catmag = c.SEDs
-    	modes  = c.modes
-    	
+        zp, mad, matches = calc_zeropoint( input_coords, cat_coords, input_mags, cat_mags, return_zps=False )
+        errors = c.full_errors
+        catmag = c.SEDs
+        modes = c.modes
+
     # save matched catalog to file
     if output_file:
-    	oc, os, oe, om = [],[],[],[]
-    	for i,match in enumerate(matches):
-    		oc.append( input_coords[i] )
-    		if match >= 0:
-    			os.append( catmag[match] )
-    			oe.append( errors[match] )
-    			om.append( modes[match] )
-    		else:
-    			os.append( [99]*len(ALL_FILTERS) )
-    			oe.append( [9]*len(ALL_FILTERS) )
-    			om.append( -1 )
-    	save_catalog( oc, os, oe, om, output_file )
-    	
+        oc, os, oe, om = [],[],[],[]
+        for i,match in enumerate(matches):
+            oc.append( input_coords[i] )
+            if match >= 0:
+                os.append( catmag[match] )
+                oe.append( errors[match] )
+                om.append( modes[match] )
+            else:
+                os.append( [99]*len(ALL_FILTERS) )
+                oe.append( [9]*len(ALL_FILTERS) )
+                om.append( -1 )
+        save_catalog( oc, os, oe, om, output_file )
     return zp, mad
-    
+
+
 if __name__ == "__main__":
-	warnings.filterwarnings('ignore')
-	
-	zeropoint(*sys.argv[1:])
+    warnings.filterwarnings('ignore')
+    zeropoint(*sys.argv[1:])

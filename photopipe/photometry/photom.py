@@ -38,7 +38,7 @@ def photom(prefchar='coadd'):
 	pipevar = {'getsedcommand':'get_SEDs', 'sexcommand':'sex' , 'swarpcommand':'swarp', 'refdatapath':'', 'defaultspath':'', 'imworkingdir':'' }
 	ap.autopipedefaults(pipevar=pipevar)
 
-	#Identify files (must have same number of images files as weight files)
+	# Identify files (must have same number of images files as weight files)
 	zffiles     = pplib.choosefiles(prefchar + '*_?.fits')
 	weightfiles = pplib.choosefiles(prefchar + '*_?.weight.fits')
 	
@@ -49,7 +49,7 @@ def photom(prefchar='coadd'):
 	
 	numfiles = len(zffiles)
 		
-	#Resample all images using SWarp to a reference image called multicolor using weight files
+	# Resample all images using SWarp to a reference image called multicolor using weight files
 	swarpstr = ''
 	for i in range(numfiles):		
 		swarpstr = swarpstr + zffiles[i] + ' '
@@ -59,7 +59,7 @@ def photom(prefchar='coadd'):
 	print stackcmd
 	os.system( stackcmd )
 
-	#Rename all the resampled files to crop files
+	# Rename all the resampled files to crop files
 	for i in range(numfiles):
 		tmp = zffiles[i].split('.')[0]
 		ifile = tmp + '.resamp.fits'
@@ -79,7 +79,7 @@ def photom(prefchar='coadd'):
 	ra2arr  = []
 	dec2arr = []
 
-	#Finds the RA and DEC of the first and the last pixel of each cropped coadded file
+	# Finds the RA and DEC of the first and the last pixel of each cropped coadded file
 	for files in coaddfiles:
 
 		fitsfile = pf.open(files)
@@ -88,18 +88,18 @@ def photom(prefchar='coadd'):
 	
 		imSize = shape(data)
 	
-		#Converts pixel value to RA and DEC using header information (AstroPy function)
+		# Converts pixel value to RA and DEC using header information (AstroPy function)
 		w = wcs.WCS(fitsheader)
 		pixcrd = [[0.,0.], [imSize[1]-1.0, imSize[0]-1.0]]
 		[[ra1,dec1],[ra2,dec2]] = w.wcs_pix2world(pixcrd, 0)
 	
-		#Stores information into arrays
+		# Stores information into arrays
 		ra1arr.append(ra1)
 		dec1arr.append(dec1)
 		ra2arr.append(ra2)
 		dec2arr.append(dec2)
 
-	#Finds the coordinates that fit all of the data
+	# Finds the coordinates that fit all of the data
 	raleft  = min(ra1arr)
 	raright = max(ra2arr)
 	decbot  = max(dec1arr)
@@ -128,7 +128,7 @@ def photom(prefchar='coadd'):
 		
 		pplib.hextractlite(wnewfile, wdata, wfitsheader, x1+1, x2, y1+1, y2)
 
-	#Crops the multicolor (data file and weight) fits files to match the same coordinates
+	# Crops the multicolor (data file and weight) fits files to match the same coordinates
 	mixfile = 'multicolor.fits'
 	mixfitsfile = pf.open(mixfile)
 	mixfitsheader = mixfitsfile[0].header
@@ -147,11 +147,11 @@ def photom(prefchar='coadd'):
 	[[wmx1,wmy1],[wmx2,wmy2]] = mixw.wcs_world2pix([[raleft, decbot], [raright, dectop]], 0)
 	pplib.hextractlite(wmixfile, wmixdata, wmixfitsheader, wmx1+1, wmx2, wmy1+1, wmy2)	
 
-	#Find directory where this python code is located
+	# Find directory where this python code is located
 	propath = os.path.dirname(os.path.realpath(__file__))
 	
-	#Make sure configuration file is in current working directory, if not copy it from
-	#location where this code is stored
+	# Make sure configuration file is in current working directory, if not copy it from
+	# location where this code is stored
 	if not os.path.exists('ratir_weighted.sex'): 
 		os.system('cp '+propath+'/defaults/ratir_weighted.sex .')
 	
@@ -166,8 +166,8 @@ def photom(prefchar='coadd'):
 
 	coaddfiles = pplib.choosefiles(prefchar+'*_?.fits')
 
-	#Uses sextractor to find the magnitude and location of sources for each file
-	#Saves this information into 'fluxes_*.txt' files
+	# Uses sextractor to find the magnitude and location of sources for each file
+	# Saves this information into 'fluxes_*.txt' files
 	for files in coaddfiles:
 
 		hdr = pf.getheader(files)
@@ -181,7 +181,7 @@ def photom(prefchar='coadd'):
 			print error
 			continue
 
-		#Finds filter name and makes sure it is capitalized correctly		
+		# Finds filter name and makes sure it is capitalized correctly
 		filter = files.split('_')[-1].split('.')[0]
 
 		if filter.lower() in ('j','h','k'):
@@ -191,21 +191,21 @@ def photom(prefchar='coadd'):
 		
 		compfile = files
 
-		#Use individual image, not multi image now for individual detections
-		#Call to sextractor in double image mode (image1 used for detection of sources, image2 only for measurements - must be same size) 
+		# Use individual image, not multi image now for individual detections
+		# Call to sextractor in double image mode (image1 used for detection of sources, image2 only for measurements - must be same size)
 		os.system('sex -WEIGHT_TYPE MAP_WEIGHT -WEIGHT_IMAGE '+compfile[:-4]+'weight.fits' + \
 			' -c ratir_weighted.sex -SEEING_FWHM 1.5 -PIXEL_SCALE '+str(pixscale)+' -DETECT_THRESH 1.5 -ANALYSIS_THRESH 1.5 -PHOT_APERTURES ' + \
 			str(hdr['SPIX'])+ ' -MAG_ZEROPOINT ' + str(hdr['ABSZPT'])+' ' + compfile)
 		os.system('mv -f temp.cat fluxes_'+filter+'.txt')
 		
-		#Columns unpacked for fluxes*.txt are: (x,y,ra,dec,mag,magerr,flux,fluxerr,e,fwhm,flags)
+		# Columns unpacked for fluxes*.txt are: (x,y,ra,dec,mag,magerr,flux,fluxerr,e,fwhm,flags)
 		sexout = np.loadtxt('fluxes_'+filter+'.txt', unpack=True)
 		
 		magcol = 4
 		magerrcol = 5
 
 		# SEDs
-		#Create catalog star file
+		# Create catalog star file
 		xim  = sexout[0,:]
 		yim  = sexout[1,:]
 
@@ -218,11 +218,11 @@ def photom(prefchar='coadd'):
 		np.savetxt(imfile, np.transpose([wrd[:,0],wrd[:,1],sexout[magcol,:]]))
 
 		sedcmd = 'python ' + pipevar['getsedcommand'] + ' ' + imfile + ' ' +\
-		filter + ' ' + catfile + " 15 True True"
+			filter + ' ' + catfile + " 15 True True"
 		os.system(sedcmd)
 		#
 		
-		#tout = np.transpose(sexout[0:8,:]) #Only include through fluxerr
+		# tout = np.transpose(sexout[0:8,:]) #Only include through fluxerr
 		indexes = np.array([np.arange(len(sexout[0,:]))])
 		tout = np.hstack((sexout[0:8,:].T, indexes.T))
 
@@ -233,7 +233,9 @@ def photom(prefchar='coadd'):
 
 		tsorted =  tout[np.argsort(tout[:,magcol])]
 			
-		#Creates Absolute Magnitude file with coordinates
+		# Creates Absolute Magnitude file with coordinates
 		amfile = 'finalphot'+filter+'.am'
-		np.savetxt(amfile, tsorted, fmt='%15.6f ' * 8 + '%i', 
-			header='X\t Y\t RA\t DEC\t CAL_MAG\t CAL_MAG_ERR\t CAL_FLUX\t CAL_FLUX_ERR\t CAT_INDEX\t')
+		np.savetxt(
+			amfile, tsorted, fmt='%15.6f ' * 8 + '%i',
+			header='X\t Y\t RA\t DEC\t CAL_MAG\t CAL_MAG_ERR\t CAL_FLUX\t CAL_FLUX_ERR\t CAT_INDEX\t'
+		)

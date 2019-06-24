@@ -6,155 +6,154 @@ import os
 from numpy import sqrt
 import numpy as np
 
+# make a circle for identifying sources in images
 
 
-    # make a circle for identifying sources in images
-    
-"""
-NAME:
-	cicle
-PURPOSE:
-	Create x and y array that represent circle coordinates given the center and radius of circle
-INPUTS:
-	xcenter, ycenter - Center coordinates of circle
-	radius			 - Radius in same units as center coordinates
-OUTPUTS:
-	Returns circle coordinates
-EXAMPLE:
-	cir = circle(0,0,12)
-"""
-def circle( xcenter, ycenter, radius ):
-    points = np.linspace( 0., 2.*np.pi, 100 )
+def circle(xcenter, ycenter, radius):
+    """
+    NAME:
+        circle
+    PURPOSE:
+        Create x and y array that represent circle coordinates given the center and radius of circle
+    INPUTS:
+        xcenter, ycenter - Center coordinates of circle
+        radius			 - Radius in same units as center coordinates
+    OUTPUTS:
+        Returns circle coordinates
+    EXAMPLE:
+        cir = circle(0,0,12)
+    """
+    points = np.linspace(0., 2.*np.pi, 100)
     x = xcenter + radius * np.cos(points)
     y = ycenter + radius * np.sin(points)
-    return np.transpose([x,y])
+    return np.transpose([x, y])
 
-"""
-NAME:
-	nearest
-PURPOSE:
-	Find coordinates (Cartesian) that are within the specified distance of a reference coordinate
-INPUTS:
-	x, y      - reference coordinate
-	xarr,yarr - array of coordinates to compare to reference coordinate
-	maxdist   - maximum distance that coordinates can be from reference coordinates
-OUTPUTS:
-	Returns mask of values that are within maximum distance from reference
-EXAMPLE:
-	match = nearest(ra[0]*cos(dec[0]*pi/180.),dec[0],refra*cos(refdec*pi/180.),refdec, 1./3600.)
-"""
+
 def nearest(x, y, xarr, yarr, maxdist):
-	
-	dist = sqrt( (x-xarr)**2 + (y-yarr)**2)
-	good = (dist < maxdist)
-	
-	return good
+    """
+    NAME:
+        nearest
+    PURPOSE:
+        Find coordinates (Cartesian) that are within the specified distance of a reference coordinate
+    INPUTS:
+        x, y      - reference coordinate
+        xarr,yarr - array of coordinates to compare to reference coordinate
+        maxdist   - maximum distance that coordinates can be from reference coordinates
+    OUTPUTS:
+        Returns mask of values that are within maximum distance from reference
+    EXAMPLE:
+        match = nearest(ra[0]*cos(dec[0]*pi/180.),dec[0],refra*cos(refdec*pi/180.),refdec, 1./3600.)
+    """
+    dist = sqrt((x-xarr)**2 + (y-yarr)**2)
+    good = (dist < maxdist)
+    return good
 
-"""
-NAME:
-	choosefiles
-PURPOSE:
-	Returns files in directory "loc" that contain "selection" text
-INPUTS:
-	selection - text required to be in filename
-OPTIONAL KEYWORD INPUTS:
-	loc - directory where to look, default is current working directory
-OUTPUT:
-	Matches to search
-EXAMPLE:
-	matches = choosefiles('coadd*.fits', loc='.')
 
-Written by John Capone (jicapone@astro.umd.edu)
-"""
-#
 def choosefiles( selection, loc='.' ):
-	matches = []
-	for files in os.listdir(loc):
-		if fnmatch.fnmatch( files, selection ):
-			matches.append(files)
-	return matches
+    """
+    NAME:
+        choosefiles
+    PURPOSE:
+        Returns files in directory "loc" that contain "selection" text
+    INPUTS:
+        selection - text required to be in filename
+    OPTIONAL KEYWORD INPUTS:
+        loc - directory where to look, default is current working directory
+    OUTPUT:
+        Matches to search
+    EXAMPLE:
+        matches = choosefiles('coadd*.fits', loc='.')
 
-"""
-NAME:
-	weightedge
-PURPOSE:
-	To find the innermost corner of a weighted image for a good crop
-	Looks for point where values are roughly constant between rows or columns
-	Can change this with scale keyword	
-INPUTS:
-	array - array to search
-	itarray - array of indices to search through	
-OPTIONAL KEYWORD INPUTS:
-	column - set True if iterating through x-axis
-	row    - set True if iterating through y-axis
-	scale  - set value to look for scaling to previous row or column
-OUTPUT:
-	Returns the column or row of "nonzero" component on weighted file
-EXAMPLE:
-	leftedge = weightedge(data, range(xaxis), column=1, scale=0.99)
-	
-Written by Vicki Toy (vtoy@astro.umd.edu)
-"""
+    Written by John Capone (jicapone@astro.umd.edu)
+    """
+    matches = []
+    for files in os.listdir(loc):
+        if fnmatch.fnmatch( files, selection ):
+            matches.append(files)
+    return matches
+
+
 def weightedge(array, itarray, scale=1, column=None, row=None):
-	oldsum = 0
-	for i in itarray:
-		if column is not None:
-			newsum = sum(array[:,i])
-		elif row is not None:
-			newsum = sum(array[i,:])
-			
-		if scale*newsum >= oldsum:
-			oldsum = newsum
-		else:
-			return i-1		
+    """
+    NAME:
+        weightedge
+    PURPOSE:
+        To find the innermost corner of a weighted image for a good crop
+        Looks for point where values are roughly constant between rows or columns
+        Can change this with scale keyword
+    INPUTS:
+        array - array to search
+        itarray - array of indices to search through
+    OPTIONAL KEYWORD INPUTS:
+        column - set True if iterating through x-axis
+        row    - set True if iterating through y-axis
+        scale  - set value to look for scaling to previous row or column
+    OUTPUT:
+        Returns the column or row of "nonzero" component on weighted file
+    EXAMPLE:
+        leftedge = weightedge(data, range(xaxis), column=1, scale=0.99)
 
-'''
-Pared down version of hextract.pro from the IDL Astro Library
-Translated to python by Vicki Toy (vtoy@astro.umd.edu)
+    Written by Vicki Toy (vtoy@astro.umd.edu)
+    """
+    oldsum = 0
+    for i in itarray:
+        if column is not None:
+            newsum = sum(array[:,i])
+        elif row is not None:
+            newsum = sum(array[i,:])
 
-NAME:
-	hextractlite
-PURPOSE:
-	Extracts subimage from an array and updates astrometry in FITS file.  Saves to newfile name
-INPUTS:
-	newfile     - file name to save altered fits file to
-	data        - array to be altered
-	fitsheader  - header to be altered
-	x1,x2,y1,y2 - respectively: first and last x pixel, first and last y pixel to be
-				  extracted from data array.  Need to be integer scalars
-OUTPUTS:
-	Saves altered data to newfile
-EXAMPLE:
-	hextractlite(newfile, data, fitsheader, 100,500,20,1900)
-'''
+        if scale*newsum >= oldsum:
+            oldsum = newsum
+        else:
+            return i-1
+
 
 def hextractlite(newfile, data, fitsheader, x1, x2, y1, y2):
+    """
+    Pared down version of hextract.pro from the IDL Astro Library
+    Translated to python by Vicki Toy (vtoy@astro.umd.edu)
 
-	#Truncates the coordinates
-	x1 = int(x1)
-	y1 = int(y1)
-	x2 = int(x2)
-	y2 = int(y2)
+    NAME:
+        hextractlite
+    PURPOSE:
+        Extracts subimage from an array and updates astrometry in FITS file.  Saves to newfile name
+    INPUTS:
+        newfile     - file name to save altered fits file to
+        data        - array to be altered
+        fitsheader  - header to be altered
+        x1,x2,y1,y2 - respectively: first and last x pixel, first and last y pixel to be
+                        extracted from data array.  Need to be integer scalars
+    OUTPUTS:
+        Saves altered data to newfile
+    EXAMPLE:
+        hextractlite(newfile, data, fitsheader, 100,500,20,1900)
+    """
+    # Truncates the coordinates
+    x1 = int(x1)
+    y1 = int(y1)
+    x2 = int(x2)
+    y2 = int(y2)
 
-	fitsheader.add_history('HEXTRACT: Original image size was '+str(fitsheader['NAXIS2'])+' by '+str(fitsheader['NAXIS1']))
-	fitsheader.add_history('Extracted Image: ['+ str(y1)+':'+str(y2+1)+','+str(x1)+':'+ str(x2+1)+']')
+    fitsheader.add_history('HEXTRACT: Original image size was '+str(fitsheader['NAXIS2'])+' by '+str(fitsheader['NAXIS1']))
+    fitsheader.add_history('Extracted Image: ['+ str(y1)+':'+str(y2+1)+','+str(x1)+':'+ str(x2+1)+']')
 
-	#Naxis altered to reflect the new subarray
-	fitsheader.update('naxis1', x2-x1+1)
-	fitsheader.update('naxis2', y2-y1+1)
-	
-	#Crpix shifted by new origin
-	oldcrpix1 = fitsheader['crpix1']
-	oldcrpix2 = fitsheader['crpix2']
-	fitsheader.update('crpix1', oldcrpix1-x1)
-	fitsheader.update('crpix2', oldcrpix2-y1)
+    # Naxis altered to reflect the new subarray
+    fitsheader.update('naxis1', x2-x1+1)
+    fitsheader.update('naxis2', y2-y1+1)
 
-	#Extract subarray
-	#Python has opposite coordinate convention
-	newdata = data[y1:y2+1, x1:x2+1]	
-	
-	#Saves new fits file and header to specified fits file name
-	pf.writeto(newfile, newdata, fitsheader, clobber=True)
+    # Crpix shifted by new origin
+    oldcrpix1 = fitsheader['crpix1']
+    oldcrpix2 = fitsheader['crpix2']
+    fitsheader.update('crpix1', oldcrpix1-x1)
+    fitsheader.update('crpix2', oldcrpix2-y1)
+
+    # Extract subarray
+    # Python has opposite coordinate convention
+    newdata = data[y1:y2+1, x1:x2+1]
+
+    # Saves new fits file and header to specified fits file name
+    pf.writeto(newfile, newdata, fitsheader, clobber=True)
+
 
 """
 ##^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^Lance Simms, Stanford University 2009
@@ -212,72 +211,68 @@ def hextractlite(newfile, data, fitsheader, x1, x2, y1, y2):
 """
 from numpy import *
 
-def djs_iterstat(InputArr, SigRej=3.0, MaxIter=10, Mask=0,\
+
+def djs_iterstat(InputArr, SigRej=3.0, MaxIter=10, Mask=0,
                  Max='', Min='', RejVal='', BinData=0):
- 
-  NGood    = InputArr.size  
-  ArrShape = InputArr.shape
-  if NGood == 0: 
-    print 'No data points given'
-    return 0, 0, 0, 0, 0
-  if NGood == 1:
-    print 'Only one data point; cannot compute stats'
-    return 0, 0, 0, 0, 0
+    NGood = InputArr.size
+    ArrShape = InputArr.shape
+    if NGood == 0:
+        print 'No data points given'
+        return 0, 0, 0, 0, 0
+    if NGood == 1:
+        print 'Only one data point; cannot compute stats'
+        return 0, 0, 0, 0, 0
 
   #Determine Max and Min
-  if Max == '':
-    Max = InputArr.max()
-  if Min == '':
-    Min = InputArr.min()
- 
-  if unique(InputArr).size == 1:
-    return 0, 0, 0, 0, 0
- 
-  Mask  = zeros(ArrShape, dtype=byte)+1
-  #Reject those above Max and those below Min
-  Mask[InputArr > Max] = 0
-  Mask[InputArr < Min] = 0
-  if RejVal != '' :  Mask[InputArr == RejVal]=0
-  FMean = sum(1.*InputArr*Mask) / NGood
-  FSig  = sqrt(sum((1.*InputArr-FMean)**2*Mask) / (NGood-1))
+    if Max == '':
+        Max = InputArr.max()
+    if Min == '':
+        Min = InputArr.min()
 
-  NLast = -1
-  Iter  =  0
-  NGood = sum(Mask)
-  if NGood < 2:
-    return -1, -1, -1, -1, -1
+    if unique(InputArr).size == 1:
+        return 0, 0, 0, 0, 0
 
-  while (Iter < MaxIter) and (NLast != NGood) and (NGood >= 2) :
+    Mask  = zeros(ArrShape, dtype=byte)+1
+    #Reject those above Max and those below Min
+    Mask[InputArr > Max] = 0
+    Mask[InputArr < Min] = 0
+    if RejVal != '':
+        Mask[InputArr == RejVal]=0
+    FMean = sum(1.*InputArr*Mask) / NGood
+    FSig = sqrt(sum((1.*InputArr-FMean)**2*Mask) / (NGood-1))
 
-    LoVal = FMean - SigRej*FSig
-    HiVal = FMean + SigRej*FSig
-    NLast = NGood
-
-    Mask[InputArr < LoVal] = 0
-    Mask[InputArr > HiVal] = 0
+    NLast = -1
+    Iter  = 0
     NGood = sum(Mask)
+    if NGood < 2:
+        return -1, -1, -1, -1, -1
 
-    if NGood >= 2:
-      FMean = sum(1.*InputArr*Mask) / NGood
-      FSig  = sqrt(sum((1.*InputArr-FMean)**2*Mask) / (NGood-1))
-      SaveMask = Mask.copy()
+    while (Iter < MaxIter) and (NLast != NGood) and (NGood >= 2) :
+        LoVal = FMean - SigRej*FSig
+        HiVal = FMean + SigRej*FSig
+        NLast = NGood
+
+        Mask[InputArr < LoVal] = 0
+        Mask[InputArr > HiVal] = 0
+        NGood = sum(Mask)
+
+        if NGood >= 2:
+            FMean = sum(1.*InputArr*Mask) / NGood
+            FSig  = sqrt(sum((1.*InputArr-FMean)**2*Mask) / (NGood-1))
+            SaveMask = Mask.copy()
+        else:
+            SaveMask = Mask.copy()
+            Iter = Iter+1
+    if sum(SaveMask) > 2:
+        FMedian = median(InputArr[SaveMask == 1])
+        if BinData == 1:
+            HRange = InputArr[SaveMask==1].max()-InputArr[SaveMask==1].min()
+            bins_In = arange(HRange)+InputArr[SaveMask==1].min()
+            Bins, N = histOutline.histOutline(InputArr[SaveMask == 1], binsIn = bins_In)
+            FMode = Bins[(where(N == N.max()))[0]].mean()
+        else:
+            FMode = 0
     else:
-      SaveMask = Mask.copy()
-
-    Iter = Iter+1
-  if sum(SaveMask) > 2:
-    FMedian = median(InputArr[SaveMask == 1])
-    if BinData == 1:
-      HRange  = InputArr[SaveMask==1].max()-InputArr[SaveMask==1].min()
-      bins_In = arange(HRange)+InputArr[SaveMask==1].min()
-      Bins, N = histOutline.histOutline(InputArr[SaveMask == 1], binsIn = bins_In)
-      FMode   = Bins[(where(N == N.max()))[0]].mean()
-    else: 
-      FMode = 0
-  else:
-    FMedian = FMean
-    FMode   = FMean
-    
-
-  return FMean, FSig, FMedian, FMode, SaveMask 
-
+        FMedian = FMean
+        FMode   = FMean
+    return FMean, FSig, FMedian, FMode, SaveMask

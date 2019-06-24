@@ -1,7 +1,7 @@
 autoastrocommand : 
-getsedcommand	  : 
-swarpcommand     : /usr/local/bin/swarp
-sexcommand       : /usr/local/bin/sex
-scampcommand	  : /usr/local/bin/scamp
-prefix		 : 2
+getsedcommand	 : /bin/sed
+swarpcommand     : /usr/bin/SWarp
+sexcommand       : /usr/bin/sextractor
+scampcommand	 : /usr/bin/scamp
+prefix		     :
 datadir          : 

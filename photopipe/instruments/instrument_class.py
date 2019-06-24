@@ -2,10 +2,10 @@ import numpy as np
 import sys
 from abc import ABCMeta, abstractmethod
 
-class instrument(object):
 
+class instrument(object):
     __metaclass__ = ABCMeta
-    
+
     def __init__(self, name, camnum):
         self.name = name
         self.camname  = ['C'+str(i) for i in np.arange(camnum)]
@@ -96,4 +96,3 @@ class instrument(object):
         #         '????????T??????C{}{}.fits'.format(cam_i, ftype_post) format
         pass
 
-    ########

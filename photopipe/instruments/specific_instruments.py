@@ -169,7 +169,7 @@ class ratir(instrument):
         SLICE_FILTERS = {'C2': 'NA', 'C2a': 'Z', 'C2b': 'Y', 'C3': 'NA', 'C3a': 'J', 'C3b': 'H'}
         
         idx = int(cam[1])
-        
+
         if self.is_cam_split(idx) == True: 
             return SLICE_FILTERS[cam]
         else:
@@ -184,8 +184,13 @@ class ratir(instrument):
                 center = h[CENTER_KEY].split('center')[0] # RATIR header keyword specifying which H2RG filters the target is focused on
             except:
                 sys.exit('CENTER keyword not found in header')  
-              
-            return center
+            
+            if h[CENTER_KEY].split('center')[0].count('ri') != 0:  
+                center_cams = list(center)
+                return center_cams[idx]
+            else:
+                return center
+
         else:
             return h['FILTER']           
 

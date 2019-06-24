@@ -246,7 +246,10 @@ def getcatalog(catalog, ra, dec, boxsize, rawidth,decwidth,minmag=8.0, maxmag=-1
 
         	#queryurl = "http://cas.sdss.org/dr7/en/tools/search/x_radial.asp?ra="+str(ra)+"&dec="+str(dec)+"&radius="+str(boxsize/60.0)+"&entries=top&topnum=6400&format=csv"
         	#queryurl = "http://cas.sdss.org/dr7/en/tools/search/x_rect.asp?min_ra="+str(ra-boxsize/3600.)+"&max_ra="+str(ra+boxsize/3600.)+"&min_dec="+str(dec-2.*boxsize/3600.)+"&max_dec="+str(dec+2.*boxsize/3600.)+"&entries=top&topnum=6400&format=csv"
-        	queryurl = "http://cas.sdss.org/dr7/en/tools/search/x_rect.asp?min_ra="+str(ra-rawidth/3600.)+"&max_ra="+str(ra+rawidth/3600.)+"&min_dec="+str(dec-decwidth/3600.)+"&max_dec="+str(dec+decwidth/3600.)+"&entries=top&topnum=6400&format=csv"
+                if (((ra+rawidth/3600.)-(ra-rawidth/3600.)<0.2) and ((dec+rawidth/3600.)-(dec-rawidth/3600.)<0.2)) :
+        		queryurl = "http://cas.sdss.org/dr7/en/tools/search/x_rect.asp?min_ra="+str(ra-rawidth/3600.)+"&max_ra="+str(ra+rawidth/3600.)+"&min_dec="+str(dec-decwidth/3600.)+"&max_dec="+str(dec+decwidth/3600.)+"&entries=top&topnum=6400&format=csv"
+                else:
+                	queryurl = "http://cas.sdss.org/dr7/en/tools/search/x_rect.asp?min_ra="+str(ra-0.095)+"&max_ra="+str(ra+0.095)+"&min_dec="+str(dec-0.095)+"&max_dec="+str(dec+0.095)+"&entries=top&topnum=6400&format=csv"
    	
         	racolumn    = 7
         	deccolumn   = 8

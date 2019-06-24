@@ -22,7 +22,7 @@ Modified 7/31/2014 by Vicki Toy (vtoy@astro.umd.edu)
 import glob
 import numpy as np
 #import pylab as pl
-import photprocesslibrary as pplib
+from photopipe.photometry.dependencies import photprocesslibrary as pplib
 
 import matplotlib
 matplotlib.use('Agg')
@@ -34,8 +34,8 @@ from datetime import datetime
 
 def plot_mag(filters, plotdict, colors):
     pl.figure()
-    pl.xlim([15,22])
-    pl.ylim([-0.01,0.2])
+    pl.xlim([15,26])
+    pl.ylim([-0.01,0.5])
     
     #For each filter, plot mag vs. error for photocomp.png
     counter = 0
@@ -121,8 +121,8 @@ def plot_seds(filters):
             else:
                 ax_col = ax_col + 1
 
-        for a in ax.flat[len(filters_map):]:
-            a.axis('off')
+#        for a in ax.flat[len(filters_map):]:
+#            a.axis('off')
         
         # pl.suptitle('Source #' + source_index, fontsize=16)        
         pl.savefig('seds/' + source_index + '.plot.png', bbox_inches='tight')

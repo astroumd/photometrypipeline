@@ -3,7 +3,7 @@ import glob
 import pyfits as pf
 import numpy as np
 import datetime
-import astrometrystats as astst
+from photopipe.reduction.astrom import astrometrystats as astst
 import cosmics
 import timeit
 import scipy
@@ -352,11 +352,11 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
         for f in np.arange(z-1):
             
             indata = data[f,:,:]
-            
+
             # Set sources above objthresh  limit to NaN
             datamed, datastd = medclip(indata, clipsig=5, maxiter=5)
-            
-            sourcepixels = np.where( abs(indata-datamed) >= objthresh*datastd)
+                       
+            sourcepixels = np.where(abs(indata-datamed)>= objthresh*datastd)
                         
             satpixels = np.where( indata >= satlevel )
             
@@ -367,9 +367,9 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
                 indata[satpixels] = float('NaN')
             
             data[f,:,:] = indata
-        
+            
     reflat = np.zeros((ny, nx)) + float('NaN')
-
+    
     # If algorithm set to median, find 3 sigma clipped median of each pixel 
     # excluding NaN values (which are eventually set to median)
     if algorithm == 'median':
@@ -811,8 +811,8 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
   
     # Find difference between catalog and observed magnitudes
     diff = catmag - obsmag
-
-    print diff
+    print np.shape(obsmag)
+    #print diff
     # Find number of observations and stars	
     sz = np.shape(obsmag)
     nobs   = sz[0]
@@ -848,6 +848,7 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
     if plotter != None:
 
         keep = np.where(wts != 0)
+        print np.shape(catmag[keep])
         plt.plot(catmag[keep], adiff2[keep], '*')
         plt.errorbar(catmag[keep], adiff2[keep], yerr = 1.0/np.sqrt(wts[keep]), fmt='.')
         
@@ -970,21 +971,20 @@ def medclip2d(indata, clipsig=3.0, maxiter=5, verbose=0, overaxis=0):
     while (iter < maxiter):
         medval = np.ma.median(skpix, axis=overaxis)
         sig = np.ma.std(skpix, axis=overaxis)
-        
+
         if overaxis == 0:
-            mask = ( abs(skpix-medval) < clipsig*sig )
+            mask = ( abs(skpix-medval) < clipsig*sig )         
         else:
             mask = ( abs(skpix.T-medval) < clipsig*sig )
         if (mask == skpix.mask).all:
             break
         skpix.mask = mask
-
         #if ct <=2: return 'Too few remaining'
         iter += 1
- 
+
     med   = np.ma.median( skpix, axis=overaxis )
     sigma = np.ma.std( skpix, axis=overaxis )
- 
+    
     if verbose:
         print '%.1f-sigma clipped median' % (clipsig)
         print 'Mean computed in %i iterations' % (iter)

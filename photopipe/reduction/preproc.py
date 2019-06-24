@@ -715,9 +715,12 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0,1,2,3], auto=
                     user = raw_input("\nType Y for YES, N for NO, Q for QUIT: ")
                 
                 if user.lower() == 'y' and instrum.is_cam_split(cam_i):
-                    filterA = instrum.get_filter(h, 'C{}a'.format(cam_i)).lower()
-                    filterB = instrum.get_filter(h, 'C{}b'.format(cam_i)).lower()
+                    #filterA = instrum.get_filter(h, 'C{}a'.format(cam_i)).lower()
+                    filterA = instrum.get_filter(h, 'C{}a'.format(cam_i))
+                    #filterB = instrum.get_filter(h, 'C{}b'.format(cam_i)).lower()
+                    filterB = instrum.get_filter(h, 'C{}b'.format(cam_i))
 
+                    
                     if instrum.get_centered_filter(h, cam_i).count(filterB) != 0:
                         direction = 't'
                     elif instrum.get_centered_filter(h, cam_i).count(filterA) != 0:

@@ -39,7 +39,7 @@ import matplotlib.pyplot as pl
 # Disable interactive mode
 pl.ioff()
 
-import photprocesslibrary as pplib
+from photopipe.photometry.dependencies import photprocesslibrary as pplib
 import printhtml
 import os
 import sys

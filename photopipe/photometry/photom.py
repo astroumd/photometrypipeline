@@ -26,8 +26,8 @@ Modified by Vicki Toy (vtoy@astro.umd.edu) 5/21/2014
 import numpy as np
 import os
 import astropy.io.fits as pf
-import photprocesslibrary as pplib
-import autoproc_steps as ap
+from photopipe.photometry.dependencies import photprocesslibrary as pplib
+from photopipe.reduction.auto import autoproc_steps as ap
 from string import index
 from numpy import shape
 from astropy import wcs

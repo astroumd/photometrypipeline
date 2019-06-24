@@ -33,7 +33,7 @@ def autopipedefaults(pipevar=inpipevar):
 
     print 'Setting pipeline parameters (DEFAULTS)'
     
-    path = os.path.dirname(__file__)
+    path = os.path.dirname(os.path.abspath(__file__))
         
     pipevar['pipeautopath'] = path
     sfile = path+'/pipeautoproc.par'
@@ -58,7 +58,10 @@ def autopipedefaults(pipevar=inpipevar):
     if pipevar['imworkingdir'] != '' and not(os.path.exists(pipevar['imworkingdir'])): 
         print 'Creating imaging working directory: ',  pipevar['imworkingdir']
         os.makedirs(pipevar['imworkingdir'])
-        
+
+    pipevar['autoastrocommand'] = '/home/simone/photometrypipeline/photopipe/reduction/astrom/vlt_autoastrometry.py'       
+    pipevar['getsedcommand'] = '/home/simone/photometrypipeline/photopipe/photometry/dependencies/get_SEDs.py'
+ 
 def autopipeprepare(pipevar=inpipevar):
 
     """
@@ -156,7 +159,7 @@ def autopipeimflatten(pipevar=inpipevar):
     """
     
     print 'FLATTEN'
-    
+
     # Finds prepared files and checks to see if there are any existing flattened files
     # Find flats in imworkingdir with name flat somewhere in a fits file name
     files  = glob.glob(pipevar['imworkingdir'] + 'p' + pipevar['prefix'] + '*.fits')
@@ -273,8 +276,9 @@ def autopipemakesky(pipevar=inpipevar):
             if pipevar['verbose']:
                 print filt, '-band sky flats.'
                 print files[skyflats]
-            
-                apd.skypipecombine(files[skyflats], outflatname, file,
+                             
+                apd.skypipecombine(files[skyflats], outflatname, filt,
+#                apd.skypipecombine(files[skyflats], outflatname, file,
                     pipevar, removeobjects=True, type='sky')
         else:
             print 'Unable to produce a flat field for this setting: ' + filt
@@ -672,7 +676,8 @@ def autopipestack(pipevar=inpipevar, customcat=None, customcatfilt=[]):
         return
 
     filetargs = []; fileexpos = []; filefilts = []; fileairmv = [] 
-    filesatvs = []; filearms1 = []; filearms2 = []; filetime  = []
+#    filesatvs = []; filearms1 = []; filearms2 = []; filetime  = []
+    filesatvs = []; filetime  = []
     
     # Grab information in the headers of astrometry corrected file and save to array
     for i,file in enumerate(files):
@@ -684,13 +689,13 @@ def autopipestack(pipevar=inpipevar, customcat=None, customcatfilt=[]):
         filetargs += [re.sub(r'\s+', '', head['TARGNAME'])]; 
         fileexpos += [head['EXPTIME']]; filefilts += [head['FILTER']]
         fileairmv += [head['AIRMASS']]; filesatvs += [head['SATURATE']]
-        filearms1 += [head['ASTRRMS1']]; filearms2 += [head['ASTRRMS2']]
+#        filearms1 += [head['ASTRRMS1']]; filearms2 += [head['ASTRRMS2']]
         filetime  += [obstime.jd]
     
     files     = np.array(files); filetargs = np.array(filetargs)
     fileexpos = np.array(fileexpos); filefilts = np.array(filefilts)
     filesatvs = np.array(filesatvs); fileairmv = np.array(fileairmv)
-    filearms1 = np.array(filearms1); filearms2 = np.array(filearms2)
+#    filearms1 = np.array(filearms1); filearms2 = np.array(filearms2)
     filetime  = np.array(filetime)
     targets = set(filetargs)
     
@@ -711,9 +716,10 @@ def autopipestack(pipevar=inpipevar, customcat=None, customcatfilt=[]):
         # Find files that have the same target and same filter and store information 
         # on the exposure times and airmass. Only use good Scamp astrometric fit files
         for filter in thistargetfilts:
-            stacki = (filetargs == targ) & (filefilts == filter) &\
-                     (filearms1 < 2.0e-4) & (filearms1 > 5.0e-6) &\
-                     (filearms2 < 2.0e-4) & (filearms2 > 5.0e-6)
+            stacki = (filetargs == targ) & (filefilts == filter) 
+#            stacki = (filetargs == targ) & (filefilts == filter) &\
+#                     (filearms1 < 2.0e-4) & (filearms1 > 5.0e-6) &\
+#                     (filearms2 < 2.0e-4) & (filearms2 > 5.0e-6)
                                             
             if sum(stacki) == 0: continue
 
@@ -738,9 +744,9 @@ def autopipestack(pipevar=inpipevar, customcat=None, customcatfilt=[]):
             # frame with each frame optimized with PSF size
             for sfile in stacklist:
                 head = pf.getheader(sfile)
-                ipixscl = head['PIXSCALE']
-                
-                apd.findsexobj(sfile, 3.0, pipevar,pix=ipixscl,aperture=20.0, quiet=quiet)
+                ipixscl = head['PIXSCALE'] 
+                #apd.findsexobj(sfile, 3.0, pipevar,pix=ipixscl,aperture=20.0, quiet=quiet)
+                apd.findsexobj(sfile, 1.5, pipevar,pix=ipixscl,aperture=20.0, quiet=quiet)
                 starfile = sfile + '.stars'
                 
                 svars = np.loadtxt(starfile, unpack=True)
@@ -766,7 +772,7 @@ def autopipestack(pipevar=inpipevar, customcat=None, customcatfilt=[]):
                 
                 # Save stars from image
                 np.savetxt(imfile, np.transpose([wrd[:,0],wrd[:,1],mag]))
-                
+                 
                 # Filter name correction:
                 if filter == 'Z' or filter == 'Y': filter = filter.lower()
                 
@@ -799,7 +805,7 @@ def autopipestack(pipevar=inpipevar, customcat=None, customcatfilt=[]):
                     if sum(refmag<90.0) == 0: nocustomcat = True
                 else:
                     nocustomcat = True
-                    
+                 
                 # If custom catalog not provided, catalog doesn't include filter, or 
                 # no objects from catalog found in image then
                 # use get_SEDs.py to make catalog using 2MASS + (SDSS or APASS or USNOB1)
@@ -808,7 +814,7 @@ def autopipestack(pipevar=inpipevar, customcat=None, customcatfilt=[]):
                     # (python get_SEDs.py imfile filter catfile USNOB_THRESH alloptstars)
                     sedcmd = 'python ' + pipevar['getsedcommand'] + ' ' + imfile + ' ' +\
                          filter + ' ' + catfile + " 15 True "+ qtcmd
-                
+                                    
                     if pipevar['verbose'] > 0: print sedcmd
                     os.system(sedcmd)
                 
@@ -822,7 +828,7 @@ def autopipestack(pipevar=inpipevar, customcat=None, customcatfilt=[]):
                     mode   = cvars[catdict['mode'],:]
                     
 
-                
+                 
                 # Find catalog filter values and only cutoff values of actual detections
                 goodind = (mode != -1) & (refmag < 90.0) & (flag < 8) & (elon <= 1.5)
                 
@@ -927,19 +933,23 @@ def autopipestack(pipevar=inpipevar, customcat=None, customcatfilt=[]):
             
             os.system(stackcmd)
             head   = pf.getheader(outfl)
+            print outfl
             pixscl = head['PIXSCALE']
             
             try:
-                apd.findsexobj(outfl, 10.0, pipevar, pix=pixscl, aperture=20.0,
+                #apd.findsexobj(outfl, 10.0, pipevar, pix=pixscl, aperture=20.0,
+                apd.findsexobj(outfl, 1.5, pipevar, pix=pixscl, aperture=20.0,
                            wtimage=outwt, quiet=quiet)
             except:
                 sys.exit('Problem opening coadd fits file, may need to coadd in smaller bin size')
                            
             head   = pf.getheader(outfl)
+            #cpsfdi = 1.56 * float(head['SEEPIX'])
             cpsfdi = 1.34 * float(head['SEEPIX'])
             
             # Run sextractor again on new coadd file
-            apd.findsexobj(outfl, 3.0, pipevar, pix=pixscl, aperture=cpsfdi, 
+            #apd.findsexobj(outfl, 3.0, pipevar, pix=pixscl, aperture=cpsfdi, 
+            apd.findsexobj(outfl, 1.5, pipevar, pix=pixscl, aperture=cpsfdi, 
                            wtimage=outwt, quiet=quiet)
             
             head = pf.getheader(outfl)
@@ -1036,11 +1046,10 @@ def autopipestack(pipevar=inpipevar, customcat=None, customcatfilt=[]):
             
             czpts, cscats, crmss = apd.calc_zpt(np.array([refmag]), np.array([obskpm]), 
                                     np.array([obswts]), sigma=1.0,
+#                                    np.array([obswts]), sigma=1.0,
                                     plotter=pipevar['imworkingdir']+'zpt_'+filter+'.ps')
             
             chead = pf.getheader(outfl)
-            
-            # Add zeropoint keywords to header
             chead['SPIX']     = (cpsfdi, 'Final aperture size')
             chead['ABSZPT']   = (czpts[0]+25.0, 'Absolute zeropoint from calc_zpt')
             chead['ABSZPTSC'] = (cscats[0], 'Robust scatter of absolute zeropoint')

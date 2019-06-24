@@ -157,9 +157,10 @@ def autoproc(datadir=None, imdir=None, start=None, stop=None, only=None, step=No
             'pipeautopath':'' , 'refdatapath':'', 'defaultspath':'' }
 
     if imdir    != None: pipevar['imworkingdir'] = imdir if imdir[-1] == '/' else imdir + '/'
-    
+
     ap.autopipedefaults(pipevar=pipevar)
-    
+
+
     if redo     == True: pipevar['overwrite'] = 1
     if quiet    == True: pipevar['verbose'] = 0
     if datadir  != None: pipevar['datadir'] = datadir if datadir[-1] == '/' else datadir + '/'
@@ -212,7 +213,7 @@ def autoproc(datadir=None, imdir=None, start=None, stop=None, only=None, step=No
         # Check sextractor
         if os.path.isfile('temp.txt'): os.system('rm -f temp.txt')
         os.system(pipevar['sexcommand'] + ' -d > temp.txt')
-        
+                
         if os.stat('temp.txt').st_size == 0:
             print "Error: Sextractor is not installed or not configured."
             print "       Cannot run image alignment steps. Configure or stop='crclean'"
@@ -263,6 +264,9 @@ def autoproc(datadir=None, imdir=None, start=None, stop=None, only=None, step=No
     print 'Processing complete.'
     
     # Remove any files that were created during the reduction process
-    if os.path.isfile('temp*.*'): os.system('rm -f temp*.*')
-    if os.path.isfile('det.*'): os.system('rm -f det.*')
-    if os.path.isfile('cat.*'): os.system('rm -f cat.*')    
+    #if os.path.isfile('temp*.*'): os.system('rm -f temp*.*')
+    if os.path.isfile('temp.cat'): os.system('rm -f temp*.*')
+    #if os.path.isfile('det.*'): os.system('rm -f det.*')
+    if os.path.isfile('det.wcs.txt'): os.system('rm -f det.*')
+    #if os.path.isfile('cat.*'): os.system('rm -f cat.*')    
+    if os.path.isfile('cat.txt'): os.system('rm -f cat.*')    

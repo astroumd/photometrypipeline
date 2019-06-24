@@ -59,8 +59,8 @@ def autopipedefaults(pipevar=inpipevar):
         print 'Creating imaging working directory: ',  pipevar['imworkingdir']
         os.makedirs(pipevar['imworkingdir'])
 
-    pipevar['autoastrocommand'] = '/home/simone/photometrypipeline/photopipe/reduction/astrom/vlt_autoastrometry.py'       
-    pipevar['getsedcommand'] = '/home/simone/photometrypipeline/photopipe/photometry/dependencies/get_SEDs.py'
+    pipevar['autoastrocommand'] = '/work/photometrypipeline/photopipe/reduction/astrom/vlt_autoastrometry.py'
+    pipevar['getsedcommand'] = '/work/photometrypipeline/photopipe/photometry/dependencies/get_SEDs.py'
  
 def autopipeprepare(pipevar=inpipevar):
 

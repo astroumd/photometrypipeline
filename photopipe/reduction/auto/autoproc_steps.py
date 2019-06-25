@@ -10,7 +10,7 @@ from astropy.time import Time
 import sys
 
 inpipevar = {'autoastrocommand':'autoastrometry', 'getsedcommand':'get_SEDs', 
-			'sexcommand':'sex' , 'swarpcommand':'swarp' , 'rmifiles':0,  
+			'sexcommand':'sextractor' , 'swarpcommand':'SWarp' , 'rmifiles':0,
 			'prefix':'', 'datadir':'' , 'imworkingdir':'' , 'overwrite':0 , 'verbose':1, 
 			'flatfail':'' , 'fullastrofail':'' ,
 			'pipeautopath':'' , 'refdatapath':'', 'defaultspath':'' }

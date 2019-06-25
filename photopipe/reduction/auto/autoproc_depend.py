@@ -3,7 +3,7 @@ import glob
 import pyfits as pf
 import numpy as np
 import datetime
-from photopipe.reduction.astrom import astrometrystats as astst
+from reduction.astrom import astrometrystats as astst
 import cosmics
 import timeit
 import scipy

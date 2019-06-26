@@ -817,7 +817,7 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0,1,2,3], auto=
     return fits_list_dict
     
 
-def mkmaster(instrument, fn_dict, mtype, fmin=5):
+def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./'):
 
     """
     PURPOSE:        
@@ -899,7 +899,10 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5):
                 af.print_err('Error: no frames available to make master {} for {} {}.'.format(mtype, band, sorttype.lower()))
                 continue
             else:
-                temp = raw_input(af.bcolors.WARNING+"Only {} frames available to make master {} for {} {}.  Continue? (y/n): ".format(len(fns), mtype, band, sorttype.lower())+af.bcolors.ENDC)
+                temp = raw_input(
+                    af.bcolors.WARNING+"Only {} frames available to make master {} for {} {}.  Continue? (y/n): ".format(
+                        len(fns), mtype, band, sorttype.lower())+af.bcolors.ENDC
+                )
                 if temp.lower() != 'y' and temp.lower() != 'yes':
                     af.print_warn("Skipping {}...".format(band))
                     continue
@@ -975,4 +978,8 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5):
 
         # save master to fits
         hdulist = pf.HDUList([hdu])
-        hdulist.writeto('{}_{}.fits'.format(mtype, band), clobber=True)
+        try:
+            hdulist.writeto('{}{}_{}.fits'.format(master_dir, mtype, band), clobber=True)
+        except IOError:
+            os.mkdir(master_dir)
+            hdulist.writeto('{}{}_{}.fits'.format(master_dir, mtype, band), clobber=True)

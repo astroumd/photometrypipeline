@@ -153,7 +153,7 @@ def autoproc(datadir=None, imdir=None, start=None, stop=None, only=None, step=No
     # Load default parameters and interpret user arguments.
     pipevar = {
         'autoastrocommand': 'autoastrometry', 'getsedcommand': 'get_SEDs',
-        'sexcommand': '/usr/bin/sextractor', 'swarpcommand': '/usr/bin/SWarp', 'rmifiles': 0,
+        'sexcommand': 'sex', 'swarpcommand': 'swarp', 'rmifiles': 0,
         'prefix': '', 'datadir': '', 'imworkingdir': '', 'overwrite': 0, 'verbose': 1,
         'flatfail': '', 'fullastrofail': '', 'pipeautopath': '', 'refdatapath': '', 'defaultspath': ''
     }

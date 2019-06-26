@@ -10,7 +10,7 @@ from astropy.time import Time
 import sys
 
 inpipevar = {'autoastrocommand':'autoastrometry', 'getsedcommand':'get_SEDs', 
-			'sexcommand':'sextractor' , 'swarpcommand':'SWarp' , 'rmifiles':0,
+			'sexcommand':'sex' , 'swarpcommand':'swarp' , 'rmifiles':0,
 			'prefix':'', 'datadir':'' , 'imworkingdir':'' , 'overwrite':0 , 'verbose':1, 
 			'flatfail':'' , 'fullastrofail':'' ,
 			'pipeautopath':'' , 'refdatapath':'', 'defaultspath':'' }
@@ -277,8 +277,9 @@ def autopipemakesky(pipevar=inpipevar):
                 print filt, '-band sky flats.'
                 print files[skyflats]
                              
-                apd.skypipecombine(files[skyflats], outflatname, filt,
-#                apd.skypipecombine(files[skyflats], outflatname, file,
+                apd.skypipecombine(
+                    files[skyflats], outflatname, filt,
+                    # apd.skypipecombine(files[skyflats], outflatname, file,
                     pipevar, removeobjects=True, type='sky')
         else:
             print 'Unable to produce a flat field for this setting: ' + filt
@@ -331,7 +332,7 @@ def autopipeskysubmed(pipevar=inpipevar):
         head = pf.getheader(file)
         data = pf.getdata(file)
         
-        data -= np.median(data)
+        data -= np.median(data[~np.isnan(data)])
 
         filter = head['FILTER'] 
         
@@ -636,6 +637,7 @@ def autopipeastrometry(pipevar=inpipevar):
         os.system('rm -f ' + pipevar['imworkingdir'] + 'sfp' + pipevar['prefix'] + '*.fits')
         os.system('rm -f ' + pipevar['imworkingdir'] + 'zsfp' + pipevar['prefix'] + '*.fits')
 
+
 def autopipestack(pipevar=inpipevar, customcat=None, customcatfilt=[]):
     """
     NAME:
@@ -676,7 +678,7 @@ def autopipestack(pipevar=inpipevar, customcat=None, customcatfilt=[]):
         return
 
     filetargs = []; fileexpos = []; filefilts = []; fileairmv = [] 
-#    filesatvs = []; filearms1 = []; filearms2 = []; filetime  = []
+    # filesatvs = []; filearms1 = []; filearms2 = []; filetime  = []
     filesatvs = []; filetime  = []
     
     # Grab information in the headers of astrometry corrected file and save to array
@@ -1044,10 +1046,10 @@ def autopipestack(pipevar=inpipevar, customcat=None, customcatfilt=[]):
                     obskpm[i] = obsmag[i]
                     obswts[i] = 1.0/(max(obserr[i], 0.01)**2)
             
-            czpts, cscats, crmss = apd.calc_zpt(np.array([refmag]), np.array([obskpm]), 
-                                    np.array([obswts]), sigma=1.0,
-#                                    np.array([obswts]), sigma=1.0,
-                                    plotter=pipevar['imworkingdir']+'zpt_'+filter+'.ps')
+            czpts, cscats, crmss = apd.calc_zpt(
+                np.array([refmag]), np.array([obskpm]), np.array([obswts]), sigma=1.0,
+                # np.array([obswts]), sigma=1.0,
+                plotter=pipevar['imworkingdir']+'zpt_'+filter+'.ps')
             
             chead = pf.getheader(outfl)
             chead['SPIX']     = (cpsfdi, 'Final aperture size')
@@ -1069,14 +1071,14 @@ def autopipestack(pipevar=inpipevar, customcat=None, customcatfilt=[]):
             chead['MINEXP']   = (min(stackexps), 'Length of shortest exposure')
             
             for i, file in enumerate(newstack):
-                chead['STACK'+str(i)] = file    
-      		
-      		cdata = pf.getdata(outfl)
-      		pf.update(outfl, cdata, chead)
-      		
-      	    if len(removedframes) > 0:
-      	        print 'Removed frames with bad zeropoint fits: ' 
-      	        print removedframes
+                chead['STACK'+str(i)] = file
+
+            cdata = pf.getdata(outfl)
+            pf.update(outfl, cdata, chead)
+
+            if len(removedframes) > 0:
+                print 'Removed frames with bad zeropoint fits: '
+                print removedframes
 
     # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
     # sky-*.fits, sfp(PREFIX)*.fits, zsfp(PREFIX)*.fits files
@@ -1090,4 +1092,3 @@ def autopipestack(pipevar=inpipevar, customcat=None, customcatfilt=[]):
         os.system('rm -f ' + pipevar['imworkingdir'] + 'a*fp' + pipevar['prefix'] + '*.im')
         os.system('rm -f ' + pipevar['imworkingdir'] + 'a*fp' + pipevar['prefix'] + '*.stars')
         os.system('rm -f ' + pipevar['imworkingdir'] + 'a*fp' + pipevar['prefix'] + '*.cat')
-        

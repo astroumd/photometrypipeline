@@ -9,8 +9,8 @@ import scipy
 # from photopipe.reduction.astrom import astrometrystats as astst
 # import timeit
 
-import matplotlib
-matplotlib.use('Agg')
+# import matplotlib
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 # Disable interactive mode
 plt.ioff()
@@ -18,11 +18,19 @@ plt.ioff()
 
 def write_fits(filename, data, header):
     try:
-        pf.writeto(filename, data, header, clobber=True)
+        pf.writeto(filename, data, header, overwrite=True)
+        print "write_fits.pf.writeto(filename, data, header, overwrite=True) worked!"
     except:
         temp_filename = filename + '.tmp'
         pf.writeto(temp_filename, data, header)
+        try:
+            os.remove(filename)
+            print "deleted {}".format(filename)
+        except:
+            print "couldn't delete {}".format(filename)
+            pass
         shutil.move(temp_filename, filename)
+        print "write_fits.shutil.move(temp_filename, filename) worked!"
 
 
 def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1):
@@ -74,7 +82,6 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
                 return
     else:
         files = filename
-
 
     # ------ Read data and process header information ------        
     for file in files: 

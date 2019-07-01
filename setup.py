@@ -170,5 +170,5 @@ setup(
     # http://stackoverflow.com/a/37283972
     cmdclass={
         'install': CustomInstall
-    }, install_requires=['numpy', 'astropy']
+    }, install_requires=['numpy', 'astropy', 'matplotlib', 'scipy']
 )

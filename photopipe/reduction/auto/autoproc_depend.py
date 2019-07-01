@@ -1,18 +1,29 @@
 import os
+import shutil
 import glob
-import pyfits as pf
+import astropy.io.fits as pf
 import numpy as np
 import datetime
-from photopipe.reduction.astrom import astrometrystats as astst
 import cosmics
-import timeit
 import scipy
+# from photopipe.reduction.astrom import astrometrystats as astst
+# import timeit
 
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 # Disable interactive mode
 plt.ioff()
+
+
+def write_fits(filename, data, header):
+    try:
+        pf.writeto(filename, data, header, clobber=True)
+    except:
+        temp_filename = filename + '.tmp'
+        pf.writeto(temp_filename, data, header)
+        shutil.move(temp_filename, filename)
+
 
 def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1):
 
@@ -73,17 +84,19 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
         f.close()
         
         # If these keys exist keep, otherwise delete all extraneous keywords
-        mandatorykey = ['SIMPLE','BITPIX','NAXIS','NAXIS1','NAXIS2',
- 					    'HISTORY','DATE-OBS','EXPTIME','INSTRUME',
- 					    'LATITUDE','LONGITUD','BINNING','BINY','BINX',
- 					    'CAMERA','TARGNAME','UTC','OBJECT', 'OBJNAME','AIRMASS', 					    
- 					    'GAIN','SATURATE','PIXSCALE','FILTER','WAVELENG',
- 					    'CD1_1','CD1_2','CD2_1','CD2_2',
- 					    'CRPIX1','CRPIX2','CRVAL1','CRVAL2','CTYPE1','CTYPE2', 
- 					    'PV1_1','PV2_1','PV1_17','PV2_17','PV1_19','PV2_19','PV1_21','PV2_21',
- 					    'PV1_31','PV2_31','PV1_33','PV2_33','PV1_35','PV2_35','PV1_37','PV2_37']
- 					    
- 	    # Finds list of unnecessary keywords, then deletes extraneous
+        mandatorykey = [
+            'SIMPLE','BITPIX','NAXIS','NAXIS1','NAXIS2',
+            'HISTORY','DATE-OBS','EXPTIME','INSTRUME',
+            'LATITUDE','LONGITUD','BINNING','BINY','BINX',
+            'CAMERA','TARGNAME','UTC','OBJECT', 'OBJNAME','AIRMASS',
+            'GAIN','SATURATE','PIXSCALE','FILTER','WAVELENG',
+            'CD1_1','CD1_2','CD2_1','CD2_2',
+            'CRPIX1','CRPIX2','CRVAL1','CRVAL2','CTYPE1','CTYPE2',
+            'PV1_1','PV2_1','PV1_17','PV2_17','PV1_19','PV2_19','PV1_21','PV2_21',
+            'PV1_31','PV2_31','PV1_33','PV2_33','PV1_35','PV2_35','PV1_37','PV2_37'
+        ]
+
+        # Finds list of unnecessary keywords, then deletes extraneous
         newhead = head
         for oldkey in head.keys():
             if oldkey not in mandatorykey:
@@ -129,10 +142,11 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
             newdata = data
         
         # Write changes to disk
-        pf.writeto(outname, newdata, newhead, clobber=True)
+        write_fits(outname, newdata, newhead)
         
         if verbose > 0: print file, '-> ', outname
-        
+
+
 def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
 
     """
@@ -220,8 +234,8 @@ def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
         filedir  = os.path.dirname(file)
         outnameim = filedir + '/f' + fileroot
         
-        pf.writeto(outnameim, fdata, head, clobber=True)
-        
+        write_fits(outnameim, fdata, head)
+
 def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None, 
     objthresh=6, algorithm='median', trimlo=None, trimhi=None, mincounts=1, 
     maxcounts=55000, satlevel=30000, type=None):
@@ -428,8 +442,9 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
         
     if pipevar['verbose'] > 0: print '  Written to ' + outfile
         
-    pf.writeto(outfile, reflat, head_m, clobber=True)       
-                    
+    write_fits(outfile, reflat, head_m)
+
+
 def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
 
     """
@@ -534,7 +549,8 @@ def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
         date = datetime.datetime.now().isoformat()
         head.add_history('Processed by skypipeproc ' + date)
         
-        pf.writeto(outfile, fdata, head, clobber=True) 
+        write_fits(outfile, fdata, head)
+
 
 def cosmiczap(filename, outname, sigclip=6.0, maxiter=3, verbose=True):
 
@@ -666,14 +682,15 @@ def astrometry(atfimages, scamprun=1, pipevar=None):
             os.system('missfits -WRITE_XML N ' + cfile)
         else:
             os.system('missfits -WRITE_XML N -VERBOSE_TYPE QUIET' + cfile)
-                    
+
         os.system('rm ' + trunfile + '.head ' + cfile + '.back')
 
         if scamprun != 1:
             him  = pf.getheader(cfile)
             data = pf.getdata(cfile)
             del him['FLXSCALE']
-            pf.update(cfile, data, him)
+            write_fits(cfile, data, him)
+
 
 def findsexobj(file, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP_WEIGHT',
                wtimage=None, fwhm=1.5, pix=0.3787, aperture=5.0, elong_cut=1.5, 
@@ -766,27 +783,27 @@ def findsexobj(file, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP_WEI
     else:
         print 'Failed to find Sextractor output file!'
         seepix = None
-	 
     head = pf.getheader(file)
     
-    if masksfx != None:
+    if masksfx is not None:
         head['MASKNAME'] = (mskimg, "Object mask image from Sextractor")
     
     head['STARFILE'] = (starfile, "Objects file from Sextractor" )
-    head['ZEROPT']   = (zeropt, "Photometric zero-point used for Sextractor")
-    if seepix != None:
-        head['SEEPIX']   = (seepix, "Estimated seeing from Sextractor objects (pix)")
-    head['NSTARS']   = (len(num), "Estimated number of objects from Sextractor")
+    head['ZEROPT'] = (zeropt, "Photometric zero-point used for Sextractor")
+    if seepix is not None:
+        head['SEEPIX'] = (seepix, "Estimated seeing from Sextractor objects (pix)")
+    head['NSTARS'] = (len(num), "Estimated number of objects from Sextractor")
     
     data = pf.getdata(file)
-    pf.update(file, data, head)
+    write_fits(file, data, head)
     
     # Removes config files after done
     os.system('rm -f coadd.param')
     os.system('rm -f coadd.conv')
     os.system('rm -f coadd.config')
     os.system('rm -f default.nnw')
-    
+
+
 def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
 
     """
@@ -812,10 +829,10 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
     # Find difference between catalog and observed magnitudes
     diff = catmag - obsmag
     print np.shape(obsmag)
-    #print diff
+    # print diff
     # Find number of observations and stars	
     sz = np.shape(obsmag)
-    nobs   = sz[0]
+    nobs = sz[0]
     nstars = sz[1]
     
     # For each observation (i.e. frame) find the weighted difference and store zeropoint
@@ -845,7 +862,7 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
     # Recalculate robust scatter and rms scatter value on twice zeropoint corrected mags
     scats, rmss = robust_scat(adiff2, wts, nobs, nstars, sigma)   
     
-    if plotter != None:
+    if plotter is not None:
 
         keep = np.where(wts != 0)
         print np.shape(catmag[keep])
@@ -858,6 +875,7 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
         plt.clf()
 
     return z2, scats, rmss
+
 
 def robust_scat(diff, wts, nobs, nstars, sigma):
 
@@ -894,6 +912,7 @@ def robust_scat(diff, wts, nobs, nstars, sigma):
         scats[i] = scat
         rmss[i]  = np.std(gooddiff)
     return scats, rmss
+
 
 def medclip(indata, clipsig=3.0, maxiter=5, verbose=0):
 
@@ -945,6 +964,7 @@ def medclip(indata, clipsig=3.0, maxiter=5, verbose=0):
  
     return med, sigma
 
+
 def medclip2d(indata, clipsig=3.0, maxiter=5, verbose=0, overaxis=0):
 
     """
@@ -979,7 +999,7 @@ def medclip2d(indata, clipsig=3.0, maxiter=5, verbose=0, overaxis=0):
         if (mask == skpix.mask).all:
             break
         skpix.mask = mask
-        #if ct <=2: return 'Too few remaining'
+        # if ct <=2: return 'Too few remaining'
         iter += 1
 
     med   = np.ma.median( skpix, axis=overaxis )
@@ -991,7 +1011,8 @@ def medclip2d(indata, clipsig=3.0, maxiter=5, verbose=0, overaxis=0):
         print 'Mean = %.6f, sigma = %.6f' % (med, sigma)
  
     return med, sigma  
-    
+
+
 def identify_matches( queried_stars, found_stars, match_radius=3. ):
     '''
     Use a kd-tree (3d) to match two lists of stars, using full spherical coordinate distances.

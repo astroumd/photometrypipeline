@@ -10,7 +10,7 @@ import pickle
 import sys
 
 # installed modules
-import pyfits as pf
+import astropy.io.fits as pf
 import matplotlib.pylab as pl
 import numpy as np
 from scipy.ndimage.interpolation import zoom
@@ -414,7 +414,8 @@ def plot_params_calib(ax, im, m, s, sat_pt, hist=False):
     
     z1, z2 = af.zscale(im)
     if z2 <= z1:
-        z1 = m1 - s1; z2 = m1 + s1
+        z1 = m - s
+        z2 = m + s
           
     if hist:
         ax.hist(im.flatten(), bins=50, normed=True, log=True, range=(0, sat_pt))
@@ -469,7 +470,8 @@ def plot_params_science(ax, disp_im, filter, h, central=False, window_zoom=4):
         ax.contour(disp_im, levels=[z2], origin='lower', colors='r')
         ax.add_patch(Rectangle((ym-yr, xm-xr), 2*yr, 2*xr, ec='b', fc='none', lw=2))
         ax.set_title(r"{} band".format(filter))
-        
+
+
 def choose_science(instrument, workdir='.', targetdir='.', cams=[0,1,2,3], auto=False, save_select=True, 
                     figsize=(10,10), window_zoom=4, calibrate=False, noplot=False):
 

@@ -2,7 +2,6 @@
 
 import astropy.io.fits as pf
 import fnmatch
-import os
 from numpy import sqrt
 import numpy as np
 

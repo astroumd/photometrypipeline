@@ -3,7 +3,6 @@ import numpy
 import os
 import astrometrystats
 import urllib
-import pyfits as pf
 from astropy import wcs
 
 ########################################

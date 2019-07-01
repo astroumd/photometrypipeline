@@ -1,6 +1,6 @@
 import glob
 import os
-import pyfits as pf
+import astropy.io.fits as pf
 import numpy as np
 import autoproc_depend as apd
 from astropy import wcs

@@ -26,7 +26,7 @@ Modified by Vicki Toy (vtoy@astro.umd.edu) 5/21/2014
 import numpy as np
 import os
 import astropy.io.fits as pf
-from photopipe.photometry.dependencies import photprocesslibrary as pplib
+from dependencies import photprocesslibrary as pplib
 from photopipe.reduction.auto import autoproc_steps as ap
 from string import index
 from numpy import shape
@@ -91,7 +91,7 @@ def photom(prefchar='coadd'):
 		# Converts pixel value to RA and DEC using header information (AstroPy function)
 		w = wcs.WCS(fitsheader)
 		pixcrd = [[0.,0.], [imSize[1]-1.0, imSize[0]-1.0]]
-		[[ra1,dec1],[ra2,dec2]] = w.wcs_pix2world(pixcrd, 0)
+		[[ra1, dec1], [ra2, dec2]] = w.wcs_pix2world(pixcrd, 0)
 	
 		# Stores information into arrays
 		ra1arr.append(ra1)
@@ -105,8 +105,8 @@ def photom(prefchar='coadd'):
 	decbot  = max(dec1arr)
 	dectop  = min(dec2arr)
 
-	#Crops data so the size of every filter image matches and saves to file 'coadd*.multi.fits'
-	#Same for weight file
+	# Crops data so the size of every filter image matches and saves to file 'coadd*.multi.fits'
+	# Same for weight file
 	for files in coaddfiles:
 		newfile = files[:-4]+'multi.fits'
 		fitsfile = pf.open(files)

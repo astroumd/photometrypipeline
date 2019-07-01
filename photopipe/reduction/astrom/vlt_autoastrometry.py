@@ -129,7 +129,7 @@ showmatches = 0
 import numpy
 from optparse import OptionParser
 import shutil
-import pyfits
+import astropy.io.fits as pyfits
 import os, sys
 import urllib
 import astrometrydist
@@ -229,73 +229,73 @@ def autoastrometry(filename,pixelscale=-1,pa=-999,inv=0,uncpa=-1,userra=-999, us
     #Position angle set to 0 if pixel scale set
     if pixelscale > 0 and pa == -999: pa = 0
 
-	#If pixel scale set and position angle set (default is -999), 
-	#calculate CD*, CR* header keywords and write as temp.fits
+    # If pixel scale set and position angle set (default is -999),
+    # calculate CD*, CR* header keywords and write as temp.fits
     if pixelscale > 0 and pa > -360:
  
-       parad = pa * numpy.pi / 180.
-       pxscaledeg = pixelscale / 3600.
+        parad = pa * numpy.pi / 180.
+        pxscaledeg = pixelscale / 3600.
        
-       if inv > 0: 
-          parity = -1
-       else:
-          parity = 1
+        if inv > 0:
+            parity = -1
+        else:
+            parity = 1
           
-       if  360. > userra >= 0.:
-          ra = userra
-       else:
-          try:
-             ra = astrometrystats.rasex2deg(h['RA'])
-          except:
-             ra = astrometrystats.rasex2deg(h['CRVAL1'])
+        if  360. > userra >= 0.:
+            ra = userra
+        else:
+            try:
+                ra = astrometrystats.rasex2deg(h['RA'])
+            except:
+                ra = astrometrystats.rasex2deg(h['CRVAL1'])
              
-       if 360. > userdec >= 0.:
-          dec = userdec
-       else:
-          try:
-             dec = astrometrystats.decsex2deg(h['DEC'])
-          except:
-             dec = astrometrystats.decsex2deg(h['CRVAL2'])
+        if 360. > userdec >= 0.:
+            dec = userdec
+        else:
+            try:
+                dec = astrometrystats.decsex2deg(h['DEC'])
+            except:
+                dec = astrometrystats.decsex2deg(h['CRVAL2'])
        
-       epoch = float(h.get('EPOCH', 2000))
-       equinox = float(h.get('EQUINOX', epoch)) #If RA and DEC are not J2000 then convert
+        epoch = float(h.get('EPOCH', 2000))
+        equinox = float(h.get('EQUINOX', epoch)) #If RA and DEC are not J2000 then convert
 
-       if abs(equinox-2000) > 0.5:
-           print 'Converting equinox from', equinox, 'to J2000'
-           try:
-              j2000 = ephem.Equatorial(ephem.Equatorial(str(ra/15), str(dec), epoch=str(equinox)),epoch=ephem.J2000)
-              [ra, dec] = [astrometrystats.rasex2deg(j2000.ra), astrometrystats.decsex2deg(j2000.dec)]
-           except:
-              print 'PyEphem is not installed but is required to precess this image.'
-              return -1
-       h.set("CD1_1",  pxscaledeg * numpy.cos(parad)*parity)
-       h.set("CD1_2",  pxscaledeg * numpy.sin(parad))
-       h.set("CD2_1", -pxscaledeg * numpy.sin(parad)*parity)
-       h.set("CD2_2",  pxscaledeg * numpy.cos(parad))
-       h.set("CRPIX1", h['NAXIS1']/2)
-       h.set("CRPIX2", h['NAXIS2']/2)
-       h.set("CRVAL1", ra)
-       h.set("CRVAL2", dec)
-       h.set("CTYPE1","RA---TAN")
-       h.set("CTYPE2","DEC--TAN")
-       h.set("EQUINOX",2000.0)
+        if abs(equinox-2000) > 0.5:
+            print 'Converting equinox from', equinox, 'to J2000'
+            try:
+                j2000 = ephem.Equatorial(ephem.Equatorial(str(ra/15), str(dec), epoch=str(equinox)),epoch=ephem.J2000)
+                [ra, dec] = [astrometrystats.rasex2deg(j2000.ra), astrometrystats.decsex2deg(j2000.dec)]
+            except:
+                print 'PyEphem is not installed but is required to precess this image.'
+                return -1
+        h.set("CD1_1",  pxscaledeg * numpy.cos(parad)*parity)
+        h.set("CD1_2",  pxscaledeg * numpy.sin(parad))
+        h.set("CD2_1", -pxscaledeg * numpy.sin(parad)*parity)
+        h.set("CD2_2",  pxscaledeg * numpy.cos(parad))
+        h.set("CRPIX1", h['NAXIS1']/2)
+        h.set("CRPIX2", h['NAXIS2']/2)
+        h.set("CRVAL1", ra)
+        h.set("CRVAL2", dec)
+        h.set("CTYPE1","RA---TAN")
+        h.set("CTYPE2","DEC--TAN")
+        h.set("EQUINOX",2000.0)
        
-       if os.path.isfile('temp.fits'): os.remove('temp.fits')
-       fits[0].header = h
-       fits.writeto('temp.fits',output_verify='silentfix') #,clobber=True
-       fits.close()
-       fits = pyfits.open('temp.fits')
-       h = fits[0].header
-       sfilename = 'temp.fits'
+        if os.path.isfile('temp.fits'): os.remove('temp.fits')
+        fits[0].header = h
+        fits.writeto('temp.fits',output_verify='silentfix') #,clobber=True
+        fits.close()
+        fits = pyfits.open('temp.fits')
+        h = fits[0].header
+        sfilename = 'temp.fits'
 
-    #Read the WCS values from file header (even if we put it there in the first place)
-    try:
+        # Read the WCS values from file header (even if we put it there in the first place)
+        try:
         # no longer drawing RA and DEC from here.
-        nxpix = h['NAXIS1']
-        nypix = h['NAXIS2']
-    except:
-        print 'Cannot find necessary WCS header keyword NAXIS*'
-        sys.exit(1)
+            nxpix = h['NAXIS1']
+            nypix = h['NAXIS2']
+        except:
+            print 'Cannot find necessary WCS header keyword NAXIS*'
+            sys.exit(1)
     try: 
         cra  =  float(h['CRVAL1'])
         cdec = float(h['CRVAL2'])
@@ -310,25 +310,25 @@ def autoastrometry(filename,pixelscale=-1,pa=-999,inv=0,uncpa=-1,userra=-999, us
         print 'Must specify pixel scale (-px VAL) or provide provisional basic WCS info via CD matrix.'
         sys.exit(1)
         
-	#This section deals with manipulating WCS coordinates, for thorough description see:
-	#iraf.noao.edu/iraf/ftp/misc/fitswcs_draft.ps
+    # This section deals with manipulating WCS coordinates, for thorough description see:
+    # iraf.noao.edu/iraf/ftp/misc/fitswcs_draft.ps
 
-	#Determine parity from sign of determinant of CD matrix   
+    # Determine parity from sign of determinant of CD matrix
     if cd11 * cd22 < 0 or cd12 * cd21 > 0:
-       parity = -1
+        parity = -1
     else:
-       parity = 1
+        parity = 1
 
-    #Calculates CDELTA1 (xscale) and CDELTA2 (yscale) which is how much RA or DEC 
-    #changes when you move along a column or row
+    # Calculates CDELTA1 (xscale) and CDELTA2 (yscale) which is how much RA or DEC
+    # changes when you move along a column or row
     xscale = numpy.sqrt(cd11**2 + cd21**2)
     yscale = numpy.sqrt(cd12**2 + cd22**2)
     
-    #Calculates CROTA2 based from transformations between CD matrix and CDELT values
+    # Calculates CROTA2 based from transformations between CD matrix and CDELT values
     initpa = -parity * numpy.arctan2(cd21 * yscale, cd22 * xscale) * 180 / numpy.pi
     
-    #Find field width based on largest dimension and calculates the area of the field
-    #as well as the pixel scale in arcseconds
+    # Find field width based on largest dimension and calculates the area of the field
+    # as well as the pixel scale in arcseconds
     xscale = abs(xscale)
     yscale = abs(yscale)
     fieldwidth = max(xscale * nxpix, yscale * nypix) * 3600. /2.0   
@@ -338,19 +338,19 @@ def autoastrometry(filename,pixelscale=-1,pa=-999,inv=0,uncpa=-1,userra=-999, us
     area_sqsec = area_sqmin * 3600. 
     pixscale = numpy.sqrt(xscale*yscale) * 3600.
 
-	#Finds center pixel in each dimension
+    # Finds center pixel in each dimension
     centerx = nxpix/2
     centery = nypix/2
     
-    #Calculate how the center pixel relates the to the header value's crpix1/2.  
-    #Theoretically, centerx and crpix1 should be the same.  But most of the time, they are not. 
-    #This is due to a number of reasons, ranging from the algorithm used to calculate the 
-    #astrometry to simply cropping the image at some point in the reduction.  
-    #So, the crpix header value may be hundreds of pixels off from the actual center of the actual field.
+    # Calculate how the center pixel relates the to the header value's crpix1/2.
+    # Theoretically, centerx and crpix1 should be the same.  But most of the time, they are not.
+    # This is due to a number of reasons, ranging from the algorithm used to calculate the
+    # astrometry to simply cropping the image at some point in the reduction.
+    # So, the crpix header value may be hundreds of pixels off from the actual center of the actual field.
     centerdx = centerx - crpix1
     centerdy = centery - crpix2
     
-    #Calculate the RA and DEC at center of field to correct initial guess
+    # Calculate the RA and DEC at center of field to correct initial guess
     centerra  = cra  - centerdx*xscale*numpy.cos(initpa*numpy.pi/180.) + centerdy*yscale*numpy.sin(initpa*numpy.pi/180.)
     centerdec = cdec + parity*centerdx*xscale*numpy.sin(-initpa*numpy.pi/180.) + centerdy*yscale*numpy.cos(initpa*numpy.pi/180.)
     # this has only been checked for a PA of zero.

@@ -1,10 +1,8 @@
 import numpy as np
 import sys
-from abc import ABCMeta, abstractmethod
 from instrument_class import instrument
-import pyfits as pf
+from astropy.io import fits as pf
 import re
-import shutil
 import os
 
 

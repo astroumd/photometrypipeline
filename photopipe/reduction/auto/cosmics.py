@@ -61,7 +61,7 @@ import numpy as np
 import math
 import scipy.signal as signal
 import scipy.ndimage as ndimage
-import pyfits
+import astropy.io.fits as pyfits
 
 
 
@@ -113,20 +113,16 @@ class cosmicsimage:
 		self.rawarray = rawarray + pssl # internally, we will always work "with sky".
 		self.cleanarray = self.rawarray.copy() # In lacosmiciteration() we work on this guy
 		self.mask = np.cast['bool'](np.zeros(self.rawarray.shape)) # All False, no cosmics yet
-		
 		self.gain = gain
 		self.readnoise = readnoise
 		self.sigclip = sigclip
 		self.objlim = objlim
 		self.sigcliplow = sigclip * sigfrac
 		self.satlevel = satlevel
-        	
-        	self.verbose = verbose
-        	
-        	self.pssl = pssl
-        	
-        	self.backgroundlevel = None # only calculated and used if required.
-        	self.satstars = None # a mask of the saturated stars, only calculated if required
+		self.verbose = verbose
+		self.pssl = pssl
+		self.backgroundlevel = None  # only calculated and used if required.
+		self.satstars = None  # a mask of the saturated stars, only calculated if required
 
 	def __str__(self):
 		"""
@@ -712,20 +708,19 @@ def rebin(a, newshape):
 	"""
 	Auxiliary function to rebin an ndarray a.
 	U{http://www.scipy.org/Cookbook/Rebinning}
-	
-        	>>> a=rand(6,4); b=rebin(a,(3,2))
-        """
-        
-        shape = a.shape
-        lenShape = len(shape)
-        factor = np.asarray(shape)/np.asarray(newshape)
-        #print factor
-        evList = ['a.reshape('] + \
-                 ['newshape[%d],factor[%d],'%(i,i) for i in xrange(lenShape)] + \
-                 [')'] + ['.sum(%d)'%(i+1) for i in xrange(lenShape)] + \
-                 ['/factor[%d]'%i for i in xrange(lenShape)]
 
-        return eval(''.join(evList))
+			>>> a=rand(6,4); b=rebin(a,(3,2))
+	"""
+	shape = a.shape
+	lenShape = len(shape)
+	factor = np.asarray(shape)/np.asarray(newshape)
+	# print factor
+	evList = ['a.reshape('] + \
+				['newshape[%d],factor[%d],'%(i,i) for i in xrange(lenShape)] + \
+				[')'] + ['.sum(%d)'%(i+1) for i in xrange(lenShape)] + \
+				['/factor[%d]'%i for i in xrange(lenShape)]
+
+	return eval(''.join(evList))
 
 
 def rebin2x2(a):

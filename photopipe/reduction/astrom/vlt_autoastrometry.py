@@ -342,8 +342,8 @@ def autoastrometry(
     area_sqdeg = xscale * nxpix * yscale * nypix
     
     area_sqmin = area_sqdeg * 3600. 
-    area_sqsec = area_sqmin * 3600. 
-    pixscale = numpy.sqrt(xscale*yscale) * 3600.
+    # area_sqsec = area_sqmin * 3600.
+    # pixscale = numpy.sqrt(xscale*yscale) * 3600.
 
     # Finds center pixel in each dimension
     centerx = nxpix/2
@@ -539,10 +539,10 @@ def autoastrometry(
 
     # Sets position angle tolerance and calculates the expected number of false multiples
     patolerance = defaultpatolerance
-    expectfalsepairs = ngood * ncat * circdensity**1 * circcatdensity**1 * tolerance**1 * (patolerance/360.)**0
+    # expectfalsepairs = ngood * ncat * circdensity**1 * circcatdensity**1 * tolerance**1 * (patolerance/360.)**0
     expectfalsetrios = ngood * ncat * circdensity**2 * circcatdensity**2 * tolerance**2 * (patolerance/360.)**1
-    expectfalsequads = ngood * ncat * circdensity**3 * circcatdensity**3 * tolerance**3 * (patolerance/360.)**2
-    expectfalsequint = ngood * ncat * circdensity**4 * circcatdensity**4 * tolerance**4 * (patolerance/360.)**3
+    # expectfalsequads = ngood * ncat * circdensity**3 * circcatdensity**3 * tolerance**3 * (patolerance/360.)**2
+    # expectfalsequint = ngood * ncat * circdensity**4 * circcatdensity**4 * tolerance**4 * (patolerance/360.)**3
 
     # Guess that 30% of the sextractor sources overlap with stars, finds estimate of how many real matches we expect
     overlap1 = 0.3 * min(1, catdensity/density)  # fraction of stars in image that are also in catalog - a guess
@@ -587,7 +587,7 @@ def autoastrometry(
         if not quiet:
             print '   Check the pixel scale and parity and consider re-running.'
         # return -1
-        warning = 1
+        # warning = 1
 
     # We now have the PA and a list of stars that are almost certain matches.
     offpa = astrometrystats.median(mpa)  # get average PA from the excellent values
@@ -648,10 +648,10 @@ def autoastrometry(
         print '  dra = %.2f",  ddec = %.2f"  (unc. %.3f")' % (raoffsetarcsec, decoffsetarcsec, stdoffsetarcsec)
     
     # If standard deviation of total offset is larger than 10 arcseconds end program
-    warning = 0
+    # warning = 0
     if stdoffset*3600 > 10.0:
         print 'WARNING: poor solution - some matches may be bad.  Check pixel scale?'
-        warning = 1
+        # warning = 1
         return -1
     
     # Shift center pixel to match catalog values
@@ -707,7 +707,7 @@ def autoastrometry(
 
 
 def usage():
-    (xdir,xname) = os.path.split(sys.argv[0])
+    (xdir, xname) = os.path.split(sys.argv[0])
     print "Usage:  %s filename(s) [-x pixelscale -p PA -inv -b boxsize -s seeing -upa PAunc -l saturation]" % xname
     print "     or %s -h for instructions and more options." % xname
 
@@ -717,7 +717,7 @@ def main():
     Parses out keywords from argv input and runs autoastrometry.  If multiple input files and
     set to solve, then prints out return values of autoastrometry
     """
-    files = []
+    # files = []
 
     if len(sys.argv) == 1:
         usage()
@@ -726,7 +726,7 @@ def main():
     # defaults
     nosolve = 0
     overwrite = False
-    outfile = ''
+    # outfile = ''
     warnings.filterwarnings('ignore')
     
     # Sets up option flag parser with help files.  If unsure how to run run program with -h flag
@@ -916,7 +916,8 @@ def main():
         if len(questionable) > 0:
             print 'The following images solved but have questionable astrometry: '
             print '    ',
-            for f in questionable: print f
+            for f in questionable:
+                print f
             
         if len(failures) > 0:
             print 'The following images failed to solve: '
@@ -969,4 +970,3 @@ if __name__ == '__main__':
     main()
 
 ######################################################################
-

@@ -6,7 +6,7 @@ from shutil import copyfile
 bias_calib = preproc.choose_calib(
     'lmi',
     'bias',
-    workdir='/mnt/data/bias/',
+    workdir='/mnt/data/i/bias/',
     cams=[0],
     auto=True,
     amin=0.0, amax=1.0,

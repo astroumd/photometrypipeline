@@ -753,7 +753,7 @@ def findsexobj(file, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP_WEI
              str(pix) + ' -SEEING_FWHM ' + str(fwhm) + ' -VERBOSE_TYPE ' +verbosetype
     
     if masksfx != None:
-        mskimg = trunfile + '_' + masksfx + '.fits'
+        mskimg = trunfile + '_' + masksfx
         sexcmd += ' -CHECKIMAGE_TYPE OBJECTS' + ' -CHECKIMAGE_NAME ' + mskimg
         
     if wtimage != None:

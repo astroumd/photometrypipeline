@@ -2,10 +2,11 @@ import autoproc_steps as ap
 import os
 
 
-def autoproc(datadir=None, imdir=None, start=None, stop=None, only=None, step=None,
-    nocrclean=False, nomastersky=False, redo=False, quiet=False, rmifiles=False,
-    customcat=None, customcatfilt=[]):
-
+def autoproc(
+        datadir=None, imdir=None, start=None, stop=None, only=None, step=None,
+        nocrclean=False, nomastersky=False, redo=False, quiet=False, rmifiles=False,
+        customcat=None, customcatfilt=None
+):
     """
     NAME:
        autoproc
@@ -149,7 +150,8 @@ def autoproc(datadir=None, imdir=None, start=None, stop=None, only=None, step=No
       
     - Modifications made by Vicki Toy and John Capone
     """
-    
+    if customcatfilt is None:
+        customcatfilt = []
     # Load default parameters and interpret user arguments.
     pipevar = {
         'autoastrocommand': 'autoastrometry', 'getsedcommand': 'get_SEDs',
@@ -188,7 +190,7 @@ def autoproc(datadir=None, imdir=None, start=None, stop=None, only=None, step=No
             
     # If stop is specified, truncate steps to end at specified step.
     # If invalid step end program with error
-    if stop != None:
+    if stop is not None:
         try:
             w = steps.index(stop)
             steps = steps[:w+1]
@@ -198,16 +200,19 @@ def autoproc(datadir=None, imdir=None, start=None, stop=None, only=None, step=No
             return
 
     # If step specified set only to specified step
-    if step != None: only = step
+    if step is not None:
+        only = step
     
     # If only specified (including step), set steps to run as specified step.
     # If invalid step end program with error
-    if only != None:
+    if only is not None:
         try:
             w = steps.index(only)
             steps = steps[w]
-            if start != None: print 'Note that start is also set.'
-            if stop != None:  print 'Note that stop is also set.'
+            if start is not None:
+                print 'Note that start is also set.'
+            if stop is not None:
+                print 'Note that stop is also set.'
         except:
             print "Invalid step: ", only
             print "Must be one of: ", steps
@@ -217,7 +222,8 @@ def autoproc(datadir=None, imdir=None, start=None, stop=None, only=None, step=No
     if 'astrometry'in steps or 'stack' in steps:
         
         # Check sextractor
-        if os.path.isfile('temp.txt'): os.system('rm -f temp.txt')
+        if os.path.isfile('temp.txt'):
+            os.system('rm -f temp.txt')
         os.system(pipevar['sexcommand'] + ' -d > temp.txt')
                 
         if os.stat('temp.txt').st_size == 0:
@@ -225,54 +231,69 @@ def autoproc(datadir=None, imdir=None, start=None, stop=None, only=None, step=No
             print "       Cannot run image alignment steps. Configure or stop='crclean'"
         
         # Check autoastrometry
-        if os.path.isfile('temp.txt'): os.system('rm -f temp.txt')
+        if os.path.isfile('temp.txt'):
+            os.system('rm -f temp.txt')
         os.system('python ' + pipevar['autoastrocommand'] + ' > temp.txt')
 
         if os.stat('temp.txt').st_size == 0:
             print "Error: Autoastrometry is not installed or not configured."
             print "       Cannot run image alignment steps. Configure or stop='crclean'" 
     
-    if  'stack' in steps:
+    if 'stack' in steps:
 
         # Check swarp
-        if os.path.isfile('temp.txt'): os.system('rm -f temp.txt')
+        if os.path.isfile('temp.txt'):
+            os.system('rm -f temp.txt')
         os.system(pipevar['swarpcommand'] + ' -d > temp.txt')
         
         if os.stat('temp.txt').st_size == 0:
             print "Error: Swarp is not installed or not configured."
             print "       Cannot run image coadds. Configure or stop='astrometry'"
     
-    if isinstance(steps, str): steps = [steps]       
+    if isinstance(steps, str):
+        steps = [steps]
     # Runs each processing step specified in the correct order (crclean is optional)      
     for step in steps:
-        
-        if step == 'prepare': ap.autopipeprepare(pipevar=pipevar)
-        if step == 'flatten': ap.autopipeimflatten(pipevar=pipevar)
-        if step == 'makesky' and nomastersky == False: ap.autopipemakesky(pipevar=pipevar)
-        if step == 'skysub' and nomastersky == False:  ap.autopipeskysub(pipevar=pipevar)
-        if step == 'skysub' and nomastersky == True:  ap.autopipeskysubmed(pipevar=pipevar)    
-        if step == 'crclean' and nocrclean == False: ap.autopipecrcleanim(pipevar=pipevar)
-        if step == 'astrometry': ap.autopipeastrometry(pipevar=pipevar),
-        if step == 'stack'     : ap.autopipestack(pipevar=pipevar, customcat=customcat, customcatfilt=customcatfilt)
+        if step == 'prepare':
+            ap.autopipeprepare(pipevar=pipevar)
+        if step == 'flatten':
+            ap.autopipeimflatten(pipevar=pipevar)
+        if step == 'makesky' and not nomastersky:
+            ap.autopipemakesky(pipevar=pipevar)
+        if step == 'skysub' and not nomastersky:
+            ap.autopipeskysub(pipevar=pipevar)
+        if step == 'skysub' and nomastersky:
+            ap.autopipeskysubmed(pipevar=pipevar)
+        if step == 'crclean' and not nocrclean:
+            ap.autopipecrcleanim(pipevar=pipevar)
+        if step == 'astrometry':
+            ap.autopipeastrometry(pipevar=pipevar),
+        if step == 'stack':
+            ap.autopipestack(pipevar=pipevar, customcat=customcat, customcatfilt=customcatfilt)
 
     # Prints the files that were not flat fielded due to problems with file
     if pipevar['flatfail'] != '':
         print 'Unable to flat-field the following images:'
         ffail = pipevar['flatfail'].split()
-        for f in ffail: print f
+        for f in ffail:
+            print f
     
     # Prints the files that were not astrometry corrected due to problems with the file 
     if pipevar['fullastrofail'] != '':
         print 'All astrometry failed for the following images (not stacked):'
         afail = pipevar['fullastrofail'].split()
-        for f in afail: print f
+        for f in afail:
+            print f
     
     print 'Processing complete.'
     
     # Remove any files that were created during the reduction process
-    #if os.path.isfile('temp*.*'): os.system('rm -f temp*.*')
-    if os.path.isfile('temp.cat'): os.system('rm -f temp*.*')
-    #if os.path.isfile('det.*'): os.system('rm -f det.*')
-    if os.path.isfile('det.wcs.txt'): os.system('rm -f det.*')
-    #if os.path.isfile('cat.*'): os.system('rm -f cat.*')    
-    if os.path.isfile('cat.txt'): os.system('rm -f cat.*')    
+    # if os.path.isfile('temp*.*'): os.system('rm -f temp*.*')
+    if os.path.isfile('temp.cat'):
+        os.system('rm -f temp*.*')
+    # if os.path.isfile('det.*'): os.system('rm -f det.*')
+    if os.path.isfile('det.wcs.txt'):
+        os.system('rm -f det.*')
+    # if os.path.isfile('cat.*'): os.system('rm -f cat.*')
+    if os.path.isfile('cat.txt'):
+        os.system('rm -f cat.*')

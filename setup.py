@@ -10,8 +10,8 @@ from setuptools.command.install import install
 # To use a consistent encoding
 from codecs import open
 from os import path
-
-import sys, subprocess
+import sys
+import subprocess
 
 here = path.abspath(path.dirname(__file__))
 
@@ -19,8 +19,12 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
+
 # http://stackoverflow.com/a/287944
 class bcolors:
+    def __init__(self):
+        pass
+
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKGREEN = '\033[92m'
@@ -29,6 +33,7 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+
 
 # http://stackoverflow.com/a/4417735
 def execute(cmd):
@@ -41,33 +46,38 @@ def execute(cmd):
     if return_code:
         raise subprocess.CalledProcessError(return_code, cmd)
 
+
 class CustomInstall(install):
     def run(self):
         try:
-            for path in execute(['sudo', 'sh', 'depend_install.sh']):
-                sys.stdout.write(path)
+            for execute_path in execute(['sudo', 'sh', 'depend_install.sh']):
+                sys.stdout.write(execute_path)
 
         except subprocess.CalledProcessError as e:
             print bcolors.FAIL + 'Failed to install the dependencies. Please try again.' + bcolors.ENDC
+            print e
             sys.exit(1)
 
         try:
-            for path in execute(['sudo', 'sh', 'astromatic_install.sh']):
-                sys.stdout.write(path)
+            for execute_path in execute(['sudo', 'sh', 'astromatic_install.sh']):
+                sys.stdout.write(execute_path)
 
         except subprocess.CalledProcessError as e:
             print bcolors.FAIL + 'Failed to install AstrOmatic software. Please try again.' + bcolors.ENDC
+            print e
             sys.exit(1)
 
         install.run(self)
         
         try:
-            for path in execute(['sudo', 'sh', 'post_install.sh']):
-                sys.stdout.write(path)
+            for execute_path in execute(['sudo', 'sh', 'post_install.sh']):
+                sys.stdout.write(execute_path)
 
         except subprocess.CalledProcessError as e:
             print bcolors.FAIL + 'Failed to complete the post installation script. Please try again.' + bcolors.ENDC
+            print e
             sys.exit(1)
+
 
 setup(
     name='photopipe',
@@ -77,7 +87,8 @@ setup(
     # https://packaging.python.org/en/latest/single_source_version.html
     version='0.1.0b4',
 
-    description='PhotoPipe is a pipeline for automated reduction, photometry and astrometry of imaging data from RATIR and RIMAS.',
+    description='PhotoPipe is a pipeline for automated reduction, photometry and astrometry of imaging data ' +\
+                'from RATIR and RIMAS.',
     long_description=long_description,
 
     # The project's main homepage.

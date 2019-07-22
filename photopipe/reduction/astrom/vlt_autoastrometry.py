@@ -931,6 +931,7 @@ def main():
             info = multiinfo[i]
             print "%25s " % files[i], 
             if info[0] > 0:
+                # noinspection PyStringFormat
                 print "%6d %8.3f (%6.3f)  %7.3f %7.3f (%6.3f)" % info
             else:
                 print "failed to solve"

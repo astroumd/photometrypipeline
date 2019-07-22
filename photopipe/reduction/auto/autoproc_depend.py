@@ -22,13 +22,16 @@ def write_fits(filename, data, header):
         print "write_fits.pf.writeto(filename, data, header, overwrite=True) worked!"
     except:
         temp_filename = filename + '.tmp'
-        pf.writeto(temp_filename, data, header)
+        print "saving to temporary file: {}".format(temp_filename)
+        pf.writeto(temp_filename, data, header, overwrite=True)
         try:
             os.remove(filename)
             print "deleted {}".format(filename)
         except:
             print "couldn't delete {}".format(filename)
+            os.listdir(os.path.dirname(filename))
             pass
+        print 'attempting to overwrite {} --> {}'.format(temp_filename, filename)
         shutil.move(temp_filename, filename)
         print "write_fits.shutil.move(temp_filename, filename) worked!"
 
@@ -65,13 +68,13 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
 
     # If string, check if a file of items or wildcards
     # otherwise store all files
-    if isinstance(filename,str):
+    if isinstance(filename, str):
         fileext = os.path.splitext(filename)[1][1:]
         
         files = [filename]
         
         if fileext in ['cat', 'lis', 'list', 'txt']:
-            f = open(filename,'r')
+            f = open(filename, 'r')
             files = f.read().splitlines() 
             f.close()            
                       
@@ -81,26 +84,26 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
                 print 'Cannot find any files matching ', filename
                 return
     else:
-        files = filename
+        files = [filename]
 
     # ------ Read data and process header information ------        
-    for file in files: 
-        f = pf.open(file)
+    for pipe_file in files:
+        f = pf.open(pipe_file)
         head = f[0].header
         data = f[0].data
         f.close()
         
         # If these keys exist keep, otherwise delete all extraneous keywords
         mandatorykey = [
-            'SIMPLE','BITPIX','NAXIS','NAXIS1','NAXIS2',
-            'HISTORY','DATE-OBS','EXPTIME','INSTRUME',
-            'LATITUDE','LONGITUD','BINNING','BINY','BINX',
-            'CAMERA','TARGNAME','UTC','OBJECT', 'OBJNAME','AIRMASS',
-            'GAIN','SATURATE','PIXSCALE','FILTER','WAVELENG',
-            'CD1_1','CD1_2','CD2_1','CD2_2',
-            'CRPIX1','CRPIX2','CRVAL1','CRVAL2','CTYPE1','CTYPE2',
-            'PV1_1','PV2_1','PV1_17','PV2_17','PV1_19','PV2_19','PV1_21','PV2_21',
-            'PV1_31','PV2_31','PV1_33','PV2_33','PV1_35','PV2_35','PV1_37','PV2_37'
+            'SIMPLE', 'BITPIX', 'NAXIS', 'NAXIS1', 'NAXIS2',
+            'HISTORY', 'DATE-OBS', 'EXPTIME', 'INSTRUME',
+            'LATITUDE', 'LONGITUD', 'BINNING', 'BINY', 'BINX',
+            'CAMERA', 'TARGNAME', 'UTC', 'OBJECT', 'OBJNAME', 'AIRMASS',
+            'GAIN', 'SATURATE', 'PIXSCALE', 'FILTER', 'WAVELENG',
+            'CD1_1', 'CD1_2', 'CD2_1', 'CD2_2',
+            'CRPIX1', 'CRPIX2', 'CRVAL1', 'CRVAL2', 'CTYPE1', 'CTYPE2',
+            'PV1_1', 'PV2_1', 'PV1_17', 'PV2_17', 'PV1_19', 'PV2_19', 'PV1_21', 'PV2_21',
+            'PV1_31', 'PV2_31', 'PV1_33', 'PV2_33', 'PV1_35', 'PV2_35', 'PV1_37', 'PV2_37'
         ]
 
         # Finds list of unnecessary keywords, then deletes extraneous
@@ -115,47 +118,49 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
         # If biasfile keyword set subtract master bias from current file with given master bias file
         # If they are not the same size, quit program without saving with preparation prefix (will not move
         # on in following processing steps)
-        if biasfile != None:
+        if biasfile is not None:
             bias = pf.getdata(biasfile)
             
             if np.shape(data) != np.shape(bias):
                 
-                print file + ' could not be bias subtracted because it is not the same' +\
+                print pipe_file + ' could not be bias subtracted because it is not the same' +\
                              ' size as the master bias, remove file to avoid confusion'
                 return
             
-            if verbose > 0: print '    bias subtracting'
+            if verbose > 0:
+                print '    bias subtracting'
             
             newdata = data - bias
             
             # If darkfile keyword set subtract master dark from current file with given master dark file
             # If they are not the same size, quit program without saving with preparation prefix (will not move
             # on in following processing steps)
-            if darkfile != None:
+            if darkfile is not None:
                 dark = pf.getdata(darkfile) * newhead['EXPTIME']
                 
                 if np.shape(data) != np.shape(dark):
                     print ' '
-                    print file + ' could not be dark subtracted because it is not the same' +\
-                                 ' size as the master dark, remove file to avoid confusion'
+                    print pipe_file + ' could not be dark subtracted because it is not the same' +\
+                        ' size as the master dark, remove file to avoid confusion'
                     return  
                           
-                if verbose > 0: print '    dark subtracting'
+                if verbose > 0:
+                    print '    dark subtracting'
                 
                 newdata = newdata - dark
             else:
-                print file, 'could not be dark subtracted because the master dark file was not provided'
+                print pipe_file, 'could not be dark subtracted because the master dark file was not provided'
         else:
             newdata = data
         
         # Write changes to disk
         write_fits(outname, newdata, newhead)
         
-        if verbose > 0: print file, '-> ', outname
+        if verbose > 0:
+            print pipe_file, '-> ', outname
 
 
 def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
-
     """
     NAME:
         flatpipeproc
@@ -180,13 +185,13 @@ def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
 
     # If string, check if a file of items or wildcards
     # otherwise store all files
-    if isinstance(filename,str):
+    if isinstance(filename, str):
         fileext = os.path.splitext(filename)[1][1:]
         
         files = [filename]
         
         if fileext in ['cat', 'lis', 'list', 'txt']:
-            f = open(filename,'r')
+            f = open(filename, 'r')
             files = f.read().splitlines() 
             f.close()            
                       
@@ -201,16 +206,17 @@ def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
     flat = pf.getdata(flatname)
     
     med = np.median(flat)
-    if (med < 0.5) or (med > 2.0): print 'Warning: flat is not normalized to one'
+    if (med < 0.5) or (med > 2.0):
+        print 'Warning: flat is not normalized to one'
     
-    for file in files:
-        f = pf.open(file)
+    for fname in files:
+        f = pf.open(fname)
         data = f[0].data
         head = f[0].header
         f.close()
         
         if np.shape(data) != np.shape(flat):
-            print file + ' could not be dark subtracted because it is not the same' +\
+            print fname + ' could not be dark subtracted because it is not the same' +\
                          ' size as the master dark, remove file to avoid confusion'
             return  
         
@@ -227,7 +233,7 @@ def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
         
         head['FLATFLD'] = flatname
         skycts = np.median(fdata[goodsignal])        
-        head['SKYCTS']  = (skycts, 'Sky counts')
+        head['SKYCTS'] = (skycts, 'Sky counts')
         
         try:
             head['CTRATE'] = (skycts/head['EXPTIME'], 'Sky counts per second')
@@ -237,21 +243,23 @@ def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
         date = datetime.datetime.now().isoformat()
         head.add_history('Processed by flatproc ' + date)
         
-        fileroot = os.path.basename(file)
-        filedir  = os.path.dirname(file)
+        fileroot = os.path.basename(fname)
+        filedir = os.path.dirname(fname)
         outnameim = filedir + '/f' + fileroot
         
         write_fits(outnameim, fdata, head)
 
-def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None, 
-    objthresh=6, algorithm='median', trimlo=None, trimhi=None, mincounts=1, 
-    maxcounts=55000, satlevel=30000, type=None):
-    
+
+def skypipecombine(
+        filelist, outfile, filt, pipevar, removeobjects=None,
+        objthresh=6, algorithm='median', trimlo=None, trimhi=None, mincounts=1,
+        maxcounts=55000, satlevel=30000, type_=None
+):
     """
     NAME:
         skypipecombine
     PURPOSE:
-        Create sigma clipped median sky flat.  Scales each file based on the overall 
+        Create sigma clipped median sky flat.  Scales each file based on the overall
         sigma clipped median, then removes objects selected with sextractor (uses flux 
         fraction radius) in each file. Removes saturated pixels.  Calculates sigma clipped 
         median of each pixel and saves anything with non-finite values (saturated or 
@@ -281,13 +289,17 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
         Saved header is from middle file, maybe use blank?
     """
     
-    # Sets defaults for trimming (25% of list)
-    if trimlo != None: (len(filelist)+1)/4
-    if trimhi != None: trimlo
+    # Sets defaults for trimming (25% of list) TODO: Determine if the below not doing anything is a bug
+    # if trimlo is not None:
+    #     (len(filelist)+1)/4
+    # if trimhi is not None:
+    #     trimlo
     
     # If given list, then grab all filenames, saved to files
+
+    print "skypipecombine doesn't do anything with this filt variable: {}".format(filt)
     if len(filelist) == 1:
-        f = open(filelist,'r')
+        f = open(filelist, 'r')
         files = f.read().splitlines() 
         f.close()
     else:
@@ -298,15 +310,15 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
     
     # Read in middle file and initialize arrays
     f = pf.open(files[nmid])
-    data_m = f[0].data
+    # data_m = f[0].data
     head_m = f[0].header
     f.close()
     
     nx = head_m['NAXIS1']
     ny = head_m['NAXIS2']
     
-    data     = np.zeros((nfiles, ny, nx)) + float('NaN')
-    skymeds  = []
+    data = np.zeros((nfiles, ny, nx)) + float('NaN')
+    skymeds = []
     usefiles = []
     
     z = 0
@@ -314,8 +326,8 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
     # median (3sig, 6 iter), then if within counts limit save data into 3d data cube 
     # and save clipped median into skymed, and mark file as usable
     # Increment z by one when this is true
-    for file in files:
-        f = pf.open(file)
+    for filename in files:
+        f = pf.open(filename)
         data_i = f[0].data
         head_i = f[0].header
         f.close()        
@@ -324,27 +336,26 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
         iny = head_i['NAXIS2']        
 
         if (inx != nx) or (iny != ny):
-            print 'File ' + file + ' has wrong dimensions ('+str(inx)+ \
-                  ' x '+ str(iny)+'; should have '+str(nx)+' x '+str(ny)+')'
+            print 'File ' + filename + ' has wrong dimensions ('+str(inx) + \
+                  ' x ' + str(iny)+'; should have '+str(nx)+' x '+str(ny)+')'
         
         # Perform 3 sigma clipped median and save to inmeds
         inmed, instd = medclip(data_i, clipsig=3, maxiter=3)
-        
-        
+
         # If median is within limits save data, otherwise exclude files
-        if inmed >= mincounts and inmed <= maxcounts:
+        if mincounts <= inmed <= maxcounts:
             if pipevar['verbose'] > 0:
-                print file + ' ('+str(inmed) + ' counts/pix)'
+                print filename + ' ('+str(inmed) + ' counts/pix)'
             
-            skymeds  += [inmed]
-            usefiles += [file]
-            data[z, :,:] = data_i
+            skymeds += [inmed]
+            usefiles += [filename]
+            data[z, :, :] = data_i
             z += 1
         else:
             if inmed < mincounts:
-                print file + ' (' + str(inmed) + ' counts/pix) - too few counts; excluding'
+                print filename + ' (' + str(inmed) + ' counts/pix) - too few counts; excluding'
             if inmed > maxcounts:
-                print file + ' (' + str(inmed) + ' counts/pix) - too many counts; excluding'            
+                print filename + ' (' + str(inmed) + ' counts/pix) - too many counts; excluding'
         
     if z < 2:
         print 'ERROR - Not enough counts to make a flat with these data!'
@@ -357,29 +368,31 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
     # Corrects for each flat's changing sky background
     for f in np.arange(z-1):
         factor = medsky / skymeds[f]
-        data[f,:,:] = data[f,:,:]*factor
+        data[f, :, :] = data[f, :, :]*factor
     
     # Removes extraneous indexes in data for skipped files
-    if z != nfiles: data = data[0:z,:,:]
+    if z != nfiles:
+        data = data[0:z, :, :]
     
     # Removes objects from field by calculating iterative median sigma clipping 
     # (5 sigma, 5 iter) and using the calculated stddev to remove 6sigma (or non-default 
     # object threshold) data from the median along with values above the saturation limit.
     # Find 3sigma clipped median of each pixel from remaining values or mean of middle 50%
     
-    if removeobjects != None:
-        if pipevar['verbose'] > 0: print '  Identifying objects...'
+    if removeobjects is not None:
+        if pipevar['verbose'] > 0:
+            print '  Identifying objects...'
                 
         for f in np.arange(z-1):
             
-            indata = data[f,:,:]
+            indata = data[f, :, :]
 
             # Set sources above objthresh  limit to NaN
             datamed, datastd = medclip(indata, clipsig=5, maxiter=5)
                        
-            sourcepixels = np.where(abs(indata-datamed)>= objthresh*datastd)
+            sourcepixels = np.where(abs(indata-datamed) >= objthresh*datastd)
                         
-            satpixels = np.where( indata >= satlevel )
+            satpixels = np.where(indata >= satlevel)
             
             if len(sourcepixels[0]) > 0:
                 indata[sourcepixels] = float('NaN')
@@ -387,44 +400,46 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
             if len(satpixels[0]) > 0:
                 indata[satpixels] = float('NaN')
             
-            data[f,:,:] = indata
+            data[f, :, :] = indata
             
     reflat = np.zeros((ny, nx)) + float('NaN')
     
     # If algorithm set to median, find 3 sigma clipped median of each pixel 
     # excluding NaN values (which are eventually set to median)
     if algorithm == 'median':
-        if pipevar['verbose'] > 0: print '  Median-combining...'
+        if pipevar['verbose'] > 0:
+            print '  Median-combining...'
             
         for y in np.arange(ny):
             
-            vector = data[:,y,:]
-            temp = np.isfinite(vector)
+            vector = data[:, y, :]
+            # temp = np.isfinite(vector)
             me, st = medclip2d(vector, clipsig=3, maxiter=5, overaxis=0)
-            reflat[y,:] = me
+            reflat[y, :] = me
 
         # Replace bad pixels with median of entire sky
         good = np.isfinite(reflat)
         allmed = np.median(reflat[good])
-        bad = ~good # Opposite of boolean array good
+        bad = ~good  # Opposite of boolean array good
         reflat[bad] = allmed
         
     # If algorithm set to mean, takes mean of trimmed sorted values. Default is to 
     # trim 25% off top and bottom, if not enough good data, set trimming to 0
     if algorithm == 'mean':
         
-        if pipevar['verbose'] > 0: print '  Combining via trimmed mean...'
+        if pipevar['verbose'] > 0:
+            print '  Combining via trimmed mean...'
             
         for y in np.arange(ny):
             for x in np.arange(nx):
-                slice = data[:,y,x]
-                good = np.isfinite(slice)
+                data_slice = data[:, y, x]
+                good = np.isfinite(data_slice)
                     
-                cslice = slice[good]
+                cslice = data_slice[good]
                 ctgood = len(cslice)
                     
                 if ctgood == 0:
-                    reflat[y,x] = 1
+                    reflat[y, x] = 1
                     
                 itrimlo = trimlo
                 itrimhi = trimhi
@@ -435,19 +450,20 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
                         
                 cslice = np.sort(cslice)
                 cslice = cslice[itrimlo:ctgood-itrimhi]
-                reflat[y,x] = np.mean(cslice)
+                reflat[y, x] = np.mean(cslice)
         
     # Adds header information to signify what files we used 
     for f in np.arange(z-1):
         head_m['SKY'+str(f)] = usefiles[f]
             
-    if type != None:
-        head_m['SKYTYPE'] = type
+    if type_ is not None:
+        head_m['SKYTYPE'] = type_
         
     date = datetime.datetime.now().isoformat()
     head_m.add_history('Processed by skypipecombine ' + date) 
         
-    if pipevar['verbose'] > 0: print '  Written to ' + outfile
+    if pipevar['verbose'] > 0:
+        print '  Written to ' + outfile
         
     write_fits(outfile, reflat, head_m)
 
@@ -460,9 +476,9 @@ def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
     PURPOSE:
         Subtracts sky flat from data and then subtracts median of that from remaining data. 
     INPUTS:
-    	filename - file or list of files to be sky subtracted
-    	flatname - sky flat fits file 
-    	outfile  - name of output file
+        filename - file or list of files to be sky subtracted
+        flatname - sky flat fits file
+        outfile  - name of output file
     OPTIONAL KEYWORDS:
         flatminval - minimum required value in flat (default for skycts calculation is 0.1)
         flatmaxval - maximum required value in flat
@@ -479,13 +495,13 @@ def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
 
     # If string, check if a file of items or wildcards
     # otherwise store all files
-    if isinstance(filename,str):
+    if isinstance(filename, str):
         fileext = os.path.splitext(filename)[1][1:]
         
         files = [filename]
         
         if fileext in ['cat', 'lis', 'list', 'txt']:
-            f = open(filename,'r')
+            f = open(filename, 'r')
             files = f.read().splitlines() 
             f.close()            
                       
@@ -500,29 +516,29 @@ def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
     # Open flat    
     flat = pf.getdata(flatname) 
     
-    med = np.median(flat)
+    # med = np.median(flat)
     
     # For each input file check if same size as flats (required). If there is a minimum 
     # or maximum flat value set, forces values outside of that range to NaN. Use finite 
     # values above 0.1 to determine skycounts, and subtract flat along with median of 
     # flattened data. Saves to new fits file
-    for file in files:
-        f = pf.open(file)
+    for file_ in files:
+        f = pf.open(file_)
         data = f[0].data
         head = f[0].header
         f.close()
         
         if np.shape(data) != np.shape(flat):
-            print file + ' could not be flat subtracted because it is not the same' +\
+            print file_ + ' could not be flat subtracted because it is not the same' +\
                          ' size as the master flat, remove file to avoid confusion'
             return
 
-        if flatmaxval != None:
+        if flatmaxval is not None:
             w = np.where(flat > flatminval) 
             if len(w[0]) != 0:
                 flat[w] = float('NaN')  
                 
-        if flatminval != None:
+        if flatminval is not None:
             w = np.where(flat < flatminval)  
             if len(w[0]) != 0:
                 flat[w] = float('NaN')
@@ -534,19 +550,19 @@ def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
         # subtracted data. Calculate skycounts from data (above minimum, or 
         # by default above 0.1)
         flattmp = np.median(flat[np.isfinite(flat)])
-        imgtmp  = np.median(data[np.isfinite(data)])
+        imgtmp = np.median(data[np.isfinite(data)])
         
         scalefr = imgtmp/flattmp
-        fdata   = data - scalefr * flat
+        fdata = data - scalefr * flat
         
-        tmp     = np.median(fdata[np.isfinite(fdata)])
-        fdata   = fdata - tmp
+        tmp = np.median(fdata[np.isfinite(fdata)])
+        fdata = fdata - tmp
 
-        skycts  = np.median(fdata[goodsignal])
+        skycts = np.median(fdata[goodsignal])
         
         # Adds header keywords to denote new median counts and file we used to flatfield
         head['SFLATFLD'] = flatname
-        head['SKYCTS']   = (skycts, 'Sky counts')
+        head['SKYCTS'] = (skycts, 'Sky counts')
         
         try:
             head['CTRATE'] = (skycts/head['EXPTIME'], 'Sky counts per second')
@@ -560,15 +576,14 @@ def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
 
 
 def cosmiczap(filename, outname, sigclip=6.0, maxiter=3, verbose=True):
-
     """
     NAME:
         cosmiczap
     PURPOSE:
         Removes cosmic rays using Laplacian cosmic ray identification written in cosmics.py 
     INPUTS:
-    	filename - file or list of files to be cosmic ray zapped
-    	outfile  - name of output file
+        filename - file or list of files to be cosmic ray zapped
+        outfile  - name of output file
     OPTIONAL KEYWORDS:
         sigclip  - sigma to clip
         maxiter  - maximum number of times to iterate loop
@@ -584,8 +599,8 @@ def cosmiczap(filename, outname, sigclip=6.0, maxiter=3, verbose=True):
     data, head = cosmics.fromfits(filename, verbose=False)
     
     gain = head['GAIN']
-    c = cosmics.cosmicsimage(data, gain=gain, readnoise=18, sigclip=sigclip,
-        sigfrac = 0.5, objlim = 5.0, verbose=False)
+    c = cosmics.cosmicsimage(
+        data, gain=gain, readnoise=18, sigclip=sigclip, sigfrac=0.5, objlim=5.0, verbose=False)
     
     tot = c.run(maxiter=maxiter, verbose=False)
     
@@ -593,13 +608,13 @@ def cosmiczap(filename, outname, sigclip=6.0, maxiter=3, verbose=True):
     date = datetime.datetime.now().isoformat()
     head.add_history('Processed by cosmiczap ' + date)    
     
-    if verbose: print '  Zapped %d total affected pixels (%.3f%% of total)' \
-                      %(tot,tot*100.0/np.size(data))
+    if verbose:
+        print '  Zapped %d total affected pixels (%.3f%% of total)' % (tot, tot*100.0/np.size(data))
     
     cosmics.tofits(outname, c.cleanarray, head, verbose=False)
 
-def astrometry(atfimages, scamprun=1, pipevar=None):
 
+def astrometry(atfimages, scamprun=1, pipevar=None):
     """
     NAME:
         astrometry
@@ -616,13 +631,11 @@ def astrometry(atfimages, scamprun=1, pipevar=None):
     FUTURE IMPROVEMENTS:
         Better difference between scamp runs.
     """
-        
     acatlist = ''
-    scat = {'sdss': 'SDSS-R7', 'tmpsc': '2MASS', 'tmc': '2MASS', 'ub2': 'USNO-B1'} 
-
+    scat = {'sdss': 'SDSS-R7', 'tmpsc': '2MASS', 'tmc': '2MASS', 'ub2': 'USNO-B1'}
     for cfile in atfimages:
         head = pf.getheader(cfile)
-        pixscale  = head['PIXSCALE']
+        pixscale = head['PIXSCALE']
         sourcecat = head['ASTR_CAT']
                 
         trunfile = os.path.splitext(cfile)[0]
@@ -643,43 +656,46 @@ def astrometry(atfimages, scamprun=1, pipevar=None):
                 
         os.system(sexcom)
                 
-        if head['ASTR_NUM'] > 0: acatlist += ' ' + trunfile + '.cat'
-                
-    if sourcecat in scat:
-        cat_u = scat[sourcecat]
-    else:
-        cat_u = 'NONE'
-        print 'No valid catalogs available for SCAMP, check that ' +\
-                'vlt_autoastrometry.py ran correctly'
-        return
-    
-    if scamprun == 1:
-        loose = ' -MOSAIC_TYPE LOOSE'
-        distdeg = 1
-    else:
-        loose = ' '
-        try:
-            distort = head['PV1_37']
-            distdeg = 7
-        except:
-            distdeg = 3 
-                
-    if pipevar['verbose'] > 0:
-        scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + str(distdeg)+\
-                    loose + " -ASTREF_CATALOG " + cat_u + \
-                    " -SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
-                    "-CHECKPLOT_DEV NULL -WRITE_XML N -VERBOSE_TYPE FULL " +\
-                    acatlist
-        print scampcmd
-    else:
-        scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + str(distdeg)+\
-                    loose + " -ASTREF_CATALOG " + cat_u + \
-                    " -SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
-                    "-CHECKPLOT_DEV NULL -WRITE_XML N -VERBOSE_TYPE QUIET " +\
-                    acatlist                                    
-                
-    os.system(scampcmd)
-    os.system('rm ' + acatlist)
+        if head['ASTR_NUM'] > 0:
+            acatlist += ' ' + trunfile + '.cat'
+
+        if sourcecat in scat:
+            cat_u = scat[sourcecat]
+        else:
+            print 'No valid catalogs available for SCAMP, check that vlt_autoastrometry.py ran correctly'
+            return
+        # !!!!!!!!!!!!!!!!!! I'M INDENTING EVERYTHING BELOW UNTIL NEXT COMMENT SINCE IT SEEMS LIKE A BUG TO NOT HAVE
+        # THE FOLLOWING IN THE FOR LOOP !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        if scamprun == 1:
+            loose = ' -MOSAIC_TYPE LOOSE'
+            distdeg = 1
+        else:
+            loose = ' '
+            try:
+                distort = head['PV1_37']
+                print "head['PV1_37']={}".format(distort)
+                distdeg = 7
+            except:
+                distdeg = 3
+
+        if pipevar['verbose'] > 0:
+            scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + str(distdeg) +\
+                        loose + " -ASTREF_CATALOG " + cat_u + \
+                        " -SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
+                        "-CHECKPLOT_DEV NULL -WRITE_XML N -VERBOSE_TYPE FULL " +\
+                        acatlist
+            print scampcmd
+        else:
+            scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + str(distdeg) +\
+                        loose + " -ASTREF_CATALOG " + cat_u + \
+                        " -SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
+                        "-CHECKPLOT_DEV NULL -WRITE_XML N -VERBOSE_TYPE QUIET " +\
+                        acatlist
+
+        os.system(scampcmd)
+        os.system('rm ' + acatlist)
+        # !!!!!!!!!!!!!!!!!! I'M INDENTING EVERYTHING ABOVE UNTIL NEXT COMMENT SINCE IT SEEMS LIKE A BUG TO NOT HAVE
+        # THE PRECEDING IN THE FOR LOOP !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             
     # Adds header information to file and delete extra files
     for cfile in atfimages:
@@ -693,13 +709,13 @@ def astrometry(atfimages, scamprun=1, pipevar=None):
         os.system('rm ' + trunfile + '.head ' + cfile + '.back')
 
         if scamprun != 1:
-            him  = pf.getheader(cfile)
+            him = pf.getheader(cfile)
             data = pf.getdata(cfile)
             del him['FLXSCALE']
             write_fits(cfile, data, him)
 
 
-def findsexobj(file, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP_WEIGHT',
+def findsexobj(filename, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP_WEIGHT',
                wtimage=None, fwhm=1.5, pix=0.3787, aperture=5.0, elong_cut=1.5, 
                quiet=0):
     """
@@ -708,19 +724,19 @@ def findsexobj(file, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP_WEI
     PURPOSE:
         Finds sextractor objects with optional inputs. Estimates seeing from stars found. 
     INPUTS:
-    	file    - fits file to run sextractor on
-    	sigma   - detection threshold and analysis threshold for sextractor
-    	pipevar - pipeline parameters (typically set in autopipedefaults or autoproc)
-    	
+        file    - fits file to run sextractor on
+        sigma   - detection threshold and analysis threshold for sextractor
+        pipevar - pipeline parameters (typically set in autopipedefaults or autoproc)
+
     OPTIONAL KEYWORDS:
-    	masksfx   - text string identifier for sextractor CHECKIMAGE_NAME
-    	zeropt    - input value for sextractor MAG_ZEROPOINT
-    	wtimage   - file for input for sextractor WEIGHT_IMAGE
-    	fwhm      - input value for sextractor SEEING_FWHM
-    	pix       - input value for sextractor PIXEL_SCALE
-    	aperture  - input value for sextractor PHOT_APERTURES
-    	elong_cut - cutoff limit for FWHM calculation of elongation to eliminate non-stars
-    	quiet     - no output from sextractor if set
+        masksfx   - text string identifier for sextractor CHECKIMAGE_NAME
+        zeropt    - input value for sextractor MAG_ZEROPOINT
+        wtimage   - file for input for sextractor WEIGHT_IMAGE
+        fwhm      - input value for sextractor SEEING_FWHM
+        pix       - input value for sextractor PIXEL_SCALE
+        aperture  - input value for sextractor PHOT_APERTURES
+        elong_cut - cutoff limit for FWHM calculation of elongation to eliminate non-stars
+        quiet     - no output from sextractor if set
     EXAMPLE:
         findsexobj(file, 3.0, pipevar, aperture=20.0)
     DEPENDENCIES:
@@ -747,41 +763,47 @@ def findsexobj(file, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP_WEI
     # Run sextractor with given input parameters. Saves temp.cat as 
     # starfile, saves starmask, and calculates seeing from starlike objects. Saves 
     # necessary parameters to header
-    if file == '': return
+    if filename == '':
+        return
     
-    if not os.path.isfile(file): return
-    starfile = file + '.stars'
+    if not os.path.isfile(filename):
+        return
+    starfile = filename + '.stars'
         
-    trunfile = os.path.splitext(file)[0]
+    trunfile = os.path.splitext(filename)[0]
         
     sexcmd = pipevar['sexcommand'] + ' -c coadd.config -DETECT_THRESH ' +\
-             str(sigma) + ' -ANALYSIS_THRESH ' + str(sigma) + ' -PHOT_APERTURES ' +\
-             str(aperture) + ' -MAG_ZEROPOINT ' + str(zeropt) + ' -PIXEL_SCALE ' +\
-             str(pix) + ' -SEEING_FWHM ' + str(fwhm) + ' -VERBOSE_TYPE ' +verbosetype
+        str(sigma) + ' -ANALYSIS_THRESH ' + str(sigma) + ' -PHOT_APERTURES ' +\
+        str(aperture) + ' -MAG_ZEROPOINT ' + str(zeropt) + ' -PIXEL_SCALE ' +\
+        str(pix) + ' -SEEING_FWHM ' + str(fwhm) + ' -VERBOSE_TYPE ' + verbosetype
     
-    if masksfx != None:
+    if masksfx is not None:
         mskimg = trunfile + '_' + masksfx
         sexcmd += ' -CHECKIMAGE_TYPE OBJECTS' + ' -CHECKIMAGE_NAME ' + mskimg
+    else:
+        mskimg = "NOT USED"
         
-    if wtimage != None:
+    if wtimage is not None:
         sexcmd += ' -WEIGHT_TYPE '+maptype+' -WEIGHT_IMAGE ' + wtimage + ' '
         
-    sexcmd += ' ' + file
-    if quiet == 0: print sexcmd
+    sexcmd += ' ' + filename
+    if quiet == 0:
+        print sexcmd
     os.system(sexcmd)
         
-    if quiet == 0: print 'mv -f test.cat ' + starfile
+    if quiet == 0:
+        print 'mv -f test.cat ' + starfile
     os.system('mv -f test.cat ' + starfile)
     
     num = 0    
     # Calculates seeing with starlike objects
     if os.path.isfile(starfile):
-        vars   = np.loadtxt(starfile, unpack=True)
-        num    = vars[0,:]
-        flag   = vars[5,:]
-        elon   = vars[8,:]
-        fwhmim = vars[9,:]
-        keep = (flag ==0) & (elon < elong_cut) & (fwhmim > fwhm) & (fwhmim < 20.0)
+        variables = np.loadtxt(starfile, unpack=True)
+        num = variables[0, :]
+        flag = variables[5, :]
+        elon = variables[8, :]
+        fwhmim = variables[9, :]
+        keep = (flag == 0) & (elon < elong_cut) & (fwhmim > fwhm) & (fwhmim < 20.0)
 
         if sum(keep) <= 1: 
             seepix = None
@@ -790,19 +812,19 @@ def findsexobj(file, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP_WEI
     else:
         print 'Failed to find Sextractor output file!'
         seepix = None
-    head = pf.getheader(file)
+    head = pf.getheader(filename)
     
     if masksfx is not None:
         head['MASKNAME'] = (mskimg, "Object mask image from Sextractor")
     
-    head['STARFILE'] = (starfile, "Objects file from Sextractor" )
+    head['STARFILE'] = (starfile, "Objects file from Sextractor")
     head['ZEROPT'] = (zeropt, "Photometric zero-point used for Sextractor")
     if seepix is not None:
         head['SEEPIX'] = (seepix, "Estimated seeing from Sextractor objects (pix)")
     head['NSTARS'] = (len(num), "Estimated number of objects from Sextractor")
     
-    data = pf.getdata(file)
-    write_fits(file, data, head)
+    data = pf.getdata(filename)
+    write_fits(filename, data, head)
     
     # Removes config files after done
     os.system('rm -f coadd.param')
@@ -812,7 +834,6 @@ def findsexobj(file, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP_WEI
 
 
 def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
-
     """
     NAME:
         calc_zpt
@@ -847,23 +868,23 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
     z = []
     modmag = np.copy(obsmag)
     for i in np.arange(nobs):
-        indz = sum(diff[i,:]*wts[i,:])/sum(wts[i,:])
+        indz = sum(diff[i, :]*wts[i, :])/sum(wts[i, :])
         z += [indz]
-        modmag[i,:] = obsmag[i, :] + indz
+        modmag[i, :] = obsmag[i, :] + indz
     
     # Find difference of catalog and zeropoint corrected values. Remove any values with 
     # weights set to 0 or lower.  Calculate robust scatter on these values.  If difference 
     # with these weights is not within sigma*robust scatter then set weight to 0
-    adiff1 = catmag - modmag
-    scats, rmss = robust_scat(adiff1, wts, nobs, nstars, sigma)
+    # adiff1 = catmag - modmag TODO: determine if this not being used is a bug
+    # scats, rmss = robust_scat(adiff1, wts, nobs, nstars, sigma) TODO: determine if this not being used is a bug
 
     z2 = []
     # Recalculate zeropoint using corrected weights (difference still same)        
     modmag2 = np.copy(obsmag)
     for i in np.arange(nobs):
-        indz = sum(diff[i,:]*wts[i,:])/sum(wts[i,:])
+        indz = sum(diff[i, :]*wts[i, :])/sum(wts[i, :])
         z2 += [indz]
-        modmag2[i,:] = obsmag[i, :] + indz
+        modmag2[i, :] = obsmag[i, :] + indz
     
     adiff2 = catmag - modmag2
     # Recalculate robust scatter and rms scatter value on twice zeropoint corrected mags
@@ -874,7 +895,7 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
         keep = np.where(wts != 0)
         print np.shape(catmag[keep])
         plt.plot(catmag[keep], adiff2[keep], '*')
-        plt.errorbar(catmag[keep], adiff2[keep], yerr = 1.0/np.sqrt(wts[keep]), fmt='.')
+        plt.errorbar(catmag[keep], adiff2[keep], yerr=1.0/np.sqrt(wts[keep]), fmt='.')
         
         plt.ylabel('Difference between Catalog and Observed')
         plt.xlabel('Catalog magnitude')
@@ -885,7 +906,6 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
 
 
 def robust_scat(diff, wts, nobs, nstars, sigma):
-
     """
     NAME:
         robust_scat
@@ -905,24 +925,24 @@ def robust_scat(diff, wts, nobs, nstars, sigma):
     """
     
     scats = np.zeros(nobs)
-    rmss  = np.zeros(nobs)
+    rmss = np.zeros(nobs)
     for i in np.arange(nobs):
-        goodwts = np.where( wts[i,:] > 0 )
-        if len(goodwts[0]) == 0: continue
-        gooddiff = diff[i,goodwts]
+        goodwts = np.where(wts[i, :] > 0)
+        if len(goodwts[0]) == 0:
+            continue
+        gooddiff = diff[i, goodwts]
         
         # Median absolute deviation
         scat = 1.48 * np.median(abs(gooddiff-np.median(gooddiff)))
         for j in np.arange(nstars):
-            if abs(diff[i,j] - np.median(gooddiff)) > (sigma*scat):
-                wts[i,j] = 0
+            if abs(diff[i, j] - np.median(gooddiff)) > (sigma*scat):
+                wts[i, j] = 0
         scats[i] = scat
-        rmss[i]  = np.std(gooddiff)
+        rmss[i] = np.std(gooddiff)
     return scats, rmss
 
 
 def medclip(indata, clipsig=3.0, maxiter=5, verbose=0):
-
     """
     NAME:
         medclip
@@ -939,41 +959,42 @@ def medclip(indata, clipsig=3.0, maxiter=5, verbose=0):
     """
     
     # Flatten array
-    skpix = indata.reshape( indata.size, )
+    skpix = indata.reshape(indata.size,)
  
     keep = np.isfinite(skpix)
     skpix = skpix[keep]
     ct = indata.size
-    iter = 0
+    iteration = 0
     numrej = len(skpix)
-    ndata  = len(skpix)
+    ndata = len(skpix)
     
-    while (iter < maxiter) and (numrej > min(ndata*0.01, 50)):
+    while (iteration < maxiter) and (numrej > min(ndata * 0.01, 50)):
         lastct = ct
         medval = np.median(skpix)
         sig = np.std(skpix)
-        wsm = np.where( abs(skpix-medval) < clipsig*sig )
+        wsm = np.where(abs(skpix-medval) < clipsig*sig)
         ct = len(wsm[0])
         if ct > 0:
             skpix = skpix[wsm]
  
         numrej = abs(ct - lastct)
-        if ct <=2: return 'Too few remaining'
-        iter += 1
+        if ct <= 2:
+            return 'Too few remaining'
+        iteration += 1
  
-    med   = np.median( skpix )
-    sigma = np.std( skpix )
+    med = np.median(skpix)
+    sigma = np.std(skpix)
  
     if verbose:
-        print '%.1f-sigma clipped median' % (clipsig)
-        print 'Mean computed in %i iterations' % (iter)
+        print '%.1f-sigma clipped median' % clipsig
+        print 'Mean computed in %i iterations' % iteration
+        # noinspection PyStringFormat
         print 'Mean = %.6f, sigma = %.6f' % (med, sigma)
  
     return med, sigma
 
 
 def medclip2d(indata, clipsig=3.0, maxiter=5, verbose=0, overaxis=0):
-
     """
     NAME:
         medclip2d
@@ -993,35 +1014,36 @@ def medclip2d(indata, clipsig=3.0, maxiter=5, verbose=0, overaxis=0):
     # Flatten array
     skpix = np.ma.masked_array(indata)
     skpix = np.ma.masked_invalid(skpix)
-    iter = 0
+    iteration = 0
     
-    while (iter < maxiter):
+    while iteration < maxiter:
         medval = np.ma.median(skpix, axis=overaxis)
         sig = np.ma.std(skpix, axis=overaxis)
 
         if overaxis == 0:
-            mask = ( abs(skpix-medval) < clipsig*sig )         
+            mask = (abs(skpix-medval) < clipsig*sig)
         else:
-            mask = ( abs(skpix.T-medval) < clipsig*sig )
+            mask = (abs(skpix.T-medval) < clipsig*sig)
         if (mask == skpix.mask).all:
             break
         skpix.mask = mask
         # if ct <=2: return 'Too few remaining'
-        iter += 1
+        iteration += 1
 
-    med   = np.ma.median( skpix, axis=overaxis )
-    sigma = np.ma.std( skpix, axis=overaxis )
+    med = np.ma.median(skpix, axis=overaxis)
+    sigma = np.ma.std(skpix, axis=overaxis)
     
     if verbose:
-        print '%.1f-sigma clipped median' % (clipsig)
-        print 'Mean computed in %i iterations' % (iter)
+        print '%.1f-sigma clipped median' % clipsig
+        print 'Mean computed in %i iterations' % iteration
+        # noinspection PyStringFormat
         print 'Mean = %.6f, sigma = %.6f' % (med, sigma)
  
     return med, sigma  
 
 
-def identify_matches( queried_stars, found_stars, match_radius=3. ):
-    '''
+def identify_matches(queried_stars, found_stars, match_radius=3.):
+    """
     Use a kd-tree (3d) to match two lists of stars, using full spherical coordinate distances.
     
     queried_stars, found_stars: numpy arrays of [ [ra,dec],[ra,dec], ... ] (all in decimal degrees)
@@ -1030,17 +1052,17 @@ def identify_matches( queried_stars, found_stars, match_radius=3. ):
     Returns two arrays corresponding to queried stars:
     indices - an array of the indices (in found_stars) of the best match. Invalid (negative) index if no matches found.
     distances - an array of the distances to the closest match. NaN if no match found.
-    '''
+    """
     # make sure inputs are arrays
     queried_stars = np.array(queried_stars)
     found_stars = np.array(found_stars)
     
-    ra1, dec1 = queried_stars[:,0], queried_stars[:,1]
-    ra2, dec2 = found_stars[:,0], found_stars[:,1]
-    dist = 2.778e-4*match_radius # convert arcseconds into degrees 
+    ra1, dec1 = queried_stars[:, 0], queried_stars[:, 1]
+    ra2, dec2 = found_stars[:, 0], found_stars[:, 1]
+    dist = 2.778e-4*match_radius  # convert arcseconds into degrees
     
-    cosd = lambda x : np.cos(np.deg2rad(x))
-    sind = lambda x : np.sin(np.deg2rad(x))
+    cosd = lambda x: np.cos(np.deg2rad(x))
+    sind = lambda x: np.sin(np.deg2rad(x))
     mindist = 2 * sind(dist/2) 
     getxyz = lambda r, d: [cosd(r)*cosd(d), sind(r)*cosd(d), sind(d)]
     xyz1 = np.array(getxyz(ra1, dec1))
@@ -1050,6 +1072,6 @@ def identify_matches( queried_stars, found_stars, match_radius=3. ):
     ret = tree2.query(xyz1.transpose(), 1, 0, 2, mindist)
     dist, ind = ret
     dist = np.rad2deg(2*np.arcsin(dist/2))
-    ind[ np.isnan(dist) ] = -9999
+    ind[np.isnan(dist)] = -9999
     
     return ind, dist

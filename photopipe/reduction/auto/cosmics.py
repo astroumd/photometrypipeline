@@ -733,7 +733,7 @@ def rebin(
     """
     shape = a.shape
     len_shape = len(shape)
-    # factor = np.asarray(shape)/np.asarray(newshape)  # TODO: determine if this not being used is a bug
+    factor = np.asarray(shape)/np.asarray(newshape)
     # print factor
     if verbose:
         print "newshape not used... {}".format(newshape)

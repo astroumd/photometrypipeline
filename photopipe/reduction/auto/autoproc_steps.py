@@ -749,7 +749,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             #          (filearms1 < 2.0e-4) & (filearms1 > 5.0e-6) &\
             #          (filearms2 < 2.0e-4) & (filearms2 > 5.0e-6)
 
-            if not stacki:
+            if sum(stacki) == 0:
                 continue
 
             stacklist = files[stacki]

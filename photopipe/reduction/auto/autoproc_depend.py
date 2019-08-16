@@ -666,36 +666,36 @@ def astrometry(atfimages, scamprun=1, pipevar=None):
             return
         # !!!!!!!!!!!!!!!!!! I'M INDENTING EVERYTHING BELOW UNTIL NEXT COMMENT SINCE IT SEEMS LIKE A BUG TO NOT HAVE
         # THE FOLLOWING IN THE FOR LOOP !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        if scamprun == 1:
-            loose = ' -MOSAIC_TYPE LOOSE'
-            distdeg = 1
-        else:
-            loose = ' '
-            try:
-                distort = head['PV1_37']
-                print "head['PV1_37']={}".format(distort)
-                distdeg = 7
-            except:
-                distdeg = 3
+    if scamprun == 1:
+        loose = ' -MOSAIC_TYPE LOOSE'
+        distdeg = 1
+    else:
+        loose = ' '
+        try:
+            distort = head['PV1_37']
+            print "head['PV1_37']={}".format(distort)
+            distdeg = 7
+        except:
+            distdeg = 3
 
-        if pipevar['verbose'] > 0:
-            scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + str(distdeg) +\
-                        loose + " -ASTREF_CATALOG " + cat_u + \
-                        " -SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
-                        "-CHECKPLOT_DEV NULL -WRITE_XML N -VERBOSE_TYPE FULL " +\
-                        acatlist
-            print scampcmd
-        else:
-            scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + str(distdeg) +\
-                        loose + " -ASTREF_CATALOG " + cat_u + \
-                        " -SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
-                        "-CHECKPLOT_DEV NULL -WRITE_XML N -VERBOSE_TYPE QUIET " +\
-                        acatlist
+    if pipevar['verbose'] > 0:
+        scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + str(distdeg) +\
+                    loose + " -ASTREF_CATALOG " + cat_u + \
+                    " -SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
+                    "-CHECKPLOT_DEV NULL -WRITE_XML N -VERBOSE_TYPE FULL " +\
+                    acatlist
+        print scampcmd
+    else:
+        scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + str(distdeg) +\
+                    loose + " -ASTREF_CATALOG " + cat_u + \
+                    " -SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
+                    "-CHECKPLOT_DEV NULL -WRITE_XML N -VERBOSE_TYPE QUIET " +\
+                    acatlist
 
-        os.system(scampcmd)
-        os.system('rm ' + acatlist)
-        # !!!!!!!!!!!!!!!!!! I'M INDENTING EVERYTHING ABOVE UNTIL NEXT COMMENT SINCE IT SEEMS LIKE A BUG TO NOT HAVE
-        # THE PRECEDING IN THE FOR LOOP !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    os.system(scampcmd)
+    os.system('rm ' + acatlist)
+    # !!!!!!!!!!!!!!!!!! I'M INDENTING EVERYTHING ABOVE UNTIL NEXT COMMENT SINCE IT SEEMS LIKE A BUG TO NOT HAVE
+    # THE PRECEDING IN THE FOR LOOP !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             
     # Adds header information to file and delete extra files
     for cfile in atfimages:

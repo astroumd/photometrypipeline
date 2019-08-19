@@ -18,7 +18,7 @@ bias_calib = preproc.choose_calib(
 flat_calib = preproc.choose_calib(
     'lmi',
     'flat',
-    workdir='/mnt/data/july/sky_flats/',
+    workdir='/mnt/data/july/dome_flats/',
     cams=[0],
     auto=True,
     amin=0.2, amax=0.8,

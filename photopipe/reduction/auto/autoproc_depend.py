@@ -19,7 +19,7 @@ plt.ioff()
 def write_fits(filename, data, header):
     try:
         pf.writeto(filename, data, header, overwrite=True)
-        print "write_fits.pf.writeto(filename, data, header, overwrite=True) worked!"
+        # print "write_fits.pf.writeto(filename, data, header, overwrite=True) worked!"
     except:
         temp_filename = filename + '.tmp'
         print "saving to temporary file: {}".format(temp_filename)

@@ -8,6 +8,8 @@ import re
 import datetime
 from astropy.time import Time
 import sys
+from scipy import interpolate
+
 
 inpipevar = {
     'autoastrocommand': 'autoastrometry', 'getsedcommand': 'get_SEDs', 'sexcommand': 'sex', 'swarpcommand': 'swarp',
@@ -340,6 +342,14 @@ def autopipeskysubmed(pipevar=None):
         data = pf.getdata(f)
         
         data -= np.median(data[~np.isnan(data)])
+        x = np.arange(0, data.shape[1])
+        y = np.arange(0, data.shape[0])
+        data = np.ma.masked_invalid(data)
+        xx, yy = np.meshgrid(x, y)
+        x1 = xx[~data.mask]
+        y1 = yy[~data.mask]
+        newarr = data[~data.mask]
+        data = interpolate.griddata((x1, y1), newarr.ravel(), (xx, yy), method='linear')
 
         # head_filter = head['FILTER'] TODO: determine if this not being used is a bug
         

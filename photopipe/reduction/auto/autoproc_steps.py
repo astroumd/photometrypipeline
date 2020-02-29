@@ -351,7 +351,7 @@ def autopipeskysubmed(pipevar=None):
         x1 = xx[~data.mask]
         y1 = yy[~data.mask]
         newarr = data[~data.mask]
-        data = interpolate.griddata((x1, y1), newarr.ravel(), (xx, yy), method='linear')
+        data = interpolate.griddata((x1, y1), newarr.ravel(), (xx, yy), method='nearest')
 
         # head_filter = head['FILTER'] TODO: determine if this not being used is a bug
         

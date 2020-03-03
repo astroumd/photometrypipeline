@@ -27,7 +27,7 @@ print('start bias calibration')
 bias_calib = preproc.choose_calib(
     'lmi',
     'bias',
-    workdir=copy_path,
+    workdir=copy_path+os.path.sep,
     cams=[0],
     auto=True,
     amin=0.0, amax=1.0,
@@ -40,7 +40,7 @@ print('start flat calibration')
 flat_calib = preproc.choose_calib(
     'lmi',
     'flat',
-    workdir=copy_path,
+    workdir=copy_path+os.path.sep,
     cams=[0],
     auto=True,
     amin=0.2, amax=0.8,

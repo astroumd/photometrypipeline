@@ -1,6 +1,6 @@
 from photopipe.reduction import preproc
 from photopipe.reduction.auto.autoproc import autoproc
-from shutil import copyfile, copytree
+from shutil import copyfile
 import os
 import glob
 from zipfile import ZipFile
@@ -40,8 +40,8 @@ flat_calib = preproc.choose_calib(
 
 science_dict = preproc.choose_science(
     'lmi',
-    workdir=copy_path,
-    targetdir=selected_path,
+    workdir=copy_path+os.path.sep,
+    targetdir=selected_path+os.path.sep,
     cams=[0],
     auto=True,
     save_select=True,
@@ -58,6 +58,6 @@ for f in glob.glob(os.path.join(base_path, 'bias*.fits')):
 for f in glob.glob(os.path.join(base_path, 'flat*.fits')):
     copyfile(os.path.join(base_path, f), os.path.join(selected_path, f))
 
-autoproc(datadir=selected_path,
-         imdir=reduced_path,
+autoproc(datadir=selected_path+os.path.sep,
+         imdir=reduced_path+os.path.sep,
          redo=1, nomastersky=True)

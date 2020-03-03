@@ -10,7 +10,7 @@ test_path = os.path.join(base_path, 'test')
 copy_path = os.path.join(base_path, 'copy')
 selected_path = os.path.join(copy_path, 'selected')
 reduced_path = os.path.join(copy_path, 'reduced')
-zip_file = os.path.join('test_path', 'test.zip')
+zip_file = os.path.join(test_path, 'test.zip')
 zf = ZipFile(zip_file, 'r')
 zf.extractall(copy_path)
 

@@ -7,7 +7,7 @@ from zipfile import ZipFile
 
 base_path = os.path.dirname(os.path.abspath(__file__))
 test_path = os.path.join(base_path, 'test')
-copy_path = os.path.join(base_path, 'copy')
+copy_path = os.path.join(test_path, 'copy')
 selected_path = os.path.join(copy_path, 'selected')
 reduced_path = os.path.join(copy_path, 'reduced')
 zip_file = os.path.join(test_path, 'test.zip')

@@ -68,18 +68,23 @@ preproc.mkmaster('lmi', flat_calib, 'flat')
 
 print('start move files master biases to selected folder')
 for f in glob.glob(os.path.join(base_path, 'bias*.fits')):
+    filename = os.path.basename(f)
     print('selected_path', selected_path)
-    f_base_path = os.path.join(base_path, f)
+    f_base_path = os.path.join(base_path, filename)
     print('f_base_path', f_base_path)
-    f_selected_path = os.path.join(selected_path, f)
+    f_selected_path = os.path.join(selected_path, filename)
     print('f_selected_path', f_selected_path)
     print('moving {0} to {1}'.format(f_base_path, f_selected_path))
     move(f_base_path, f_selected_path)
 
 print('start move files master flats to selected folder')
 for f in glob.glob(os.path.join(base_path, 'flat*.fits')):
-    f_base_path = os.path.join(base_path, f)
-    f_selected_path = os.path.join(selected_path, f)
+    filename = os.path.basename(f)
+    print('selected_path', selected_path)
+    f_base_path = os.path.join(base_path, filename)
+    print('f_base_path', f_base_path)
+    f_selected_path = os.path.join(selected_path, filename)
+    print('f_selected_path', f_selected_path)
     print('moving {0} to {1}'.format(f_base_path, f_selected_path))
     move(f_base_path, f_selected_path)
 

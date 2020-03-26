@@ -4,7 +4,7 @@ from shutil import move
 import os
 import glob
 from zipfile import ZipFile
-
+# testing git commit and push
 print("creating paths")
 base_path = os.path.dirname(os.path.abspath(__file__))
 print('base_path', base_path)

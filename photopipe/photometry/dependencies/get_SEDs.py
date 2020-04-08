@@ -29,7 +29,7 @@ import multiprocessing as mp
 N_CORES = mp.cpu_count()  # use all the cpus you have
 
 # use the __file__ variable to point to the static files
-#   Note: __file__ points to the location of this file,
+#  Note: __file__ points to the location of this file,
 #  so the static files below MUST be in the same folder.
 try:
     MODELS = np.load(open(join(dirname(__file__), 'all_models.npy'), 'r'))

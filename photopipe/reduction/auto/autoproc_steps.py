@@ -62,8 +62,8 @@ def autopipedefaults(pipevar=None):
         print 'Creating imaging working directory: ',  pipevar['imworkingdir']
         os.makedirs(pipevar['imworkingdir'])
 
-    pipevar['autoastrocommand'] = os.path.abspath(vlt_autoastrometry.__file__)
-    pipevar['getsedcommand'] = os.path.abspath(get_SEDs.__file__)
+    pipevar['autoastrocommand'] = vlt_autoastrometry.__file__
+    pipevar['getsedcommand'] = get_SEDs.__file__
 
 
 def autopipeprepare(pipevar=None):

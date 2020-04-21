@@ -9,7 +9,9 @@
 PhotoPipe is a pipeline for automated reduction, photometry and astrometry, written in Python (2.7), and designed to process imaging data from the following instruments:
 
 * [RATIR](http://butler.lab.asu.edu/RATIR/): the Reionization and Transients Infrared/Optical Project.
-* [RIMAS](https://lowell.edu/research/research-facilities/4-3-meter-dct/rimas/): the Rapid infrared IMAger Spectrometer.
+* [RIMAS](https://lowell.edu/research/research-facilities/4-3-meter-ldt/rimas/): the Rapid infrared IMAger Spectrometer.
+* [LMI](https://lowell.edu/research/research-facilities/4-3-meter-ldt/the-large-monolithic-imager/): the Large Monolithic Imager.
+
 
 This project is based on the previous versions of the pipeline by [cenko](https://github.com/cenko/RATIR-GSFC) and [vickitoy](https://github.com/vickitoy/photometry_pipeline).  
 Built at the NASA Goddard Space Flight Center, in collaboration with the University of Maryland.
@@ -29,14 +31,18 @@ The pipeline can be installed with very little additional software. However, dep
 
 ## Installation
 
-The easiest way to get up and running with the pipeline is to download the ready-to-use **virtual machine** box and run it with Vagrant.
+The easiest way to get up and running with the pipeline is to run the ready-to-use **docker container**.
 
 Alternatively, it can be installed on Linux or macOS either with `pip`, or with the provided installation scripts.
 _(**WARNING:** compiling the dependencies can take more than 6 hours.)_
 
 #### 1) Download a pre-configured Virtual Machine (PhotoPipe-VM)
 
-Please refer to the virtual machine [repository](https://github.com/maxperry/photometrypipeline-vm).
+The docker container can be used if you have docker installed by running:
+
+    $ docker run -it joedurbak/photopipe bash
+    
+More detailed instructions on installing, configuring, and rerunning the same container are available for both [Mac](https://github.com/astroumd/photometrypipeline/wiki/Docker-Instructions-on-Mac) and [Windows](https://github.com/astroumd/photometrypipeline/wiki/Docker-Instructions-on-Windows) operating systems
 
 #### 2) Install on your machine from PyPI or git
 
@@ -53,10 +59,11 @@ Please refer to the virtual machine [repository](https://github.com/maxperry/pho
 **NOTE (macOS)**: If the installation fails with `sudo: port: command not found` make sure that [MacPorts](https://guide.macports.org/#installing) is installed and `/opt/local/bin` is in the $PATH (e.g. `export PATH=/opt/local/bin:/opt/local/sbin:$PATH`).
 
 #### 3) Manual Installation
-If you to run the pipeline from the Python enviroment rather than using the `photopipe` command as described in the [Usage](#usage) section, please follow the step by step instructions in the wiki pages below to install all the dependencies manually.
+If you to run the pipeline from the Python environment rather than using the `photopipe` command as described in the [Usage](#usage) section, please follow the step by step instructions in the wiki pages below to install all the dependencies manually.
 
-* [Instructions for macOS](https://github.com/maxperry/photometrypipeline/wiki/Manual-Installation-(macOS))
-* [Instructions for Linux-Debian](https://github.com/maxperry/photometrypipeline/wiki/Manual-Installation-(Linux-Debian))
+* [Instructions for macOS](https://github.com/maxperry/photometrypipeline/wiki/Manual-Installation-(macOS)
+* [Instructions for Linux-Debian](https://github.com/maxperry/photometrypipeline/wiki/Manual-Installation-(Linux-Debian)
+* [Instructions for Windows-WSL-Debian](https://github.com/astroumd/photometrypipeline/wiki/Windows-Installation-Instructions)
 
 
 ## Usage

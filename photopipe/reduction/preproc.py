@@ -78,7 +78,7 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0,1,2,3], auto=False, rej
     
     # dictionary to store selected fits files by camera or filter
     fits_list_dict = {}
-    print "test"
+    af.print_err("test")
     fits_check = glob('????????T??????C??.fits')
 
     if len(fits_check) == 0:

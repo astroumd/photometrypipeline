@@ -386,7 +386,6 @@ class rimas(instrument):
         return h['FILTER']  
 
     def change_file_names(self,files):
-        print files
         # Has correct file format, no changes needed
         
         # MAY NEED TO BE CHANGED BASED ON FILE NAMES FOR CALIBRATION!!!
@@ -397,6 +396,7 @@ class rimas(instrument):
         return
         
     def original_file_format(self):
+        print "test"
         file_format = '????????T??????C?-????.fits'
         return file_format  
 

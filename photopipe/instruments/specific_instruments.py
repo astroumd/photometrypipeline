@@ -396,7 +396,7 @@ class rimas(instrument):
         return
         
     def original_file_format(self):
-        print "test"
+        print "testing file format"
         file_format = '????????T??????C?-????.fits'
         return file_format  
 

@@ -2,7 +2,9 @@ FROM joedurbak/astromatic
 
 WORKDIR /work
 
-RUN git clone  https://github.com/joedurbak/photometrypipeline.git \
+RUN apt-get install -y vim nano emacs gedit
+
+RUN git clone  https://github.com/astroumd/photometrypipeline.git \
 	&& cd photometrypipeline \
 	&& python setup.py build \
 	&& rm /usr/local/lib/python2.7/site-packages/matplotlib/mpl-data/matplotlibrc \

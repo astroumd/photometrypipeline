@@ -51,7 +51,7 @@ More detailed instructions on installing, configuring, and rerunning the same co
 * Or, clone from `git`:
 
  ```
- $ git clone https://github.com/astroumd/photometrypipeline.git
+ $ git clone https://github.com/RIMAS-RATIR-DCT/photometrypipeline.git
  $ cd photometrypipeline
  $ sudo python setup.py install
  ```

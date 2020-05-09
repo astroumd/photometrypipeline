@@ -21,12 +21,12 @@ Built at the NASA Goddard Space Flight Center, in collaboration with the Univers
 
 ## Full Documentation
 
-See the [Wiki](https://github.com/maxperry/photometrypipeline/wiki) for full documentation, examples, operational details and other information.
+See [this] (https://github.com/RIMAS-RATIR-DCT/photometrypipeline/tree/master/Documentation) for full documentation, examples, operational details and other information.
 
 
 ## Prerequisites
 
-The pipeline can be installed with very little additional software. However, depending on the installation, different libraries and software may be required. Please see the [Installation](#installation) section below, and the dedicated [wiki page](https://github.com/maxperry/photometrypipeline/wiki/Prerequisites) for a full list of prerequisites.
+The pipeline can be installed with very little additional software. However, depending on the installation, different libraries and software may be required. Please see the [Installation](#installation) section below, and the dedicated [file](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Prerequisites.md) for a full list of prerequisites.
 
 
 ## Installation
@@ -42,7 +42,7 @@ The docker container can be used if you have docker installed by running:
 
     $ docker run -it joedurbak/photopipe bash
     
-More detailed instructions on installing, configuring, and rerunning the same container are available for both [Mac](https://github.com/astroumd/photometrypipeline/wiki/Docker-Instructions-on-Mac) and [Windows](https://github.com/astroumd/photometrypipeline/wiki/Docker-Instructions-on-Windows) operating systems
+More detailed instructions on installing, configuring, and rerunning the same container are available for both [Mac](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Docker-Instructions-on-Mac.md) and [Windows](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Docker-Instructions-on-Windows.md) operating systems
 
 #### 2) Install on your machine from PyPI or git
 
@@ -61,9 +61,9 @@ More detailed instructions on installing, configuring, and rerunning the same co
 #### 3) Manual Installation
 If you to run the pipeline from the Python environment rather than using the `photopipe` command as described in the [Usage](#usage) section, please follow the step by step instructions in the wiki pages below to install all the dependencies manually.
 
-* [Instructions for macOS](https://github.com/maxperry/photometrypipeline/wiki/Manual-Installation-(macOS)
-* [Instructions for Linux-Debian](https://github.com/maxperry/photometrypipeline/wiki/Manual-Installation-(Linux-Debian)
-* [Instructions for Windows-WSL-Debian](https://github.com/astroumd/photometrypipeline/wiki/Windows-Installation-Instructions)
+* [Instructions for macOS](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Mac-Installation-Instructions.md)
+* [Instructions for Linux-Debian](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Linux-Debian-Installation-Instructions.md)
+* [Instructions for Windows-WSL-Debian](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Windows-Installation-Instructions.md)
 
 
 ## Usage
@@ -186,7 +186,7 @@ imdata
   preproc.mkmaster('ratir', flat_calib, 'flat')  
  ```
  
- See [wiki page](https://github.com/maxperry/photometrypipeline/wiki/preproc.py) for `preproc` functions reference.
+ See [documentation](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/preproc.py.md) for `preproc` functions reference.
 
  **WARNING**:
   1. Always use absolute paths terminated by a `/` when setting `dir` parameters. 
@@ -206,7 +206,7 @@ imdata
   ```
  3. Reduced frames will be saved to `imdir` using `coadd` as prefix in the filename.
  
- See [wiki page](https://github.com/maxperry/photometrypipeline/wiki/autoproc.py) for `autoproc` function reference.
+ See [documentation](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/autoproc.py.md) for `autoproc` function reference.
 
 #### 4) Photometry
 
@@ -219,11 +219,11 @@ imdata
   ```
  **NOTE**: It's important to start python from the `photometry` dir containing the `coadd` files.
  
- **[autoredux](https://github.com/maxperry/photometrypipeline/blob/master/photopipe/photometry/autoredux.py)** will run the following scripts:
+ **[autoredux](https://github.com/RIMAS_RATIR_DCT/photometrypipeline/blob/master/photopipe/photometry/autoredux.py)** will run the following scripts:
 
-  1.  **[photom.py](https://github.com/maxperry/photometrypipeline/blob/master/photopipe/photometry/photom.py)**: Samples and crops all files, creates a multicolor image used to find all sources, then finds the *aperture photometry* for each of those sources (resampled) using sextractor (with corrected zeropoint).  
+  1.  **[photom.py](https://github.com/RIMAS_RATIR_DCT/photometrypipeline/blob/master/photopipe/photometry/photom.py)**: Samples and crops all files, creates a multicolor image used to find all sources, then finds the *aperture photometry* for each of those sources (resampled) using sextractor (with corrected zeropoint).  
         - Output: *.am (absolute magnitude) files for w/ RA and DEC identified by sextractor
-  2. **[plotphotom.py](https://github.com/maxperry/photometrypipeline/blob/master/photopipe/photometry/plotphotom.py)**: Plots photometry results to a HTML page.
+  2. **[plotphotom.py](https://github.com/RIMAS_RATIR_DCT/photometrypipeline/blob/master/photopipe/photometry/plotphotom.py)**: Plots photometry results to a HTML page.
  
 ## Bugs and Feedback
 

@@ -11,7 +11,7 @@ The docker container can be used if you have docker installed by running:
 
     $ docker run -it joedurbak/photopipe bash
     
-More detailed instructions on installing, configuring, and rerunning the same container are available for both [Mac](https://github.com/astroumd/photometrypipeline/wiki/Docker-Instructions-on-Mac) and [Windows](https://github.com/astroumd/photometrypipeline/wiki/Docker-Instructions-on-Windows) operating systems
+More detailed instructions on installing, configuring, and rerunning the same container are available for both [Mac](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Docker-Instructions-on-Mac.md) and [Windows](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Docker-Instructions-on-Windows.md) operating systems
 
 #### 2) Install on your machine from PyPI or git
 
@@ -30,7 +30,7 @@ More detailed instructions on installing, configuring, and rerunning the same co
 #### 3) Manual Installation
 If you to run the pipeline from the Python environment rather than using the `photopipe` command as described in the [Usage](#usage) section, please follow the step by step instructions in the wiki pages below to install all the dependencies manually.
 
-* [Instructions for macOS](https://github.com/astroumd/photometrypipeline/wiki/Mac-Installation-Instructions)
-* [Instructions for Linux-Debian](https://github.com/astroumd/photometrypipeline/wiki/Linux-Debian-Installation-Instructions)
-* [Instructions for Windows-WSL-Debian](https://github.com/astroumd/photometrypipeline/wiki/Windows-Installation-Instructions)
+* [Instructions for macOS](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Mac-Installation-Instructions.md)
+* [Instructions for Linux-Debian](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Linux-Debian-Installation-Instructions.md)
+* [Instructions for Windows-WSL-Debian](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Windows-Installation-Instructions.md)
 

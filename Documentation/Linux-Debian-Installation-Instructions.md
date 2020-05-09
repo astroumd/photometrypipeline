@@ -160,7 +160,7 @@ We recommend to compile the software directly from source, in order to get the l
 
 ### Final Step: Download the repository and create the configuration file
 
-1. [Download](https://github.com/maxperry/photometrypipeline/archive/master.zip) and unzip the repository into your desired location, then rename the unzipped directory to `photometrypipeline`
+1. [Download](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/archive/master.zip) and unzip the repository into your desired location, then rename the unzipped directory to `photometrypipeline`
 
 2. Open the terminal and `cd` into the unzipped directory
 

@@ -219,11 +219,11 @@ imdata
   ```
  **NOTE**: It's important to start python from the `photometry` dir containing the `coadd` files.
  
- **[autoredux](https://github.com/RIMAS_RATIR_DCT/photometrypipeline/blob/master/photopipe/photometry/autoredux.py)** will run the following scripts:
+ **[autoredux](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/photopipe/photometry/autoredux.py)** will run the following scripts:
 
-  1.  **[photom.py](https://github.com/RIMAS_RATIR_DCT/photometrypipeline/blob/master/photopipe/photometry/photom.py)**: Samples and crops all files, creates a multicolor image used to find all sources, then finds the *aperture photometry* for each of those sources (resampled) using sextractor (with corrected zeropoint).  
+  1.  **[photom.py](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/photopipe/photometry/photom.py)**: Samples and crops all files, creates a multicolor image used to find all sources, then finds the *aperture photometry* for each of those sources (resampled) using sextractor (with corrected zeropoint).  
         - Output: *.am (absolute magnitude) files for w/ RA and DEC identified by sextractor
-  2. **[plotphotom.py](https://github.com/RIMAS_RATIR_DCT/photometrypipeline/blob/master/photopipe/photometry/plotphotom.py)**: Plots photometry results to a HTML page.
+  2. **[plotphotom.py](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/photopipe/photometry/plotphotom.py)**: Plots photometry results to a HTML page.
  
 ## Bugs and Feedback
 

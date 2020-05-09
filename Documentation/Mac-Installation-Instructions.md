@@ -79,7 +79,7 @@ While macOS already ships with Python, we recommend to get the current stable pr
 
 2. Open the terminal and `cd` into the unzipped directory
 
-3. Use the provided [make_config]() script to create a configuration file and set the paths to the AstrOmatic software, as well as other default parameters
+3. Use the provided make_config script to create a configuration file and set the paths to the AstrOmatic software, as well as other default parameters
 
  ```
  sh ./make_config.sh

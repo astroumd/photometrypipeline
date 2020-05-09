@@ -75,7 +75,7 @@ While macOS already ships with Python, we recommend to get the current stable pr
 
 ### Final Step: Download the repository and create the configuration file
 
-1. [Download](https://github.com/maxperry/photometrypipeline/archive/master.zip) and unzip the repository into your desired location, then rename the unzipped directory to `photometrypipeline`
+1. [Download](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/archive/master.zip) and unzip the repository into your desired location, then rename the unzipped directory to `photometrypipeline`
 
 2. Open the terminal and `cd` into the unzipped directory
 

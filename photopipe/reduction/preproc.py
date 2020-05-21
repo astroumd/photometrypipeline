@@ -869,7 +869,7 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./'):
         af.print_under("\n{:^50}".format('{} {}'.format(band, sorttype)))
 
         first_file = fn_dict[band][0]
-        ind_C = first_file.index('C')
+        ind_C = first_file.index('.fits') - 3
         cam = first_file[ind_C:ind_C + 2]
         cam_i = int(cam[1])
   

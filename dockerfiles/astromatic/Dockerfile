@@ -1,4 +1,4 @@
-FROM conda/miniconda2
+FROM conda/miniconda3
 
 WORKDIR /work
 VOLUME ///c/Users/durba/Documents/LMI /mnt/data/

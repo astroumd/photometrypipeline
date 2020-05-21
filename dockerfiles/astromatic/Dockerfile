@@ -1,7 +1,7 @@
 FROM conda/miniconda3
 
 WORKDIR /work
-VOLUME ///c/Users/durba/Documents/LMI /mnt/data/
+VOLUME /myvolume
 
 RUN conda install numpy scipy matplotlib astropy jsonschema ipython
 # && conda install -c cefca pyfits

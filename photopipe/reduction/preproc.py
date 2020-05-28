@@ -45,7 +45,6 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0,1,2,3], auto=False, rej
             workdir = 'path/to/data/', cams = [#,#,...])
         *** call mkmaster using dictionary or pickle file ***
     """
-
     instrum = instrument_dict[instrument]
 
     if auto and (ftype is instrum.flatname):
@@ -68,7 +67,7 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0,1,2,3], auto=False, rej
     # move to working directory
     start_dir = os.getcwd()
     os.chdir(workdir)
-    wordir = os.getcwd()
+    wrkdir = os.getcwd()
     
     d = os.getcwd().split('/')[-1] # name of current directory
     if not auto:
@@ -78,7 +77,6 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0,1,2,3], auto=False, rej
     
     # dictionary to store selected fits files by camera or filter
     fits_list_dict = {}
-    af.print_err("testing error preproc ln81")
     fits_check = glob('????????T??????C??.fits')
 
     if len(fits_check) == 0:
@@ -149,7 +147,7 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0,1,2,3], auto=False, rej
             
             h = instrum.change_header_keywords(h, 'C{}'.format(cam_i)) 
             
-            # return quick image summary    
+            # return quick image summary
             [im1, m, s, sfrac] = image_summary(im, sat_pt, cam_i, instrum, split=instrum.is_cam_split(cam_i))
             
             if instrum.is_cam_split(cam_i) == True:
@@ -349,6 +347,7 @@ def image_summary(im, sat_pt, cam_i, instrum, split=False):
     else:
         im1 = im[instrum.slice('C{}'.format(cam_i))]
         m  = np.median(im1)
+        print "Median: " + str(m)
         s  = af.robust_sigma(im1)
         sfrac = float(m)/sat_pt
         print '\t* Median is {} counts ({:.0%} of saturation level).'.format(m, sfrac)

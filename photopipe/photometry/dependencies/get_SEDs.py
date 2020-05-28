@@ -38,7 +38,6 @@ try:
         row[1:] = row[1:] - row[-1]
 except:
     raise IOError('cannot find models file')
-
 try:
     err_dict = pickle.load(open(join(dirname(__file__), 'err_dict.p'), 'r'))
     ERR_FUNCTIONS = {}

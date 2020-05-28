@@ -253,7 +253,6 @@ class lmi(instrument):
         
     def slice(self, cam):
         C0_SLICE = np.s_[3:3079,27:3096]
-        
         return C0_SLICE
         
     def get_cam_sat(self, h, idx):
@@ -334,22 +333,22 @@ class lmi(instrument):
 class rimas(instrument):
 
     def __init__(self):
-        instrument.__init__(self, 'ratir', 2)
+        instrument.__init__(self, 'rimas', 2)
 
     def possible_filters(self):
-        filters = ['Y', 'J', 'H', 'K']
+        filters = ['YJ', 'HK']
         return filters
 
     def has_cam_bias(self, idx):
-        cam_bias = [False]
+        cam_bias = [False, False]
         return cam_bias[idx]
 
     def has_cam_dark(self, idx):
-        cam_dark = [False]
+        cam_dark = [False, False]
         return cam_dark[idx]
 
     def is_cam_split(self, idx):
-        CAM_SPLIT = [False]
+        CAM_SPLIT = [False, False]
         return CAM_SPLIT[idx]
         
     def change_header_keywords(self, h, cam):
@@ -359,16 +358,17 @@ class rimas(instrument):
         return h
         
     def slice(self, cam):
-        C0_SLICE = np.s_[:,:] # TODO: NEEDS TO BE DEFINED!
-        C1_SLICE = np.s_[:,:] # TODO: NEEDS TO BE DEFINED!
-        
+        # Currently using LMI Slice as Placeholder
+        C0_SLICE = np.s_[:,:]
+        C1_SLICE = np.s_[:,:]
         slicedict = {'C0': C0_SLICE, 'C1': C1_SLICE}
-        
+
         return slicedict[cam]
         
     def get_cam_sat(self, h, idx):
-        sat = h['SATURATE']
-        
+        #sat = float(h['SATURATE'])
+        sat = 1000000.                # Placeholder, may need to change from header
+
         return sat
     
     def get_cam_gain(self, h, idx):
@@ -380,24 +380,33 @@ class rimas(instrument):
         return h['EXPTIME']
 
     def get_filter(self, h, cam):
-        return h['FILTER']      
+        filterdict = {'C0': 'YJ', 'C1': 'HK'}
+        return filterdict[cam]
             
     def get_centered_filter(self, h, idx):
         return h['FILTER']  
 
     def change_file_names(self,files):
-        # Has correct file format, no changes needed
-        
-        # MAY NEED TO BE CHANGED BASED ON FILE NAMES FOR CALIBRATION!!!
-        
-        obstype_postdict = {'SKY FLAT': 'f', 'DOME FLAT': 'f', 
+        obstype_postdict = {'SKY FLAT': 'f', 'DOME FLAT': 'f',
             'BIAS': 'b', 'OBJECT': 'o'}
+
+        for file in files:
+            pyim = pf.open(file)
+            h = pyim[0].header
+
+            obstype_post = obstype_postdict[h['OBSTYPE']]
+            idate = h['DATEOBS']
+            camnum = h['CAMERA']        # 0 (YJ) or 1 (HK)
+            newname = idate[0:8] + 'T' + idate[9:15] + 'C' + camnum
+
+            newname += obstype_post + '.fits'
+            print newname
+            os.rename(file, newname)
 
         return
         
     def original_file_format(self):
-        print "testing file format"
-        file_format = '????????T??????C?-????.fits'
+        file_format = 'rimas.????.??.C?.fits'
         return file_format  
 
 

@@ -1,5 +1,5 @@
 import numpy
-import astrometrystats
+from photopipe.reduction.astrom import astrometrystats
 
 """
 NAME:
@@ -62,7 +62,7 @@ def tooclose(glist, minsep = 3, quiet = False):
     for d in sorted(deletelist, reverse=True):
         del glist[d]
         if quiet == False:
-        	print 'deleted index '+ str(d)
+        	print('deleted index '+ str(d))
         
     return glist
 
@@ -196,9 +196,9 @@ EXAMPLE:
 def distmatch(sexlist, catlist, maxrad=180, minrad=10, reqmatch=3, patolerance=1.2,uncpa=-1, showmatches=0, fastmatch=1, quiet=False):
     
     if reqmatch < 2:
-       print 'Warning: reqmatch >=3 suggested'
+       print('Warning: reqmatch >=3 suggested')
     if patolerance <= 0: 
-       print 'PA tolerance cannot be negative!!!'
+       print('PA tolerance cannot be negative!!!')
        patolerance = abs(patolerance)
     if uncpa < 0: uncpa = 720
 
@@ -319,8 +319,8 @@ def distmatch(sexlist, catlist, maxrad=180, minrad=10, reqmatch=3, patolerance=1
     #If no matches found end program and return empty lists
     nmatches = len(smatch)
     if (nmatches == 0):
-        print 'Found no potential matches of any sort (including pairs).'
-        print 'The algorithm is probably not finding enough real stars to solve the field.  Check seeing.'
+        print('Found no potential matches of any sort (including pairs).')
+        print('The algorithm is probably not finding enough real stars to solve the field.  Check seeing.')
         return [], [], []   
     
     #Get rid of matches that don't pass the reqmatch cut (2nd cut after removing bad position angles)
@@ -335,7 +335,7 @@ def distmatch(sexlist, catlist, maxrad=180, minrad=10, reqmatch=3, patolerance=1
 
 	#If no remaining matches then exit program
     if len(smatch) < 1:
-        print 'Found no matching clusters of reqmatch =', reqmatch
+        print('Found no matching clusters of reqmatch =', reqmatch)
         return [], [], []
 
     #If we still have lots of matches, get rid of those with the minimum number of submatches
@@ -350,7 +350,7 @@ def distmatch(sexlist, catlist, maxrad=180, minrad=10, reqmatch=3, patolerance=1
     #If the number of matches is above 16 and there are more than 3 sources with more than the 
     #required number of matches, then delete any source with the bare minimum number of matches
     if len(nmatch) > 16 and countnotmin > 3:
-        print 'Too many matches: increasing reqmatch to', reqmatch+1
+        print('Too many matches: increasing reqmatch to', reqmatch+1)
         for i in range(len(primarymatchs)-1,-1,-1):
             if nmatch[i] == minmatch:
                 del mpa[i]
@@ -362,7 +362,7 @@ def distmatch(sexlist, catlist, maxrad=180, minrad=10, reqmatch=3, patolerance=1
           
     nmatches = len(smatch) # recalculate with the new reqmatch and with prunes supposedly removed
     if quiet == False:
-    	print 'Found',nmatches,'candidate matches.'
+    	print('Found',nmatches,'candidate matches.')
 
     # Kill the bad matches
     rejects = 0
@@ -439,8 +439,8 @@ def distmatch(sexlist, catlist, maxrad=180, minrad=10, reqmatch=3, patolerance=1
     nmatches = len(primarymatchs)
 
     if quiet == False:
-    	print 'Rejected', rejects, 'bad matches.'
-    	print 'Found', nmatches, 'good matches.'
+    	print('Rejected', rejects, 'bad matches.')
+    	print('Found', nmatches, 'good matches.')
 
 	#If no remaining matches, return empty lists
     if nmatches == 0:
@@ -466,33 +466,33 @@ def distmatch(sexlist, catlist, maxrad=180, minrad=10, reqmatch=3, patolerance=1
         
         if quiet == False:
         	if len(primarymatchs) >= 3:
-        		print 'Refined pixel scale measurement: %.4f"/pix (+/- %.4f)' % (pixelscale, pixelscalestd)
+        		print('Refined pixel scale measurement: %.4f"/pix (+/- %.4f)' % (pixelscale, pixelscalestd))
         	else:
-        		print 'Refined pixel scale measurement: %.4f"/pix' % pixelscale
+        		print('Refined pixel scale measurement: %.4f"/pix' % pixelscale)
            
 	#If showmatches keyword set then print which objects match
     for i in range(len(primarymatchs)):
         si = primarymatchs[i]
         ci = primarymatchc[i]
         if quiet == False:
-        	print  '%3i' % si, 'matches', '%3i' % ci, ' (dPA =%7.3f)' % mpa[i],
+        	print('%3i' % si, 'matches', '%3i' % ci, ' (dPA =%7.3f)' % mpa[i],)
         
         #Keyword set in main program
         if showmatches:
-           print
+           print()
            if len(smatch[i]) < 16:
-              print '  ', si, '-->', smatch[i], 
+              print('  ', si, '-->', smatch[i],)
               if len(smatch[i]) >= 7: print
-              print '  ', ci, '-->', cmatch[i]
+              print('  ', ci, '-->', cmatch[i])
            else:
-              print '  ', si, '-->', smatch[i][0:10], '+', len(smatch[i])-10, 'more'
-              print '  ', ci, '-->', cmatch[i][0:10], '+'#, len(cmatch[i])-10, ' more'
-           if i+1 >= 10 and len(primarymatchs)-10 > 0: 
-              print (len(primarymatchs)-10), 'additional matches not shown.'
+              print('  ', si, '-->', smatch[i][0:10], '+', len(smatch[i])-10, 'more')
+              print('  ', ci, '-->', cmatch[i][0:10], '+')  # , len(cmatch[i])-10, ' more')
+           if (i+1 >= 10) and (len(primarymatchs)-10 > 0):
+              print((len(primarymatchs)-10), 'additional matches not shown.')
               break
         else:
            if quiet == False:
-              print ':', str(len(smatch[i])).strip(), 'rays'
+              print(':', str(len(smatch[i])).strip(), 'rays')
       
 	#Create region files for DS9 with the sextractor sources (matchlines.im.reg) and catalog (matchlines.wcs.reg)
     out = open('matchlines.im.reg','w')

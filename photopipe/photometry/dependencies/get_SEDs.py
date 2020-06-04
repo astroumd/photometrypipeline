@@ -890,7 +890,7 @@ class catalog:
         self.coords = np.array(self.coords)
         self.SEDs = np.array(self.SEDs)
         self.full_errors = np.array(self.full_errors)
-        print 'cut', self.numcut, 'sources out of', len(results)
+        print('cut', self.numcut, 'sources out of', len(results))
         
         gmatch, tmp = identify_matches(self.coords, self.ccoords)
         
@@ -1032,12 +1032,12 @@ def zeropoint(input_file, band, output_file=None, usnob_thresh=15, alloptstars=F
 
     if sum(mask) >= usnob_thresh:
         if quiet:
-            print 'Using', sum(mask), 'APASS and/or SDSS sources.'
+            print('Using', sum(mask), 'APASS and/or SDSS sources.')
         cat_mags = c.SEDs[:, band_index][mask]
         cat_coords = c.coords[mask]
     else:
         if quiet:
-            print 'Using', sum(mask), 'USNOB, APASS, and/or SDSS sources.'
+            print('Using', sum(mask), 'USNOB, APASS, and/or SDSS sources.')
         cat_mags = c.SEDs[:, band_index]
         cat_coords = c.coords
         

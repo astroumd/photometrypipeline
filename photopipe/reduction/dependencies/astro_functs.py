@@ -18,7 +18,7 @@ import numpy as np
 from scipy.ndimage.interpolation import zoom
 
 # custom modules/functions
-from photopipe.reduction.dependencies.zscale import zscale
+from .zscale import zscale
 
 """
 ANSI escape sequences to print to terminal with color

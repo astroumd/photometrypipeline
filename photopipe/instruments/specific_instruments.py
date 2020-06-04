@@ -1,6 +1,6 @@
 import numpy as np
 import sys
-from instrument_class import instrument
+from .instrument_class import instrument
 from astropy.io import fits as pf
 import re
 import os
@@ -57,7 +57,7 @@ class ratir(instrument):
         try:
             h[RA_KEY]
         except:
-            print 'No ' + RA_KEY + ' keyword set, use 0 for RA and offset values, set center key to rcenter'
+            print('No ' + RA_KEY + ' keyword set, use 0 for RA and offset values, set center key to rcenter')
             h[RA_KEY] = 0
             h[OFFRA_KEY] = 0
             h[OFFDEC_KEY] = 0
@@ -322,7 +322,7 @@ class lmi(instrument):
                 newname += item
             
             newname += 'C0'+obstype_post+'.fits'
-            print newname
+            print(newname)
             os.rename(file, newname)
         
         return

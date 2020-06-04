@@ -122,7 +122,7 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0,1,2,3], auto=False, rej
         for fits_fn in fits_list:
             
             fits_id = fits_fn.split('.')[0] # fits file name with extention removed
-            print '{}'.format(fits_fn)
+            print(f'{fits_fn}')
 
             # open data
             hdulist = pf.open(fits_fn, mode='update')
@@ -138,14 +138,14 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0,1,2,3], auto=False, rej
 
             # check if instrument camera is split, if it is make sure correct specs being used
             if instrum.is_cam_split(cam_i) == True:
-                print '\t* Split filter used'
+                print('\t* Split filter used')
             else:
                 if (instrum.get_filter(h, 'C{}'.format(cam_i)) not in instrum.possible_filters()) and (ftype is instrum.flatname):
                     af.print_warn("Warning: invalid filter detected.  Skipping {} band.".format(instrum.get_filter(h, 'C{}'.format(cam_i))))
                     continue
             
                 if ftype is instrum.flatname:
-                    print '\t* Filter used: {}'.format(instrum.get_filter(h, 'C{}'.format(cam_i)))
+                    print('\t* Filter used: {}'.format(instrum.get_filter(h, 'C{}'.format(cam_i))))
             
             h = instrum.change_header_keywords(h, 'C{}'.format(cam_i)) 
             
@@ -172,7 +172,7 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0,1,2,3], auto=False, rej
                         # check whether median values are in specified range
                         # bottom side
                         if m1 > vmin and m1 < vmax:
-                            print '\t* Filter used: {}'.format(instrum.get_filter(h,'C{}a'.format(cam_i)))
+                            print('\t* Filter used: {}'.format(instrum.get_filter(h,'C{}a'.format(cam_i))))
                             af.print_blue("\t* Bottom side selected.")
                             imfits_1 = savefile(fits_id, im1, instrum.get_filter(h,'C{}a'.format(cam_i)), h)
                             addtodict(dict=fits_list_dict, 
@@ -186,7 +186,7 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0,1,2,3], auto=False, rej
 
                         # top side
                         if m2 > vmin and m2 < vmax:
-                            print '\t* Filter used: {}'.format(instrum.get_filter(h,'C{}b'.format(cam_i)))
+                            print('\t* Filter used: {}'.format(instrum.get_filter(h,'C{}b'.format(cam_i))))
                             af.print_blue("\t* Top side selected.")
                             imfits_2 = savefile(fits_id, im2, instrum.get_filter(h,'C{}b'.format(cam_i)), h)
                             addtodict(dict=fits_list_dict, 
@@ -341,8 +341,8 @@ def image_summary(im, sat_pt, cam_i, instrum, split=False):
         m2  = np.median(im2)
         s2  = af.robust_sigma(im2)
         sfrac2 = float(m2)/sat_pt
-        print '\t* Median of left side is {} counts ({:.0%} of saturation level).'.format(m1, sfrac1)
-        print '\t* Median of right side is {} counts ({:.0%} of saturation level).'.format(m2, sfrac2)
+        print('\t* Median of left side is {} counts ({:.0%} of saturation level).'.format(m1, sfrac1))
+        print('\t* Median of right side is {} counts ({:.0%} of saturation level).'.format(m2, sfrac2))
         
         return [[im1,im2], [m1,m2], [s1,s2],[sfrac1,sfrac2]]
         
@@ -351,7 +351,7 @@ def image_summary(im, sat_pt, cam_i, instrum, split=False):
         m  = np.median(im1)
         s  = af.robust_sigma(im1)
         sfrac = float(m)/sat_pt
-        print '\t* Median is {} counts ({:.0%} of saturation level).'.format(m, sfrac)
+        print('\t* Median is {} counts ({:.0%} of saturation level).'.format(m, sfrac))
 
         return [im1,m,s,sfrac]
         
@@ -590,7 +590,7 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0,1,2,3], auto=
         for fits_fn in fits_list:
 
             fits_id = fits_fn.split('.')[0] # fits file name with extension removed
-            print '{}'.format(fits_fn)
+            print('{}'.format(fits_fn))
                 
             # open data
             hdulist = pf.open(fits_fn)
@@ -697,14 +697,14 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0,1,2,3], auto=
             
             if instrum.is_cam_split(cam_i) == True:
                 if instrum.get_centered_filter(h, cam_i).count(instrum.get_filter(h, 'C{}a'.format(cam_i))) != 0:
-                    print "\t* The target is focused on the {} filter.".format(instrum.get_filter(h, 'C{}a'.format(cam_i)))
+                    print("\t* The target is focused on the {} filter.".format(instrum.get_filter(h, 'C{}a'.format(cam_i))))
                 elif instrum.get_centered_filter(h, cam_i).count(instrum.get_filter(h, 'C{}b'.format(cam_i))) != 0:
-                    print "\t* The target is focused on the {} filter.".format(instrum.get_filter(h, 'C{}b'.format(cam_i)))
+                    print("\t* The target is focused on the {} filter.".format(instrum.get_filter(h, 'C{}b'.format(cam_i))))
                 else:
                     af.print_warn("\t* Warning: The target is NOT focused on an split filter. The target is focused on the {} filter.".format(instrum.get_centered_filter(h, cam_i)))
             else:
                 # print filter name
-                print '\t* Filter used: {}'.format(instrum.get_filter(h, 'C{}'.format(cam_i)))
+                print('\t* Filter used: {}'.format(instrum.get_filter(h, 'C{}'.format(cam_i))))
 
             # query user until valid response is provided
             valid_entry = False
@@ -916,7 +916,7 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./'):
         data_arr = []
         i = 0
         for fn in fns:
-            print fn
+            print(fn)
             hdu.header[FITS_IN_KEY(i)] = fn # add flat fn to master flat header
             hdulist = pf.open(fn)
             data_arr.append(hdulist[0].data)

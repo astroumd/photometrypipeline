@@ -1,4 +1,4 @@
-FROM conda/miniconda3
+FROM continuumio/anaconda3
 
 WORKDIR /work
 VOLUME /myvolume

@@ -16,13 +16,12 @@ from subprocess import Popen, PIPE
 from scipy.optimize import fmin_bfgs
 from scipy.interpolate import interp1d
 import scipy.spatial.kdtree
-from os.path import dirname, join
 from threading import Thread
 from time import strftime
 from urllib.request import urlopen
-import pickle
 import sys
 import warnings
+import pandas as pd
 
 import multiprocessing as mp
 
@@ -32,7 +31,7 @@ N_CORES = mp.cpu_count()  # use all the cpus you have
 #  Note: __file__ points to the location of this file,
 #  so the static files below MUST be in the same folder.
 try:
-    MODELS = np.load('photopipe/photometry/dependencies/all_models.npy', 'r')
+    MODELS = np.load('photopipe/photometry/dependencies/all_models.npy')
     # rezero so that K=0 for all models
     for row in MODELS[1:]:
         row[1:] = row[1:] - row[-1]
@@ -41,7 +40,7 @@ except IOError as error:
     print('cannot find models file')
 
 try:
-    err_dict = pickle.load(open(join(dirname(__file__), 'err_dict.p'), 'r'))
+    err_dict =pd.read_pickle(r'photopipe/photometry/dependencies/err_dict.p')
     ERR_FUNCTIONS = {}
     for mode in [0, 1, 2]:
         ERR_FUNCTIONS[mode] = {}
@@ -51,8 +50,9 @@ try:
                 continue
             ERR_FUNCTIONS[mode][band] = interp1d(err_dict[mode]['x'], err_dict[mode][band])
 
-except:
-    raise IOError('cannot find error dictionary file')
+except IOError as error:
+    print(error)
+    print('cannot find error dictionary file')
 
 ALL_FILTERS = ['u', 'g', 'r', 'i', 'z', 'y', 'B', 'V', 'R', 'I', 'J', 'H', 'K']
 npALL_FILTERS = np.array(ALL_FILTERS)  # it's helpful to have a version that works with numpy masks

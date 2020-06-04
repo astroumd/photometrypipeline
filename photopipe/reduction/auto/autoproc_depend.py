@@ -4,13 +4,8 @@ import glob
 import astropy.io.fits as pf
 import numpy as np
 import datetime
-import cosmics
+from photopipe.reduction.auto import cosmics
 import scipy
-# from photopipe.reduction.astrom import astrometrystats as astst
-# import timeit
-
-# import matplotlib
-# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 # Disable interactive mode
 plt.ioff()

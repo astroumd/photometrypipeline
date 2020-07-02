@@ -354,6 +354,20 @@ class rimas(instrument):
     def change_header_keywords(self, h, cam):
         # set keyword values
         h['WAVELENG'] = 'IR'
+        h['GAIN'] = 1.2     #PLACEHOLDER FOR TESTING
+        h['EXPTIME'] = float(h['EXPTIME'])  #Needs to be float, can change later
+        h['AIRMASS'] = 1.   #PLACEHOLDER FOR TESTING
+
+        idate = h['DATEOBS']    #DATEOBS needs to be DATE-OBS and use Lmi format
+        idatet = idate[0:4] + '-' + idate[4:6] + '-' + idate[6:8] + 'T'
+        h['DATE-OBS'] = idatet + idate[9:11] + ':' + idate[11:13] + ':' + idate[13:15] + '.' + idate[15:17]
+
+        if h['OBJECT'] == '':
+            h['TARGNAME'] = h['OBSTYPE']
+            h['OBJECT']   = h['OBSTYPE']
+            h['OBJNAME']  = h['OBSTYPE']
+        else:
+            h['TARGNAME'] = h['OBJNAME']
     
         return h
         

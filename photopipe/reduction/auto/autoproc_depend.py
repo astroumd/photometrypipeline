@@ -598,7 +598,7 @@ def cosmiczap(filename, outname, sigclip=6.0, maxiter=3, verbose=True):
     
     data, head = cosmics.fromfits(filename, verbose=False)
     
-    gain = head['GAIN']
+    gain = float(head['GAIN'])
     c = cosmics.cosmicsimage(
         data, gain=gain, readnoise=18, sigclip=sigclip, sigfrac=0.5, objlim=5.0, verbose=False)
     
@@ -787,6 +787,7 @@ def findsexobj(filename, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP
         sexcmd += ' -WEIGHT_TYPE '+maptype+' -WEIGHT_IMAGE ' + wtimage + ' '
         
     sexcmd += ' ' + filename
+    print sexcmd
     if quiet == 0:
         print sexcmd
     os.system(sexcmd)
@@ -797,6 +798,7 @@ def findsexobj(filename, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP
     
     num = 0    
     # Calculates seeing with starlike objects
+    print str(starfile)
     if os.path.isfile(starfile):
         variables = np.loadtxt(starfile, unpack=True)
         num = variables[0, :]

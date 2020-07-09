@@ -598,7 +598,7 @@ def cosmiczap(filename, outname, sigclip=6.0, maxiter=3, verbose=True):
     
     data, head = cosmics.fromfits(filename, verbose=False)
     
-    gain = float(head['GAIN'])
+    gain = head['GAIN']
     c = cosmics.cosmicsimage(
         data, gain=gain, readnoise=18, sigclip=sigclip, sigfrac=0.5, objlim=5.0, verbose=False)
     

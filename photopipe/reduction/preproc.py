@@ -67,7 +67,7 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0,1,2,3], auto=False, rej
     # move to working directory
     start_dir = os.getcwd()
     os.chdir(workdir)
-    wrkdir = os.getcwd()
+    wrkdir = os.getcwd()  # TODO
     
     d = os.getcwd().split('/')[-1] # name of current directory
     if not auto:

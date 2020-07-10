@@ -354,13 +354,19 @@ class rimas(instrument):
     def change_header_keywords(self, h, cam):
         # set keyword values
         h['WAVELENG'] = 'IR'
-        h['GAIN'] = 1.2     #PLACEHOLDER FOR TESTING
+        h['GAIN'] = 3.     #PLACEHOLDER FOR TESTING
         h['EXPTIME'] = float(h['EXPTIME'])  #Needs to be float, can change later
+        h['SATURATE'] = float(h['SATURATE'])
         h['AIRMASS'] = 1.   #PLACEHOLDER FOR TESTING
 
         idate = h['DATEOBS']    #DATEOBS needs to be DATE-OBS and use Lmi format
         idatet = idate[0:4] + '-' + idate[4:6] + '-' + idate[6:8] + 'T'
         h['DATE-OBS'] = idatet + idate[9:11] + ':' + idate[11:13] + ':' + idate[13:15] + '.' + idate[15:17]
+
+        if h['CAMERA'] == '0':
+            h['FILTER'] = 'Y'
+        else:
+            h['FILTER'] = 'H'
 
         if h['OBJECT'] == '':
             h['TARGNAME'] = h['OBSTYPE']
@@ -380,8 +386,8 @@ class rimas(instrument):
         return slicedict[cam]
         
     def get_cam_sat(self, h, idx):
-        #sat = float(h['SATURATE'])
-        sat = 1000000.                # Placeholder, may need to change from header
+        sat = float(h['SATURATE'])
+        #sat = 1000000.                # Placeholder, may need to change from header
 
         return sat
     

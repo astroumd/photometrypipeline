@@ -28,17 +28,22 @@ import multiprocessing as mp
 N_CORES = mp.cpu_count()  # use all the cpus you have
 
 # use the __file__ variable to point to the static files
-#  Note: __file__ points to the location of this file,
+# Note: __file__ points to the location of this file,
 #  so the static files below MUST be in the same folder.
 try:
     MODELS = np.load('photopipe/photometry/dependencies/all_models.npy')
     # rezero so that K=0 for all models
     for row in MODELS[1:]:
         row[1:] = row[1:] - row[-1]
+<<<<<<< HEAD
 except IOError as error:
     print(error)
     print('cannot find models file')
 
+=======
+except:
+    raise IOError('cannot find models file')
+>>>>>>> adding_rimas
 try:
     err_dict =pd.read_pickle(r'photopipe/photometry/dependencies/err_dict.p')
     ERR_FUNCTIONS = {}

@@ -253,7 +253,6 @@ class lmi(instrument):
         
     def slice(self, cam):
         C0_SLICE = np.s_[3:3079,27:3096]
-        
         return C0_SLICE
         
     def get_cam_sat(self, h, idx):
@@ -334,41 +333,67 @@ class lmi(instrument):
 class rimas(instrument):
 
     def __init__(self):
-        instrument.__init__(self, 'ratir', 2)
+        instrument.__init__(self, 'rimas', 2)
 
     def possible_filters(self):
-        filters = ['Y', 'J', 'H', 'K']
+        filters = ['Y','J','H','K']
         return filters
 
     def has_cam_bias(self, idx):
-        cam_bias = [False]
+        cam_bias = [False, False]
         return cam_bias[idx]
 
     def has_cam_dark(self, idx):
-        cam_dark = [False]
+        cam_dark = [False, False]
         return cam_dark[idx]
 
     def is_cam_split(self, idx):
-        CAM_SPLIT = [False]
+        CAM_SPLIT = [False, False]
         return CAM_SPLIT[idx]
         
     def change_header_keywords(self, h, cam):
         # set keyword values
         h['WAVELENG'] = 'IR'
+        h['GAIN'] = 3.     #PLACEHOLDER FOR TESTING
+        h['EXPTIME'] = float(h['EXPTIME'])  #Needs to be float, can change later
+        h['SATURATE'] = float(h['SATURATE'])
+        h['AIRMASS'] = 1.   #PLACEHOLDER FOR TESTING
+
+        idate = h['DATEOBS']    #DATEOBS needs to be DATE-OBS and use Lmi format
+        idatet = idate[0:4] + '-' + idate[4:6] + '-' + idate[6:8] + 'T'
+        h['DATE-OBS'] = idatet + idate[9:11] + ':' + idate[11:13] + ':' + idate[13:15] + '.' + idate[15:17]
+
+        cam_filter = h['FILTER{}'.format(h['CAMERA'].strip())]
+        if (h['SLITWID'].lower() == 'blocked') or (h['FILTER2'].lower() == 'blocked'):
+            h['FILTER'] = 'blocked'
+        elif h['FILTER2'].lower() != 'open':
+            if cam_filter.lower() == 'open':
+                h['FILTER'] = h['FILTER2']
+            else:
+                h['FILTER'] = "{}+{}".format(h['FILTER2'], cam_filter)
+        else:
+            h['FILTER'] = cam_filter
+
+        if h['OBJECT'] == '':
+            h['TARGNAME'] = h['OBSTYPE']
+            h['OBJECT']   = h['OBSTYPE']
+            h['OBJNAME']  = h['OBSTYPE']
+        else:
+            h['TARGNAME'] = h['OBJNAME']
     
         return h
         
     def slice(self, cam):
-        C0_SLICE = np.s_[:,:] # TODO: NEEDS TO BE DEFINED!
-        C1_SLICE = np.s_[:,:] # TODO: NEEDS TO BE DEFINED!
-        
+        # Currently using LMI Slice as Placeholder
+        C0_SLICE = np.s_[:,:]
+        C1_SLICE = np.s_[:,:]
         slicedict = {'C0': C0_SLICE, 'C1': C1_SLICE}
-        
+
         return slicedict[cam]
         
     def get_cam_sat(self, h, idx):
-        sat = h['SATURATE']
-        
+        sat = float(h['SATURATE'])
+
         return sat
     
     def get_cam_gain(self, h, idx):
@@ -380,23 +405,32 @@ class rimas(instrument):
         return h['EXPTIME']
 
     def get_filter(self, h, cam):
-        return h['FILTER']      
+        return h['FILTER']
             
     def get_centered_filter(self, h, idx):
         return h['FILTER']  
 
     def change_file_names(self,files):
-        # Has correct file format, no changes needed
-        
-        # MAY NEED TO BE CHANGED BASED ON FILE NAMES FOR CALIBRATION!!!
-        
-        obstype_postdict = {'SKY FLAT': 'f', 'DOME FLAT': 'f', 
+        obstype_postdict = {'SKY FLAT': 'f', 'DOME FLAT': 'f',
             'BIAS': 'b', 'OBJECT': 'o'}
+
+        for file in files:
+            pyim = pf.open(file)
+            h = pyim[0].header
+
+            obstype_post = obstype_postdict[h['OBSTYPE']]
+            idate = h['DATEOBS']
+            camnum = h['CAMERA']
+            newname = idate[0:8] + 'T' + idate[9:15] + 'C' + camnum
+
+            newname += obstype_post + '.fits'
+            print newname
+            os.rename(file, newname)
 
         return
         
     def original_file_format(self):
-        file_format = '????????T??????C??.fits'
+        file_format = 'rimas.????.??.C?.fits'
         return file_format  
 
 

@@ -782,6 +782,7 @@ def findsexobj(filename, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP
         sexcmd += ' -WEIGHT_TYPE '+maptype+' -WEIGHT_IMAGE ' + wtimage + ' '
         
     sexcmd += ' ' + filename
+    print sexcmd
     if quiet == 0:
         print(sexcmd)
     os.system(sexcmd)
@@ -792,6 +793,7 @@ def findsexobj(filename, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP
     
     num = 0    
     # Calculates seeing with starlike objects
+    print str(starfile)
     if os.path.isfile(starfile):
         variables = np.loadtxt(starfile, unpack=True)
         num = variables[0, :]

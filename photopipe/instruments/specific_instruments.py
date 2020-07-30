@@ -336,7 +336,7 @@ class rimas(instrument):
         instrument.__init__(self, 'rimas', 2)
 
     def possible_filters(self):
-        filters = ['YJ', 'HK']
+        filters = ['Y','J','H','K']
         return filters
 
     def has_cam_bias(self, idx):
@@ -363,10 +363,16 @@ class rimas(instrument):
         idatet = idate[0:4] + '-' + idate[4:6] + '-' + idate[6:8] + 'T'
         h['DATE-OBS'] = idatet + idate[9:11] + ':' + idate[11:13] + ':' + idate[13:15] + '.' + idate[15:17]
 
-        if h['CAMERA'] == '0':
-            h['FILTER'] = 'Y'
+        cam_filter = h['FILTER{}'.format(h['CAMERA'].strip())]
+        if (h['SLITWID'].lower() == 'blocked') or (h['FILTER2'].lower() == 'blocked'):
+            h['FILTER'] = 'blocked'
+        elif h['FILTER2'].lower() != 'open':
+            if cam_filter.lower() == 'open':
+                h['FILTER'] = h['FILTER2']
+            else:
+                h['FILTER'] = "{}+{}".format(h['FILTER2'], cam_filter)
         else:
-            h['FILTER'] = 'H'
+            h['FILTER'] = cam_filter
 
         if h['OBJECT'] == '':
             h['TARGNAME'] = h['OBSTYPE']
@@ -387,7 +393,6 @@ class rimas(instrument):
         
     def get_cam_sat(self, h, idx):
         sat = float(h['SATURATE'])
-        #sat = 1000000.                # Placeholder, may need to change from header
 
         return sat
     
@@ -400,8 +405,7 @@ class rimas(instrument):
         return h['EXPTIME']
 
     def get_filter(self, h, cam):
-        filterdict = {'C0': 'YJ', 'C1': 'HK'}
-        return filterdict[cam]
+        return h['FILTER']
             
     def get_centered_filter(self, h, idx):
         return h['FILTER']  
@@ -416,7 +420,7 @@ class rimas(instrument):
 
             obstype_post = obstype_postdict[h['OBSTYPE']]
             idate = h['DATEOBS']
-            camnum = h['CAMERA']        # 0 (YJ) or 1 (HK)
+            camnum = h['CAMERA']
             newname = idate[0:8] + 'T' + idate[9:15] + 'C' + camnum
 
             newname += obstype_post + '.fits'

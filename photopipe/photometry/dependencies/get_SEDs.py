@@ -35,15 +35,11 @@ try:
     # rezero so that K=0 for all models
     for row in MODELS[1:]:
         row[1:] = row[1:] - row[-1]
-<<<<<<< HEAD
 except IOError as error:
     print(error)
     print('cannot find models file')
-
-=======
 except:
     raise IOError('cannot find models file')
->>>>>>> adding_rimas
 try:
     err_dict =pd.read_pickle(r'photopipe/photometry/dependencies/err_dict.p')
     ERR_FUNCTIONS = {}

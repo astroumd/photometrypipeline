@@ -737,10 +737,11 @@ def rebin(
     # print factor
     if verbose:
         print("newshape not used... {}".format(newshape))
+    # xrange() depreciated, changed to range()
     ev_list = ['a.reshape('] + \
-        ['newshape[%d],factor[%d],' % (i, i) for i in xrange(len_shape)] + \
-        [')'] + ['.sum(%d)' % (i+1) for i in xrange(len_shape)] + \
-        ['/factor[%d]' % i for i in xrange(len_shape)]
+        ['newshape[%d],factor[%d],' % (i, i) for i in range(len_shape)] + \
+        [')'] + ['.sum(%d)' % (i+1) for i in range(len_shape)] + \
+        ['/factor[%d]' % i for i in range(len_shape)]
 
     return eval(''.join(ev_list))
 

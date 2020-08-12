@@ -169,7 +169,7 @@ def autopipeimflatten(pipevar=None):
         pipevar = inpipevar
     # Finds prepared files and checks to see if there are any existing flattened files
     # Find flats in imworkingdir with name flat somewhere in a fits file name
-    print pipevar['imworkingdir']
+    print(pipevar['imworkingdir'])
     files = glob.glob(pipevar['imworkingdir'] + 'p' + pipevar['prefix'] + '*.fits')
     ffiles = glob.glob(pipevar['imworkingdir'] + 'fp' + pipevar['prefix'] + '*.fits')
     flats = glob.glob(pipevar['imworkingdir'] + '*flat*.fits')

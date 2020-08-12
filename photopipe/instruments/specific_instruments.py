@@ -424,7 +424,7 @@ class rimas(instrument):
             newname = idate[0:8] + 'T' + idate[9:15] + 'C' + camnum
 
             newname += obstype_post + '.fits'
-            print newname
+            print(newname)
             os.rename(file, newname)
 
         return

@@ -586,7 +586,7 @@ def cosmiczap(filename, outname, sigclip=6.0, maxiter=3, verbose=True):
     EXAMPLE:
         cosmiczap(filename, outname)
     DEPENDENCIES:
-        cosmic.py (described in http://arxiv.org/pdf/1506.07791v3.pdf)  
+        crclean.py (described in http://arxiv.org/pdf/1506.07791v3.pdf)
     FUTURE IMPROVEMENTS:
         Read readnoise from header?    
     """

@@ -3,7 +3,7 @@ import sys
 import numpy
 import os
 from photopipe.reduction.astrom import astrometrystats
-import urllib
+import urllib.request
 from astropy import wcs
 
 
@@ -164,7 +164,7 @@ def sextract(sexfilename, nxpix, nypix, border=3, corner=12, minfwhm=1.5, maxfwh
     # to distinguish stars from galaxies (removed by ellipticity) and cosmic rays
     if len(fwhmlist) > 5:
         sfwhmlist = sorted(fwhmlist)
-        fwhm20 = sfwhmlist[len(fwhmlist) / 5]  # percentile values
+        fwhm20 = sfwhmlist[int(len(fwhmlist) / 5)]  # percentile values
         fwhmmode = astrometrystats.most(sfwhmlist, vmax=0, vmin=0)
     else:
         fwhmmode = minfwhm
@@ -272,9 +272,11 @@ def getcatalog(catalog, ra, dec, boxsize, rawidth, decwidth, minmag=8.0, maxmag=
             queryurl = "http://tdc-www.harvard.edu/cgi-bin/scat?catalog=" + catalog + "&ra=" + str(ra) + "&dec=" + str(
                 dec) + "&system=J2000&dra=" + str(rawidth) + '&ddec=' + str(
                 decwidth) + "&sort=mag&epoch=2000.00000&nstar=6400"
-        cat = urllib.urlopen(queryurl)
-        catlines = cat.readlines()
-        cat.close()
+
+        # cat = urllib.urlopen(queryurl)
+        with urllib.request.urlopen(queryurl) as cat:
+            catlines = cat.readlines()
+            cat.close()
 
         if len(catlines) > 6400 - 20:
             print('WARNING: Reached maximum catalog query size.')

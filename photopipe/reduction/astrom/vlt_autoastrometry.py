@@ -121,7 +121,7 @@ import shutil
 import astropy.io.fits as pyfits
 import os
 import sys
-import urllib
+import urllib.request
 from photopipe.reduction.astrom import astrometrydist
 from photopipe.reduction.astrom import astrometrystats
 from photopipe.reduction.astrom import astrometrysources
@@ -422,10 +422,11 @@ def autoastrometry(
                 testqueryurl = "http://tdc-www.harvard.edu/cgi-bin/scat?catalog=" + trycat + "&ra=" + str(centerra) +\
                                "&dec=" + str(centerdec) + "&system=J2000&rad=" + str(-180)
                 commentlen = 4
-            
-            check = urllib.urlopen(testqueryurl)
-            checklines = check.readlines()
-            check.close()
+
+            #check = urllib.urlopen(testqueryurl)
+            with urllib.request.urlopen(testqueryurl) as check:
+                checklines = check.readlines()
+                check.close()
 
             # Find comment line for those pulled by Harvard using comment identifier
             if trycat != 'sdss':

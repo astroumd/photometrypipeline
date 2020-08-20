@@ -738,12 +738,15 @@ def rebin(
     if verbose:
         print("newshape not used... {}".format(newshape))
     # xrange() depreciated, changed to range()
+    rangeshape = range(len_shape)
+    factor = factor.astype(np.int)
+    newshape = newshape.astype(np.int)
     ev_list = ['a.reshape('] + \
-        ['newshape[%d],factor[%d],' % (i, i) for i in range(len_shape)] + \
-        [')'] + ['.sum(%d)' % (i+1) for i in range(len_shape)] + \
-        ['/factor[%d]' % i for i in range(len_shape)]
-
-    return eval(''.join(ev_list))
+        ['newshape[%d],factor[%d],' % (i, i) for i in rangeshape] + \
+        [')'] + ['.sum(%d)' % (i+1) for i in rangeshape] + \
+        ['/factor[%d]' % i for i in rangeshape]
+    evaluation = ''.join(ev_list)
+    return eval(evaluation)
 
 
 def rebin2x2(a):

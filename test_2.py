@@ -1,6 +1,6 @@
 from photopipe.reduction.preprocess import choose
-from photopipe.reduction.preprocess import mkmaster
-from photopipe.reduction.auto.autoproc import autoproc
+from photopipe.reduction.preprocess import master
+from photopipe.reduction.auto.autoproc_2 import autoproc_2
 from shutil import move
 import os
 import glob
@@ -66,9 +66,9 @@ science_dict = choose.choose_science(
 )
 
 print('start mkmaster bias')
-mkmaster.mkmaster('lmi', bias_calib, 'bias')
+master.mkmaster('lmi', bias_calib, 'bias')
 print('start mkmaster flat')
-mkmaster.mkmaster('lmi', flat_calib, 'flat')
+master.mkmaster('lmi', flat_calib, 'flat')
 
 print('start move files master biases to selected folder')
 for f in glob.glob(os.path.join(base_path, 'bias*.fits')):
@@ -92,6 +92,6 @@ for f in glob.glob(os.path.join(base_path, 'flat*.fits')):
     print('moving {0} to {1}'.format(f_base_path, f_selected_path))
     move(f_base_path, f_selected_path)
 
-autoproc(datadir=selected_path+os.path.sep,
+autoproc_2(datadir=selected_path+os.path.sep,
          imdir=reduced_path+os.path.sep,
          redo=1, nomastersky=True)

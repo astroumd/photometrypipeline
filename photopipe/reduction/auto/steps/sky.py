@@ -9,7 +9,7 @@ import datetime
 from astropy.time import Time
 import sys
 from scipy import interpolate
-from photopipe.reduction.astrom import vlt_autoastrometry
+from photopipe.reduction.astrom import autoastrometry3
 from photopipe.photometry.dependencies import get_SEDs
 
 

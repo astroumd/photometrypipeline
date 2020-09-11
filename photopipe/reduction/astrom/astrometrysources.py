@@ -276,6 +276,9 @@ def getcatalog(catalog, ra, dec, boxsize, rawidth, decwidth, minmag=8.0, maxmag=
         # cat = urllib.urlopen(queryurl)
         with urllib.request.urlopen(queryurl) as cat:
             catlines = cat.readlines()
+            #catlines = [line.decode('utf-8') for line in catlines]
+            catlines = [(line.decode('utf-8')).strip() for line in catlines]
+            #catlines = [line + '\n' for line in catlines]
             cat.close()
 
         if len(catlines) > 6400 - 20:
@@ -318,6 +321,7 @@ def getcatalog(catalog, ra, dec, boxsize, rawidth, decwidth, minmag=8.0, maxmag=
 
         if not comment:
             if catalog == 'sdss':
+
                 cline = line.split(',')
             else:
                 cline = line.split()

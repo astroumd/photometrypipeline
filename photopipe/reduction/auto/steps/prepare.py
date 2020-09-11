@@ -9,7 +9,7 @@ import datetime
 from astropy.time import Time
 import sys
 from scipy import interpolate
-from photopipe.reduction.astrom import vlt_autoastrometry
+from photopipe.reduction.astrom import autoastrometry3
 from photopipe.photometry.dependencies import get_SEDs
 
 inpipevar = {
@@ -61,7 +61,7 @@ def autopipedefaults(pipevar=None):
         print('Creating imaging working directory: ', pipevar['imworkingdir'])
         os.makedirs(pipevar['imworkingdir'])
 
-    pipevar['autoastrocommand'] = os.path.abspath(vlt_autoastrometry.__file__)
+    pipevar['autoastrocommand'] = os.path.abspath(autoastrometry3.__file__)
     pipevar['getsedcommand'] = os.path.abspath(get_SEDs.__file__)
 
 

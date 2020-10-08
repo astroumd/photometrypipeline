@@ -33,6 +33,7 @@ from math import sin, cos, tan, asin, sqrt, pi
 import time, datetime
 import string
 import urllib.request, urllib.parse, urllib.error
+from photopipe.reduction.astrom import astrometrydist_py3 as ad
 try:
    import ephem
 except:
@@ -48,7 +49,7 @@ MAGERR_AUTO
 ELLIPTICITY
 FWHM_IMAGE
 FLAGS'''
-    pf = open('temp.param','w')
+    pf = open('tempsource.param','w')
     pf.write(params)
     pf.close()
 
@@ -524,7 +525,8 @@ def getcatalog(catalog, ra, dec, boxsize, minmag=8.0, maxmag=-1, maxpm=60.):
         pmracolumn = 10
         pmdeccolumn = 11   
         queryurl = "http://tdc-www.harvard.edu/cgi-bin/scat?catalog=" + catalog +  "&ra=" + str(ra) + "&dec=" + str(dec) + "&system=J2000&rad=" + str(-boxsize) + "&sort=mag&epoch=2000.00000&nstar=6400"
-        #print queryurl
+        print("!!!!Printing URL")
+        print(queryurl)
         cat = urllib.request.urlopen(queryurl)
         catlines = cat.readlines()
         cat.close()
@@ -543,19 +545,37 @@ def getcatalog(catalog, ra, dec, boxsize, minmag=8.0, maxmag=-1, maxpm=60.):
            return []
         racolumn = 0
         deccolumn = 1   # defaults
-        magcolumn = -1    #  (to override, specify in first line using format #:0,1,2)  
+        magcolumn = -1    #  (to override, specify in first line using format #:0,1,2)
+
+
         catlines = cat.readlines()
         cat.close()
     #print '                ', maxmag, maxpm
-    l = -1
+    comment = True
+    index = 0
+    cat_len = len(catlines)
+    print("catlength")
+    print(cat_len)
+    #print("!!!!Comments")
+    while comment:
+        if index == cat_len - 1:
+            l = -1
+            comment = False
+        elif catlines[index].decode('utf-8').strip().find("---") == -1:
+            #print(catlines[index].decode('utf-8').strip())
+            index += 1
+        else:
+            #print(catlines[index].decode('utf-8').strip())
+            l = index
+            comment = False
+    #l = -1
     catlist = []
     fwhmlist = []
-
-    while l < len(catlines)-1:
+    while l < cat_len-1:
         l += 1
-        inline = catlines[l].strip()
-        print(inline)
-        if len(inline) <= 2: continue
+        inline = catlines[l].decode('utf-8').strip()
+        #print(inline)
+        #if len(inline.split()) <= 2 : continue
         if inline[0:2] == '#:':
              inlinearg = inline[2:].split(',')
              racolumn = int(inlinearg[0])-1
@@ -569,7 +589,6 @@ def getcatalog(catalog, ra, dec, boxsize, minmag=8.0, maxmag=-1, maxpm=60.):
         inlineargByte = inline.split()
         inlinearg = [a for a in inlineargByte]
         narg = len(inlinearg)
-    
         if inlinearg[racolumn].find(':') == -1:
            ra = float(inlinearg[racolumn])
         else:
@@ -591,7 +610,7 @@ def getcatalog(catalog, ra, dec, boxsize, minmag=8.0, maxmag=-1, maxpm=60.):
         else:
             pmra = pmdec = 0
         #print
-        #print ra, dec, mag,
+        #print("{},{},{}".format(ra, dec, mag))
         #print pmra, pmdec,
         if mag > maxmag: continue #don't believe anything this faint
         if mag < minmag: continue #ignore anything this bright
@@ -619,6 +638,9 @@ def distmatch(sexlist, catlist, maxrad=180, minrad=10, tolerance=0.010, reqmatch
        print('PA tolerance cannot be negative!!!')
        patolerance = abs(patolerance)
     if uncpa < 0: uncpa = 720
+
+    print("Testing reqmatch = 3")
+    reqmatch = 3
 
     declist = []
     for s in sexlist:
@@ -782,7 +804,8 @@ def distmatch(sexlist, catlist, maxrad=180, minrad=10, tolerance=0.010, reqmatch
         #print '   ', distance(sexlist[si], catlist[ci])
                 
     #print 'All done (in', time.clock()-mtime0, 's)'
-    
+    print("Initial Matches!!!!!")
+    print(len(primarymatchs))
     nmatches = len(smatch)
     if (nmatches == 0):
         print('Found no potential matches of any sort (including pairs).')
@@ -793,7 +816,9 @@ def distmatch(sexlist, catlist, maxrad=180, minrad=10, tolerance=0.010, reqmatch
 
     # Kill the bad matches
     rejects = 0
-    
+    print("Reqmatch")
+    print(reqmatch)
+    print("List nmatch")
     #Get rid of matches that don't pass the reqmatch cut
     #if nmatches > 10 and max(nmatch) >= reqmatch:
     for i in range(len(primarymatchs)-1,-1,-1):
@@ -806,7 +831,8 @@ def distmatch(sexlist, catlist, maxrad=180, minrad=10, tolerance=0.010, reqmatch
             del cmatch[i]
             del nmatch[i]
             #rejects += 1  no longer a "reject"
-
+    print("Matches after first reqmatch!!!!!")
+    print(len(primarymatchs))
     if len(smatch) < 1:
         print('Found no matching clusters of reqmatch =', reqmatch)
         return [], [], []
@@ -829,8 +855,7 @@ def distmatch(sexlist, catlist, maxrad=180, minrad=10, tolerance=0.010, reqmatch
                 del cmatch[i]
                 del nmatch[i]
                 #rejects += 1   no longer a "reject"
-    
-      
+
     nmatches = len(smatch) # recalculate with the new reqmatch and with prunes supposedly removed
     print('Found',nmatches,'candidate matches.')
 
@@ -859,6 +884,8 @@ def distmatch(sexlist, catlist, maxrad=180, minrad=10, tolerance=0.010, reqmatch
                 del cmatch[i]
                 del nmatch[i]
                 rejects += 1
+        print("Matches after second reqmatch!!!!!")
+        print(len(primarymatchs))
     
         medpa = median(mpa)
         stdevpa = stdev(mpa)
@@ -874,7 +901,8 @@ def distmatch(sexlist, catlist, maxrad=180, minrad=10, tolerance=0.010, reqmatch
                 del cmatch[i]
                 del nmatch[i]
                 rejects += 1  #these aren't necessarily bad, just making more manageable.
-
+    print("Matches after third reqmatch!!!!!")
+    print(len(primarymatchs))
 
     # New verification step: calculate distances and PAs between central stars of matches
     ndistflags = [0]*len(primarymatchs)
@@ -902,16 +930,16 @@ def distmatch(sexlist, catlist, maxrad=180, minrad=10, tolerance=0.010, reqmatch
                    pass
 
          # delete bad clusters
-        ntestmatches = len(primarymatchs)
-        for i in range(ntestmatches-1,-1,-1):
-            if ndistflags[i] == ntestmatches-1:   #if every comparison is bad, this is a bad match
-                del mpa[i]
-                del primarymatchs[i]
-                del primarymatchc[i]
-                del smatch[i]
-                del cmatch[i]
-                del nmatch[i]
-                rejects += 1
+        # ntestmatches = len(primarymatchs)
+        # for i in range(ntestmatches-1,-1,-1):
+        #     if ndistflags[i] == ntestmatches-1:   #if every comparison is bad, this is a bad match
+        #         del mpa[i]
+        #         del primarymatchs[i]
+        #         del primarymatchc[i]
+        #         del smatch[i]
+        #         del cmatch[i]
+        #         del nmatch[i]
+        #         rejects += 1
 
     print('Rejected', rejects, 'bad matches.')
     nmatches = len(primarymatchs)
@@ -1313,8 +1341,8 @@ overwrite=False, outfile='', saturation=-1, quiet=False, norot=0):
     if catalog == '':
         trycats = ['sdss', 'ub2', 'tmc']
         for trycat in trycats:
-            testqueryurl = "http://tdc-www.harvard.edu/cgi-bin/scat?catalog=" + trycat +  "&ra=" + str(centerra) + "&dec=" + str(centerdec) + "&system=J2000&rad=" + str(-90)
-            #print testqueryurl
+            # testqueryurl = "http://tdc-www.harvard.edu/cgi-bin/scat?catalog=" + trycat +  "&ra=" + str(centerra) + "&dec=" + str(centerdec) + "&system=J2000&rad=" + str(-90)
+            testqueryurl = "http://cas.sdss.org/dr7/en/tools/search/x_rect.asp?min_ra=44.45117333344&max_ra=44.64117333344&min_dec=-9.053027666650001&max_dec=-8.86302766665&entries=top&topnum=6400&format=csv"
             check = urllib.request.urlopen(testqueryurl)
             checklines = check.readlines()
             check.close()
@@ -1458,6 +1486,7 @@ overwrite=False, outfile='', saturation=-1, quiet=False, norot=0):
     print('Pair comparison search radius: %.2f"'%maxrad)
     print('Using reqmatch =', reqmatch)
     (primarymatchs, primarymatchc, mpa) = distmatch(goodsexlist, catlist, maxrad, minrad, tolerance, reqmatch, patolerance, uncpa)
+    #(primarymatchs, primarymatchc, mpa) = ad.distmatch(goodsexlist, catlist, maxrad, minrad, reqmatch,patolerance, uncpa)
 
     nmatch = len(primarymatchs)
     if nmatch == 0:
@@ -1973,9 +2002,9 @@ def main():
                print("failed to solve")
 
     try:
-       os.remove('temp.param')
+       os.remove('tempsource.param')
     except:
-       print('Could not remove temp.param for some reason')
+       print('Could not remove tempsource.param for some reason')
 
 ######################################################################
 # Running as executable

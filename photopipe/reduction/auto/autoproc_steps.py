@@ -12,6 +12,9 @@ from scipy import interpolate
 from photopipe.reduction.astrom import autoastrometry3
 from photopipe.photometry.dependencies import get_SEDs
 
+from astropy import units as u
+from astropy.coordinates import Angle
+
 
 inpipevar = {
     'autoastrocommand': 'autoastrometry', 'getsedcommand': 'get_SEDs', 'sexcommand': 'sex', 'swarpcommand': 'swarp',
@@ -576,8 +579,8 @@ def autopipeastrometry(pipevar=None):
         if 'flat' in targ:
             continue
         
-        #cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat)
-        cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat) + ' -r ' + str(ascen) + ' -d ' + str(decl)
+        cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat)
+        #cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat) + ' -r ' + str(ascen) + ' -d ' + str(decl)
         
         # Run direct astrometry
         if pipevar['verbose'] > 0:

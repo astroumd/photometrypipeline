@@ -185,7 +185,7 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./'):
         # save master to fits
         hdulist = pf.HDUList([hdu])
         try:
-            hdulist.writeto('{}{}_{}.fits'.format(master_dir, mtype, band), clobber=True)
+            hdulist.writeto('{}{}_{}.fits'.format(master_dir, mtype, band), overwrite=True)
         except IOError:
             os.mkdir(master_dir)
-            hdulist.writeto('{}{}_{}.fits'.format(master_dir, mtype, band), clobber=True)
+            hdulist.writeto('{}{}_{}.fits'.format(master_dir, mtype, band), overwrite=True)

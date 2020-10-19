@@ -408,7 +408,7 @@ def savefile(file, im, filter, h):
     newfile = '{}_{}.fits'.format(file, filter)
     h['FILTER'] = filter
     if os.path.exists(newfile): os.remove(newfile) # delete old copy
-    pf.writeto(newfile, im, header=h, clobber=True) # save object frame
+    pf.writeto(newfile, im, header=h, overwrite=True) # save object frame
     return newfile
 
 
@@ -781,7 +781,7 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
                                                            instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_img_post)))
                         im_img = im[instrum.slice('C{}{}'.format(cam_i, f_img_post))]
                         hnew = instrum.change_header_keywords(h_c, 'C{}{}'.format(cam_i, f_img_post))
-                        pf.writeto(imfits, im_img, header=hnew, clobber=True)  # save object frame
+                        pf.writeto(imfits, im_img, header=hnew, overwrite=True)  # save object frame
                         ## 'has_key()' depreciated; changed  to 'in'
                         if instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_img_post)) in fits_list_dict:
                             fits_list_dict[instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_img_post))].append(imfits)
@@ -793,7 +793,7 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
                                                             instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_sky_post)))
                         im_sky = im[instrum.slice('C{}{}'.format(cam_i, f_sky_post))]
                         hnew = instrum.change_header_keywords(h_c, 'C{}{}'.format(cam_i, f_sky_post))
-                        pf.writeto(skyfits, im_sky, header=hnew, clobber=True)  # save sky frame
+                        pf.writeto(skyfits, im_sky, header=hnew, overwrite=True)  # save sky frame
                         ## 'has_key()' depreciated; changed  to 'in'
                         if instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_sky_post)) in fits_list_dict:
                             fits_list_dict[instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_sky_post))].append(skyfits)
@@ -807,7 +807,7 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
                         imfits = '{}/{}_{}_{}.fits'.format(targetdir, fits_id, instrum.objname, cam_i)
                         im_img = im[instrum.slice('C{}'.format(cam_i))]
                         hnew = instrum.change_header_keywords(h_c, 'C{}'.format(cam_i))
-                        pf.writeto(imfits, im_img, header=hnew, clobber=True)
+                        pf.writeto(imfits, im_img, header=hnew, overwrite=True)
                         ## 'has_key()' depreciated; changed  to 'in'
                         if instrum.get_filter(h_c, 'C{}'.format(cam_i)) in fits_list_dict:
                             fits_list_dict[instrum.get_filter(h_c, 'C{}'.format(cam_i))].append(imfits)

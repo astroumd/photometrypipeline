@@ -297,7 +297,7 @@ def autoastrometry(
         if os.path.isfile('temp.fits'):
             os.remove('temp.fits')
         fits[0].header = h
-        fits.writeto('temp.fits', output_verify='silentfix')  # ,clobber=True
+        fits.writeto('temp.fits', output_verify='silentfix')  # ,overwrite=True
         fits.close()
         fits = pyfits.open('temp.fits')
         h = fits[0].header
@@ -705,7 +705,7 @@ def autoastrometry(
     except OSError:
         pass
     fits[0].header = h
-    fits.writeto(outfile, output_verify='silentfix')  # ,clobber=True
+    fits.writeto(outfile, output_verify='silentfix')  # ,overwrite=True
 
     if not quiet:
         print('Written to ' + outfile)

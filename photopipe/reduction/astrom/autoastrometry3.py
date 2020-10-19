@@ -1163,7 +1163,7 @@ overwrite=False, outfile='', saturation=-1, quiet=False, norot=0):
        
        if os.path.isfile('temp.fits'): os.remove('temp.fits')
        fits[sciext].header = h
-       fits.writeto('temp.fits',output_verify='silentfix') #,clobber=True
+       fits.writeto('temp.fits',output_verify='silentfix') #,overwrite=True
        fits.close()
        fits = af.open('temp.fits')
        h = fits[sciext].header
@@ -1268,7 +1268,7 @@ overwrite=False, outfile='', saturation=-1, quiet=False, norot=0):
        #Rewrite and reload the image if the header was modified in a significant way so sextractor sees the same thing that we do.
        if os.path.isfile('temp.fits'): os.remove('temp.fits')
        fits[sciext].header = h
-       fits.writeto('temp.fits',output_verify='silentfix') #,clobber=True
+       fits.writeto('temp.fits',output_verify='silentfix') #,overwrite=True
        fits.close()
        fits = af.open('temp.fits')
        h = fits[sciext].header
@@ -1634,7 +1634,7 @@ overwrite=False, outfile='', saturation=-1, quiet=False, norot=0):
     except:
         pass
     fits[sciext].header = h
-    fits.writeto(outfile,output_verify='silentfix') #,clobber=True
+    fits.writeto(outfile,output_verify='silentfix') #,overwrite=True
     print('Written to '+outfile)
     
     if (warning == 0):

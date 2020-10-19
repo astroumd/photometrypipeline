@@ -9,7 +9,9 @@ from six.moves import urllib
 try:
     import astrometrystats
 except:
-    sys.path.extend(os.path.dirname(__file__))
+    file_path = os.path.dirname(__file__)
+    print('extending file path {}'.format(file_path))
+    sys.path.insert(0, file_path)
     import astrometrystats
 
 

@@ -132,7 +132,9 @@ try:
     import astrometrystats
     import astrometrysources
 except:
-    sys.path.extend(os.path.basename(__file__))
+    file_path = os.path.basename(__file__)
+    print('extending file path {}'.format(file_path))
+    sys.path.extend(file_path)
     import astrometrydist
     import astrometrystats
     import astrometrysources

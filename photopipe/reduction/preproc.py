@@ -135,7 +135,7 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0,1,2,3], auto=False, rej
                     continue
 
             # check if instrument camera is split, if it is make sure correct specs being used
-            if instrum.is_cam_split(cam_i) == True:
+            if instrum.is_cam_split(cam_i):
                 print('\t* Split filter used')
             else:
                 if (instrum.get_filter(h, 'C{}'.format(cam_i)) not in instrum.possible_filters()) and (ftype is instrum.flatname):
@@ -150,7 +150,7 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0,1,2,3], auto=False, rej
             # return quick image summary
             [im1, m, s, sfrac] = image_summary(im, sat_pt, cam_i, instrum, split=instrum.is_cam_split(cam_i))
             
-            if instrum.is_cam_split(cam_i) == True:
+            if instrum.is_cam_split(cam_i):
                 [m1,m2] = m; [s1,s2] = s; [im1,im2] = im1; [sfrac1, sfrac2] = sfrac  
             
             # if auto select then find values with correct ranges

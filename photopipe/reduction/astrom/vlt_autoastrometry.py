@@ -127,9 +127,9 @@ import numpy
 import astropy.io.fits as pyfits
 from six.moves import urllib
 
-from . import astrometrydist
-from . import astrometrystats
-from . import astrometrysources
+import astrometrydist
+import astrometrystats
+import astrometrysources
 
 try:
     import ephem
@@ -297,7 +297,7 @@ def autoastrometry(
         if os.path.isfile('temp.fits'):
             os.remove('temp.fits')
         fits[0].header = h
-        fits.writeto('temp.fits', output_verify='silentfix')  # ,overwrite=True
+        fits.writeto('temp.fits', output_verify='silentfix')  # ,clobber=True
         fits.close()
         fits = pyfits.open('temp.fits')
         h = fits[0].header
@@ -424,8 +424,13 @@ def autoastrometry(
         trycats = ['sdss', 'tmpsc', 'ub2', 'tmc']
         for trycat in trycats:
             if trycat == 'sdss':
-                testqueryurl = "http://cas.sdss.org/dr7/en/tools/search/x_radial.asp?ra=" + str(centerra) + "&dec=" \
-                               + str(centerdec) + "&radius=" + str(3) + "&entries=top&topnum=50000&format=csv"
+                # testqueryurl = "http://cas.sdss.org/dr7/en/tools/search/x_radial.asp?ra=" + str(centerra) + "&dec=" \
+                #                + str(centerdec) + "&radius=" + str(3) + "&entries=top&topnum=50000&format=csv"
+                testqueryurl = \
+                    "http://cas.sdss.org/dr16/en/tools/search/x_results.aspx?searchtool=Radial&TaskName=Skyserver.Search.Radial&ReturnHtml=true&whichphotometry=optical&coordtype=equatorial&ra=" + \
+                    str(centerra) + "&dec=" + str(centerdec) + "&radius=" + str(3) + \
+                    "&format=csv&TableName=&limit=500000"
+
                 commentlen = 4
             else:
                 testqueryurl = "http://tdc-www.harvard.edu/cgi-bin/scat?catalog=" + trycat + "&ra=" + str(centerra) + \
@@ -705,7 +710,7 @@ def autoastrometry(
     except OSError:
         pass
     fits[0].header = h
-    fits.writeto(outfile, output_verify='silentfix')  # ,overwrite=True
+    fits.writeto(outfile, output_verify='silentfix')  # ,clobber=True
 
     if not quiet:
         print('Written to ' + outfile)

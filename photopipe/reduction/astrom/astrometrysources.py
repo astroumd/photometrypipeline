@@ -4,7 +4,7 @@ import os
 import sys
 
 import numpy
-from photopipe.reduction.astrom import astrometrystats
+import astrometrystats
 from six.moves import urllib
 
 
@@ -253,14 +253,21 @@ def getcatalog(catalog, ra, dec, boxsize, rawidth, decwidth, minmag=8.0, maxmag=
         if catalog == 'sdss':
             if ((ra + rawidth / 3600.) - (ra - rawidth / 3600.) < 0.2) and (
                     (dec + rawidth / 3600.) - (dec - rawidth / 3600.) < 0.2):
-                queryurl = ("http://cas.sdss.org/dr7/en/tools/search/x_rect.asp?min_ra=" + str(
+                # queryurl = ("http://cas.sdss.org/dr7/en/tools/search/x_rect.asp?min_ra=" + str(
+                #     ra - rawidth / 3600.) + "&max_ra=" + str(ra + rawidth / 3600.) + "&min_dec=" + str(
+                #     dec - decwidth / 3600.) + "&max_dec=" + str(
+                #     dec + decwidth / 3600.) + "&entries=top&topnum=6400&format=csv")
+                queryurl = "http://cas.sdss.org/dr16/en/tools/search/x_results.aspx?searchtool=Rectangular&TaskName=Skyserver.Search.Rectangular&ReturnHtml=true&whichphotometry=optical&coordtype=equatorial&min_ra=" + str(
                     ra - rawidth / 3600.) + "&max_ra=" + str(ra + rawidth / 3600.) + "&min_dec=" + str(
                     dec - decwidth / 3600.) + "&max_dec=" + str(
-                    dec + decwidth / 3600.) + "&entries=top&topnum=6400&format=csv")
+                    dec + decwidth / 3600.) + "&format=csv&TableName=&limit=6400"
             else:
-                queryurl = ("http://cas.sdss.org/dr7/en/tools/search/x_rect.asp?min_ra=" + str(
+                # queryurl = ("http://cas.sdss.org/dr7/en/tools/search/x_rect.asp?min_ra=" + str(
+                #     ra - 0.095) + "&max_ra=" + str(ra + 0.095) + "&min_dec=" + str(dec - 0.095) + "&max_dec=" + str(
+                #     dec + 0.095) + "&entries=top&topnum=6400&format=csv")
+                queryurl = "http://cas.sdss.org/dr16/en/tools/search/x_results.aspx?searchtool=Rectangular&TaskName=Skyserver.Search.Rectangular&ReturnHtml=true&whichphotometry=optical&coordtype=equatorial&&min_ra=" + str(
                     ra - 0.095) + "&max_ra=" + str(ra + 0.095) + "&min_dec=" + str(dec - 0.095) + "&max_dec=" + str(
-                    dec + 0.095) + "&entries=top&topnum=6400&format=csv")
+                    dec + 0.095) + "&format=csv&TableName=&limit=6400"
             racolumn = 7
             deccolumn = 8
             magcolumn = 12
@@ -273,12 +280,15 @@ def getcatalog(catalog, ra, dec, boxsize, rawidth, decwidth, minmag=8.0, maxmag=
                 decwidth) + "&sort=mag&epoch=2000.00000&nstar=6400"
 
         # cat = urllib.urlopen(queryurl)
-        with urllib.request.urlopen(queryurl) as cat:
-            catlines = cat.readlines()
-            # catlines = [line.decode('utf-8') for line in catlines]
-            catlines = [(line.decode('utf-8')).strip() for line in catlines]
-            # catlines = [line + '\n' for line in catlines]
-            cat.close()
+        cat = urllib.request.urlopen(queryurl)
+        catlines = cat.readlines()
+        # with urllib.request.urlopen(queryurl) as cat:
+        #     print(cat)
+        #     catlines = cat.readlines()
+        #     # catlines = [line.decode('utf-8') for line in catlines]
+        #     catlines = [(line.decode('utf-8')).strip() for line in catlines]
+        #     # catlines = [line + '\n' for line in catlines]
+        #     # cat.close()
 
         if len(catlines) > 6400 - 20:
             print('WARNING: Reached maximum catalog query size.')
@@ -315,7 +325,7 @@ def getcatalog(catalog, ra, dec, boxsize, rawidth, decwidth, minmag=8.0, maxmag=
     # SDSS direct query has different format than other scat queries
     if catalog == 'sdss':
         comment = False
-        catlines = catlines[1:]
+        catlines = catlines[2:]
 
     for line in catlines:
 

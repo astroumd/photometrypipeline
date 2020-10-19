@@ -4,7 +4,7 @@ import os
 import sys
 
 import numpy
-from photopipe.reduction.astrom import astrometrystats
+import astrometrystats
 from six.moves import urllib
 
 

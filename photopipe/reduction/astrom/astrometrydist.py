@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 import numpy
-from photopipe.reduction.astrom import astrometrystats
+import astrometrystats
 
 
 def distance(obj1, obj2):

@@ -90,4 +90,4 @@ for f in glob.glob(os.path.join(base_path, 'flat*.fits')):
 
 autoproc(datadir=selected_path+os.path.sep,
          imdir=reduced_path+os.path.sep,
-         redo=1, nomastersky=True)
+         redo=1, nomastersky=True, quiet=False)

@@ -8,7 +8,7 @@ from six.moves import urllib
 
 try:
     import astrometrystats
-except ImportError:
+except:
     sys.path.extend(os.path.basename(__file__))
     import astrometrystats
 

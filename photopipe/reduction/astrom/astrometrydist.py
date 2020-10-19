@@ -4,7 +4,7 @@ import numpy
 
 try:
     import astrometrystats
-except ImportError:
+except:
     import sys
     import os.path
     sys.path.extend(os.path.basename(__file__))

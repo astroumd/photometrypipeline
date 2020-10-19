@@ -131,7 +131,7 @@ try:
     import astrometrydist
     import astrometrystats
     import astrometrysources
-except ImportError:
+except:
     sys.path.extend(os.path.basename(__file__))
     import astrometrydist
     import astrometrystats

@@ -7,7 +7,7 @@ try:
 except:
     import sys
     import os.path
-    sys.path.extend(os.path.basename(__file__))
+    sys.path.extend(os.path.dirname(__file__))
     import astrometrystats
 
 

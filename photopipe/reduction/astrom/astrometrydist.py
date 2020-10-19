@@ -1,7 +1,14 @@
 from __future__ import print_function
 
 import numpy
-import astrometrystats
+
+try:
+    import astrometrystats
+except ImportError:
+    import sys
+    import os.path
+    sys.path.extend(os.path.basename(__file__))
+    import astrometrystats
 
 
 def distance(obj1, obj2):

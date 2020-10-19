@@ -127,9 +127,15 @@ import numpy
 import astropy.io.fits as pyfits
 from six.moves import urllib
 
-import astrometrydist
-import astrometrystats
-import astrometrysources
+try:
+    import astrometrydist
+    import astrometrystats
+    import astrometrysources
+except ImportError:
+    sys.path.extend(os.path.basename(__file__))
+    import astrometrydist
+    import astrometrystats
+    import astrometrysources
 
 try:
     import ephem

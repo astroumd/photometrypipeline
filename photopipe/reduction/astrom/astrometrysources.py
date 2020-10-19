@@ -4,8 +4,13 @@ import os
 import sys
 
 import numpy
-import astrometrystats
 from six.moves import urllib
+
+try:
+    import astrometrystats
+except ImportError:
+    sys.path.extend(os.path.basename(__file__))
+    import astrometrystats
 
 
 class Obj:

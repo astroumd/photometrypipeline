@@ -4,8 +4,15 @@ import os
 import sys
 
 import numpy
-import astrometrystats
 from six.moves import urllib
+
+try:
+    import astrometrystats
+except ModuleNotFoundError:
+    file_path = os.path.dirname(__file__)
+    print('extending file path {}'.format(file_path))
+    sys.path.insert(0, file_path)
+    import astrometrystats
 
 
 class Obj:
@@ -282,6 +289,7 @@ def getcatalog(catalog, ra, dec, boxsize, rawidth, decwidth, minmag=8.0, maxmag=
         # cat = urllib.urlopen(queryurl)
         cat = urllib.request.urlopen(queryurl)
         catlines = cat.readlines()
+        catlines = [catline.decode('utf8') for catline in catlines]
         # with urllib.request.urlopen(queryurl) as cat:
         #     print(cat)
         #     catlines = cat.readlines()

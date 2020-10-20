@@ -1,7 +1,16 @@
 from __future__ import print_function
 
 import numpy
-import astrometrystats
+
+try:
+    import astrometrystats
+except ModuleNotFoundError:
+    import sys
+    import os.path
+    file_path = os.path.dirname(__file__)
+    print('extending file path {}'.format(file_path))
+    sys.path.insert(0, file_path)
+    import astrometrystats
 
 
 def distance(obj1, obj2):

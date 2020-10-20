@@ -131,7 +131,7 @@ try:
     import astrometrydist
     import astrometrystats
     import astrometrysources
-except:
+except ModuleNotFoundError:
     file_path = os.path.dirname(__file__)
     print('extending file path {}'.format(file_path))
     sys.path.insert(0, file_path)

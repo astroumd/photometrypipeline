@@ -4,7 +4,7 @@ import numpy
 
 try:
     import astrometrystats
-except:
+except ModuleNotFoundError:
     import sys
     import os.path
     file_path = os.path.dirname(__file__)

@@ -495,7 +495,7 @@ def autoastrometry(
     if ncat > 16 and catdensity > 3 * density:
         print('Image is shallow.  Trimming reference catalog...')
         while catdensity > 3 * density:
-            catlist = catlist[0:len(catlist) * 4 / 5]
+            catlist = catlist[0:int(len(catlist)*4/5)]
             ncat = len(catlist)
             catdensity = ncat / (2 * boxsize / 60.) ** 2
 
@@ -512,11 +512,11 @@ def autoastrometry(
         print('Image and/or catalog still too deep.  Trimming...')
         while ngood * ncat > 120 * 120 * 4:
             if density > catdensity:
-                goodsexlist = goodsexlist[0:len(goodsexlist) * 4 / 5]
+                goodsexlist = goodsexlist[0:int(len(goodsexlist)*4/5)]
                 ngood = len(goodsexlist)
                 density = ngood / area_sqmin
             else:
-                catlist = catlist[0:len(catlist) * 4 / 5]
+                catlist = catlist[0:int(len(catlist)*4/5)]
                 ncat = len(catlist)
                 catdensity = ncat / (2 * boxsize / 60.) ** 2
 

@@ -362,8 +362,8 @@ def autoastrometry(
     # pixscale = numpy.sqrt(xscale*yscale) * 3600.
 
     # Finds center pixel in each dimension
-    centerx = nxpix / 2
-    centery = nypix / 2
+    centerx = int(nxpix / 2)
+    centery = int(nypix / 2)
 
     # Calculate how the center pixel relates the to the header value's crpix1/2.
     # Theoretically, centerx and crpix1 should be the same.  But most of the time, they are not.

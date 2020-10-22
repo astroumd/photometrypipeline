@@ -103,7 +103,7 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
             'CD1_1', 'CD1_2', 'CD2_1', 'CD2_2',
             'CRPIX1', 'CRPIX2', 'CRVAL1', 'CRVAL2', 'CTYPE1', 'CTYPE2',
             'PV1_1', 'PV2_1', 'PV1_17', 'PV2_17', 'PV1_19', 'PV2_19', 'PV1_21', 'PV2_21',
-            'PV1_31', 'PV2_31', 'PV1_33', 'PV2_33', 'PV1_35', 'PV2_35', 'PV1_37', 'PV2_37'
+            'PV1_31', 'PV2_31', 'PV1_33', 'PV2_33', 'PV1_35', 'PV2_35', 'PV1_37', 'PV2_37', 'OBSRA', 'OBSDEC'
         ]
 
         # Finds list of unnecessary keywords, then deletes extraneous
@@ -870,7 +870,15 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
     z = []
     modmag = np.copy(obsmag)
     for i in np.arange(nobs):
-        indz = sum(diff[i, :]*wts[i, :])/sum(wts[i, :])
+        print "Sum Issue 1: Fix in case sum = 0"
+        print sum(wts[i, :])
+        print(wts[i,:])
+        print("indz:")
+        if sum(wts[i, :]) != 0:
+            indz = sum(diff[i, :]*wts[i, :])/sum(wts[i, :])
+        else:
+            indz = 0
+        print(indz)
         z += [indz]
         modmag[i, :] = obsmag[i, :] + indz
     
@@ -884,7 +892,15 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
     # Recalculate zeropoint using corrected weights (difference still same)        
     modmag2 = np.copy(obsmag)
     for i in np.arange(nobs):
-        indz = sum(diff[i, :]*wts[i, :])/sum(wts[i, :])
+        print "Sum Issue 2: Fix in case sum = 0"
+        print sum(wts[i, :])
+        print(wts[i, :])
+        print("indz:")
+        if sum(wts[i, :]) != 0:
+            indz = sum(diff[i, :] * wts[i, :]) / sum(wts[i, :])
+        else:
+            indz = 0
+        print(indz)
         z2 += [indz]
         modmag2[i, :] = obsmag[i, :] + indz
     

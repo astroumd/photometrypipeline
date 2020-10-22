@@ -127,7 +127,19 @@ class ratir(instrument):
         h['NAXIS1'] = self.slice(cam)[1].stop - self.slice(cam)[1].start
         h['NAXIS2'] = self.slice(cam)[0].stop - self.slice(cam)[0].start
         h['CRPIX1'] = CAM_X0[cam_i] - self.slice(cam)[1].start
-        h['CRPIX2'] = CAM_Y0[cam_i] - self.slice(cam)[0].start        
+        h['CRPIX2'] = CAM_Y0[cam_i] - self.slice(cam)[0].start
+
+        try:
+            h['OBSRA'] = h['STRSTRA']
+        except:
+            h['OBSRA'] = 0.
+            print 'Header "STRSTRA" not found, setting "OBSRA" to zero'
+
+        try:
+            h['OBSDEC'] = h['STRSTDE']
+        except:
+            h['OBSDEC'] = 0.
+            print 'Header "STRSTDE" not found, setting "OBSDEC" to zero'
     
         return h
         

@@ -297,6 +297,8 @@ def getcatalog(catalog, ra, dec, boxsize, rawidth,decwidth,minmag=8.0, maxmag=-1
     	catlines = catlines[1:]
     
     for line in catlines:
+        #print 'Printing lines in Catlines:'
+        #print line
     
     	if not comment:
     		if catalog == 'sdss':

@@ -570,11 +570,14 @@ def autopipeastrometry(pipevar=None):
         
         targ = head['TARGNAME']
         sat = head['SATURATE']
+        ascen = head['OBSRA']
+        decl = head['OBSDEC']
         
         if 'flat' in targ:
             continue
-        
-        cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat)
+
+        #cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat)
+        cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat) + ' -r ' + str(ascen) + ' -d ' + str(decl)
         
         # Run direct astrometry
         if pipevar['verbose'] > 0:
@@ -884,9 +887,12 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                 
                 # Store magnitudes and weights (with minimum magnitude error of 0.01)
                 for i in np.arange(len(obsmag)):
-                    if obserr[i] < 0.1:
+                    print obserr[i]
+                    #if obserr[i] < 0.1:
+                    if obserr[i] < 1.0:
                         obskpm[i] = obsmag[i]
-                        obswts[i] = 1.0/(max(obserr[i], 0.01)**2)
+                        #obswts[i] = 1.0/(max(obserr[i], 0.01)**2)
+                        obswts[i] = 1.0 / (max(obserr[i], 0.01) ** 2)
 
                 if len(refmag) > 0 and len(obskpm) > 0 and len(obswts) > 0:
                     zpt, scats, rmss = apd.calc_zpt(np.array([refmag]), np.array([obskpm]),
@@ -907,8 +913,13 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             # Move files with bad zeropoint calculations to folder 'badzptfit' 
             # and do not use those frames
             zpts = np.array(zpts)
+            print("Length Zpts:")
+            print(len(zpts))
+            print("Length Stacklist:")
+            print(len(stacklist))
             goodframes = np.isfinite(zpts)
             badframes = ~np.isfinite(zpts)
+            print(badframes)
             
             if len(zpts[badframes]) != 0:
                 if not os.path.exists(pipevar['imworkingdir']+'/badzptfit'):
@@ -1088,6 +1099,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
 
             # Store magnitudes and weights (with minimum magnitude error of 0.01)
             for i in np.arange(len(obsmag)):
+                #if obserr[i] < 0.5:
                 if obserr[i] < 0.1:
                     obskpm[i] = obsmag[i]
                     obswts[i] = 1.0/(max(obserr[i], 0.01)**2)

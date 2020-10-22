@@ -39,11 +39,11 @@ def distance(obj1, obj2):
     # Calculates and returns distance in arcseconds
     dist_deg = dist_rad * 180. / numpy.pi
     dist_sec = dist_deg * 3600.
+    print(obj1.ra_rad, obj2.ra_rad, dra, obj1.dec_rad, obj2.dec_rad, ddec, dist_rad, dist_deg, dist_sec, )
     return dist_sec
 
 
 def tooclose(glist, minsep=3, quiet=False):
-    deleteset = set()
     """
     NAME:
         tooclose
@@ -59,8 +59,11 @@ def tooclose(glist, minsep=3, quiet=False):
     EXAMPLE:
         goodlist = tooclose(goodlist, minsep=5) 
     """
+    deleteset = set()
     # Finds great circle distances between objects in the list and removes the dimmer object
     # if less than minimum separation
+    print('minsep={}'.format(minsep))
+    print('i.ra', 'j.ra', 'dra', 'i.dec', 'j.dec', 'ddec', 'dist_rad', 'dist_deg', 'dist_sec', )
     for i in range(len(glist)):
         for j in range(i+1, len(glist)):
             if i == j:

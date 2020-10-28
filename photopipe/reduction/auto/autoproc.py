@@ -1,5 +1,8 @@
-import autoproc_steps as ap
+from __future__ import print_function
+
 import os
+
+from photopipe.reduction.auto import autoproc_steps as ap
 
 
 def autoproc(
@@ -184,8 +187,8 @@ def autoproc(
             w = steps.index(start)
             steps = steps[w:]
         except:
-            print "Invalid starting step: ", start
-            print "Must be one of: ", steps
+            print("Invalid starting step: ", start)
+            print("Must be one of: ", steps)
             return
             
     # If stop is specified, truncate steps to end at specified step.
@@ -195,8 +198,8 @@ def autoproc(
             w = steps.index(stop)
             steps = steps[:w+1]
         except:
-            print "Invalid stopping step: ", stop
-            print "Must be one of: ", steps
+            print("Invalid stopping step: ", stop)
+            print("Must be one of: ", steps)
             return
 
     # If step specified set only to specified step
@@ -210,16 +213,16 @@ def autoproc(
             w = steps.index(only)
             steps = steps[w]
             if start is not None:
-                print 'Note that start is also set.'
+                print('Note that start is also set.')
             if stop is not None:
-                print 'Note that stop is also set.'
+                print('Note that stop is also set.')
         except:
-            print "Invalid step: ", only
-            print "Must be one of: ", steps
+            print("Invalid step: ", only)
+            print("Must be one of: ", steps)
             return    
         
     # Check if autoastrometry, sextractor, swarp are installed and functioning before running steps
-    if 'astrometry'in steps or 'stack' in steps:
+    if 'astrometry' in steps or 'stack' in steps:
         
         # Check sextractor
         if os.path.isfile('temp.txt'):
@@ -227,8 +230,8 @@ def autoproc(
         os.system(pipevar['sexcommand'] + ' -d > temp.txt')
                 
         if os.stat('temp.txt').st_size == 0:
-            print "Error: Sextractor is not installed or not configured."
-            print "       Cannot run image alignment steps. Configure or stop='crclean'"
+            print("Error: Sextractor is not installed or not configured.")
+            print("       Cannot run image alignment steps. Configure or stop='crclean'")
         
         # Check autoastrometry
         if os.path.isfile('temp.txt'):
@@ -236,8 +239,8 @@ def autoproc(
         os.system('python ' + pipevar['autoastrocommand'] + ' > temp.txt')
 
         if os.stat('temp.txt').st_size == 0:
-            print "Error: Autoastrometry is not installed or not configured."
-            print "       Cannot run image alignment steps. Configure or stop='crclean'" 
+            print("Error: Autoastrometry is not installed or not configured.")
+            print("       Cannot run image alignment steps. Configure or stop='crclean'")
     
     if 'stack' in steps:
 
@@ -247,8 +250,8 @@ def autoproc(
         os.system(pipevar['swarpcommand'] + ' -d > temp.txt')
         
         if os.stat('temp.txt').st_size == 0:
-            print "Error: Swarp is not installed or not configured."
-            print "       Cannot run image coadds. Configure or stop='astrometry'"
+            print("Error: Swarp is not installed or not configured.")
+            print("       Cannot run image coadds. Configure or stop='astrometry'")
     
     if isinstance(steps, str):
         steps = [steps]
@@ -273,19 +276,19 @@ def autoproc(
 
     # Prints the files that were not flat fielded due to problems with file
     if pipevar['flatfail'] != '':
-        print 'Unable to flat-field the following images:'
+        print('Unable to flat-field the following images:')
         ffail = pipevar['flatfail'].split()
         for f in ffail:
-            print f
+            print(f)
     
     # Prints the files that were not astrometry corrected due to problems with the file 
     if pipevar['fullastrofail'] != '':
-        print 'All astrometry failed for the following images (not stacked):'
+        print('All astrometry failed for the following images (not stacked):')
         afail = pipevar['fullastrofail'].split()
         for f in afail:
-            print f
+            print(f)
     
-    print 'Processing complete.'
+    print('Processing complete.')
     
     # Remove any files that were created during the reduction process
     # if os.path.isfile('temp*.*'): os.system('rm -f temp*.*')

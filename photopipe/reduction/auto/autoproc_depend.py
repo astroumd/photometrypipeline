@@ -1,17 +1,22 @@
+from __future__ import print_function
+
 import os
 import shutil
 import glob
+import datetime
+
 import astropy.io.fits as pf
 import numpy as np
-import datetime
-import cosmics
 import scipy
+import matplotlib.pyplot as plt
+
+from photopipe.reduction.auto import cosmics
+
 # from photopipe.reduction.astrom import astrometrystats as astst
 # import timeit
 
 # import matplotlib
 # matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 # Disable interactive mode
 plt.ioff()
 
@@ -22,18 +27,18 @@ def write_fits(filename, data, header):
         # print "write_fits.pf.writeto(filename, data, header, overwrite=True) worked!"
     except:
         temp_filename = filename + '.tmp'
-        print "saving to temporary file: {}".format(temp_filename)
+        print("saving to temporary file: {}".format(temp_filename))
         pf.writeto(temp_filename, data, header, overwrite=True)
         try:
             os.remove(filename)
-            print "deleted {}".format(filename)
+            print("deleted {}".format(filename))
         except:
-            print "couldn't delete {}".format(filename)
+            print("couldn't delete {}".format(filename))
             os.listdir(os.path.dirname(filename))
             pass
-        print 'attempting to overwrite {} --> {}'.format(temp_filename, filename)
+        print('attempting to overwrite {} --> {}'.format(temp_filename, filename))
         shutil.move(temp_filename, filename)
-        print "write_fits.shutil.move(temp_filename, filename) worked!"
+        print("write_fits.shutil.move(temp_filename, filename) worked!")
 
 
 def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1):
@@ -63,7 +68,7 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
     
     # Check for empty filename
     if len(filename) == 0:
-        print 'No filename specified'
+        print('No filename specified')
         return
 
     # If string, check if a file of items or wildcards
@@ -81,7 +86,7 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
         if '?' in filename or '*' in filename:
             files = glob.glob(filename)
             if len(files) == 0: 
-                print 'Cannot find any files matching ', filename
+                print('Cannot find any files matching ', filename)
                 return
     else:
         files = [filename]
@@ -123,12 +128,13 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
             
             if np.shape(data) != np.shape(bias):
                 
-                print pipe_file + ' could not be bias subtracted because it is not the same' +\
-                             ' size as the master bias, remove file to avoid confusion'
+                print(
+                    pipe_file + ' could not be bias subtracted because it is not the same' +\
+                    ' size as the master bias, remove file to avoid confusion')
                 return
             
             if verbose > 0:
-                print '    bias subtracting'
+                print('    bias subtracting')
             
             newdata = data - bias
             
@@ -139,17 +145,17 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
                 dark = pf.getdata(darkfile) * newhead['EXPTIME']
                 
                 if np.shape(data) != np.shape(dark):
-                    print ' '
-                    print pipe_file + ' could not be dark subtracted because it is not the same' +\
-                        ' size as the master dark, remove file to avoid confusion'
+                    print(' ')
+                    print(pipe_file + ' could not be dark subtracted because it is not the same' +\
+                        ' size as the master dark, remove file to avoid confusion')
                     return  
                           
                 if verbose > 0:
-                    print '    dark subtracting'
+                    print('    dark subtracting')
                 
                 newdata = newdata - dark
             else:
-                print pipe_file, 'could not be dark subtracted because the master dark file was not provided'
+                print(pipe_file, 'could not be dark subtracted because the master dark file was not provided')
         else:
             newdata = data
         
@@ -157,7 +163,7 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
         write_fits(outname, newdata, newhead)
         
         if verbose > 0:
-            print pipe_file, '-> ', outname
+            print(pipe_file, '-> ', outname)
 
 
 def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
@@ -180,7 +186,7 @@ def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
     
     # Check for empty filename
     if len(filename) == 0:
-        print 'No filename specified'
+        print('No filename specified')
         return
 
     # If string, check if a file of items or wildcards
@@ -198,7 +204,7 @@ def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
         if '?' in filename or '*' in filename:
             files = glob.glob(filename)
             if len(files) == 0: 
-                print 'Cannot find any files matching ', filename
+                print('Cannot find any files matching ', filename)
                 return
     else:
         files = filename
@@ -207,7 +213,7 @@ def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
     
     med = np.median(flat)
     if (med < 0.5) or (med > 2.0):
-        print 'Warning: flat is not normalized to one'
+        print('Warning: flat is not normalized to one')
     
     for fname in files:
         f = pf.open(fname)
@@ -216,8 +222,8 @@ def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
         f.close()
         
         if np.shape(data) != np.shape(flat):
-            print fname + ' could not be dark subtracted because it is not the same' +\
-                         ' size as the master dark, remove file to avoid confusion'
+            print(fname + ' could not be dark subtracted because it is not the same' +\
+                         ' size as the master dark, remove file to avoid confusion')
             return  
         
         # Set values too low/high to NaNs
@@ -238,7 +244,7 @@ def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
         try:
             head['CTRATE'] = (skycts/head['EXPTIME'], 'Sky counts per second')
         except:
-            print 'No EXPTIME keyword'
+            print('No EXPTIME keyword')
             
         date = datetime.datetime.now().isoformat()
         head.add_history('Processed by flatproc ' + date)
@@ -297,7 +303,7 @@ def skypipecombine(
     
     # If given list, then grab all filenames, saved to files
 
-    print "skypipecombine doesn't do anything with this filt variable: {}".format(filt)
+    print("skypipecombine doesn't do anything with this filt variable: {}".format(filt))
     if len(filelist) == 1:
         f = open(filelist, 'r')
         files = f.read().splitlines() 
@@ -336,8 +342,8 @@ def skypipecombine(
         iny = head_i['NAXIS2']        
 
         if (inx != nx) or (iny != ny):
-            print 'File ' + filename + ' has wrong dimensions ('+str(inx) + \
-                  ' x ' + str(iny)+'; should have '+str(nx)+' x '+str(ny)+')'
+            print('File ' + filename + ' has wrong dimensions ('+str(inx) + \
+                  ' x ' + str(iny)+'; should have '+str(nx)+' x '+str(ny)+')')
         
         # Perform 3 sigma clipped median and save to inmeds
         inmed, instd = medclip(data_i, clipsig=3, maxiter=3)
@@ -345,7 +351,7 @@ def skypipecombine(
         # If median is within limits save data, otherwise exclude files
         if mincounts <= inmed <= maxcounts:
             if pipevar['verbose'] > 0:
-                print filename + ' ('+str(inmed) + ' counts/pix)'
+                print(filename + ' ('+str(inmed) + ' counts/pix)')
             
             skymeds += [inmed]
             usefiles += [filename]
@@ -353,12 +359,12 @@ def skypipecombine(
             z += 1
         else:
             if inmed < mincounts:
-                print filename + ' (' + str(inmed) + ' counts/pix) - too few counts; excluding'
+                print(filename + ' (' + str(inmed) + ' counts/pix) - too few counts; excluding')
             if inmed > maxcounts:
-                print filename + ' (' + str(inmed) + ' counts/pix) - too many counts; excluding'
+                print(filename + ' (' + str(inmed) + ' counts/pix) - too many counts; excluding')
         
     if z < 2:
-        print 'ERROR - Not enough counts to make a flat with these data!'
+        print('ERROR - Not enough counts to make a flat with these data!')
         return
     
     # Median of sigma clipped medians
@@ -381,7 +387,7 @@ def skypipecombine(
     
     if removeobjects is not None:
         if pipevar['verbose'] > 0:
-            print '  Identifying objects...'
+            print('  Identifying objects...')
                 
         for f in np.arange(z-1):
             
@@ -408,7 +414,7 @@ def skypipecombine(
     # excluding NaN values (which are eventually set to median)
     if algorithm == 'median':
         if pipevar['verbose'] > 0:
-            print '  Median-combining...'
+            print('  Median-combining...')
             
         for y in np.arange(ny):
             
@@ -428,7 +434,7 @@ def skypipecombine(
     if algorithm == 'mean':
         
         if pipevar['verbose'] > 0:
-            print '  Combining via trimmed mean...'
+            print('  Combining via trimmed mean...')
             
         for y in np.arange(ny):
             for x in np.arange(nx):
@@ -463,7 +469,7 @@ def skypipecombine(
     head_m.add_history('Processed by skypipecombine ' + date) 
         
     if pipevar['verbose'] > 0:
-        print '  Written to ' + outfile
+        print('  Written to ' + outfile)
         
     write_fits(outfile, reflat, head_m)
 
@@ -490,7 +496,7 @@ def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
     
     # Check for empty filename
     if len(filename) == 0:
-        print 'No filename specified'
+        print('No filename specified')
         return
 
     # If string, check if a file of items or wildcards
@@ -508,7 +514,7 @@ def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
         if '?' in filename or '*' in filename:
             files = glob.glob(filename)
             if len(files) == 0: 
-                print 'Cannot find any files matching ', filename
+                print('Cannot find any files matching ', filename)
                 return
     else:
         files = filename  
@@ -529,8 +535,8 @@ def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
         f.close()
         
         if np.shape(data) != np.shape(flat):
-            print file_ + ' could not be flat subtracted because it is not the same' +\
-                         ' size as the master flat, remove file to avoid confusion'
+            print(file_ + ' could not be flat subtracted because it is not the same' +\
+                         ' size as the master flat, remove file to avoid confusion')
             return
 
         if flatmaxval is not None:
@@ -567,7 +573,7 @@ def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
         try:
             head['CTRATE'] = (skycts/head['EXPTIME'], 'Sky counts per second')
         except:
-            print 'No EXPTIME keyword'        
+            print('No EXPTIME keyword')
 
         date = datetime.datetime.now().isoformat()
         head.add_history('Processed by skypipeproc ' + date)
@@ -609,7 +615,7 @@ def cosmiczap(filename, outname, sigclip=6.0, maxiter=3, verbose=True):
     head.add_history('Processed by cosmiczap ' + date)    
     
     if verbose:
-        print '  Zapped %d total affected pixels (%.3f%% of total)' % (tot, tot*100.0/np.size(data))
+        print('  Zapped %d total affected pixels (%.3f%% of total)' % (tot, tot*100.0/np.size(data)))
     
     cosmics.tofits(outname, c.cleanarray, head, verbose=False)
 
@@ -646,7 +652,7 @@ def astrometry(atfimages, scamprun=1, pipevar=None):
                     '-PARAMETERS_NAME astrom.param -DETECT_THRESH 2.0 ' + \
                     '-ANALYSIS_THRESH 2.0 -PIXEL_SCALE ' + str(pixscale) + \
                     ' ' + cfile
-            print sexcom
+            print(sexcom)
         else:
             sexcom = pipevar['sexcommand'] + ' -CATALOG_NAME ' + trunfile + \
                     '.cat -CATALOG_TYPE FITS_LDAC -FILTER_NAME astrom.conv ' + \
@@ -662,7 +668,7 @@ def astrometry(atfimages, scamprun=1, pipevar=None):
         if sourcecat in scat:
             cat_u = scat[sourcecat]
         else:
-            print 'No valid catalogs available for SCAMP, check that vlt_autoastrometry.py ran correctly'
+            print('No valid catalogs available for SCAMP, check that vlt_autoastrometry.py ran correctly')
             return
         # !!!!!!!!!!!!!!!!!! I'M INDENTING EVERYTHING BELOW UNTIL NEXT COMMENT SINCE IT SEEMS LIKE A BUG TO NOT HAVE
         # THE FOLLOWING IN THE FOR LOOP !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -673,7 +679,7 @@ def astrometry(atfimages, scamprun=1, pipevar=None):
         loose = ' '
         try:
             distort = head['PV1_37']
-            print "head['PV1_37']={}".format(distort)
+            print("head['PV1_37']={}".format(distort))
             distdeg = 7
         except:
             distdeg = 3
@@ -684,7 +690,7 @@ def astrometry(atfimages, scamprun=1, pipevar=None):
                     " -SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
                     "-CHECKPLOT_DEV NULL -WRITE_XML N -VERBOSE_TYPE FULL " +\
                     acatlist
-        print scampcmd
+        print(scampcmd)
     else:
         scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + str(distdeg) +\
                     loose + " -ASTREF_CATALOG " + cat_u + \
@@ -788,11 +794,11 @@ def findsexobj(filename, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP
         
     sexcmd += ' ' + filename
     if quiet == 0:
-        print sexcmd
+        print(sexcmd)
     os.system(sexcmd)
         
     if quiet == 0:
-        print 'mv -f test.cat ' + starfile
+        print('mv -f test.cat ' + starfile)
     os.system('mv -f test.cat ' + starfile)
     
     num = 0    
@@ -810,7 +816,7 @@ def findsexobj(filename, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP
         else:
             seepix = np.median(fwhmim[keep])        
     else:
-        print 'Failed to find Sextractor output file!'
+        print('Failed to find Sextractor output file!')
         seepix = None
     head = pf.getheader(filename)
     
@@ -856,7 +862,7 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
   
     # Find difference between catalog and observed magnitudes
     diff = catmag - obsmag
-    print np.shape(obsmag)
+    print(np.shape(obsmag))
     # print diff
     # Find number of observations and stars	
     sz = np.shape(obsmag)
@@ -893,7 +899,7 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
     if plotter is not None:
 
         keep = np.where(wts != 0)
-        print np.shape(catmag[keep])
+        print(np.shape(catmag[keep]))
         plt.plot(catmag[keep], adiff2[keep], '*')
         plt.errorbar(catmag[keep], adiff2[keep], yerr=1.0/np.sqrt(wts[keep]), fmt='.')
         
@@ -986,10 +992,10 @@ def medclip(indata, clipsig=3.0, maxiter=5, verbose=0):
     sigma = np.std(skpix)
  
     if verbose:
-        print '%.1f-sigma clipped median' % clipsig
-        print 'Mean computed in %i iterations' % iteration
+        print('%.1f-sigma clipped median' % clipsig)
+        print('Mean computed in %i iterations' % iteration)
         # noinspection PyStringFormat
-        print 'Mean = %.6f, sigma = %.6f' % (med, sigma)
+        print('Mean = %.6f, sigma = %.6f' % (med, sigma))
  
     return med, sigma
 
@@ -1034,10 +1040,10 @@ def medclip2d(indata, clipsig=3.0, maxiter=5, verbose=0, overaxis=0):
     sigma = np.ma.std(skpix, axis=overaxis)
     
     if verbose:
-        print '%.1f-sigma clipped median' % clipsig
-        print 'Mean computed in %i iterations' % iteration
+        print('%.1f-sigma clipped median' % clipsig)
+        print('Mean computed in %i iterations' % iteration)
         # noinspection PyStringFormat
-        print 'Mean = %.6f, sigma = %.6f' % (med, sigma)
+        print('Mean = %.6f, sigma = %.6f' % (med, sigma))
  
     return med, sigma  
 

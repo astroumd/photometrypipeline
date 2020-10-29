@@ -109,9 +109,9 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
             if oldkey not in mandatorykey:
                 try:
                     del newhead[oldkey]
-                    print(str(oldkey) + ":  deleted")
+                    print("deleted")
                 except KeyError:
-                    print(str(oldkey) + ":  pass")
+                    print("pass")
                     pass
         
         # If biasfile keyword set subtract master bias from current file with given master bias file

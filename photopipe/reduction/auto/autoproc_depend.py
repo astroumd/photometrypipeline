@@ -102,16 +102,12 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
         ]
 
         # Finds list of unnecessary keywords, then deletes extraneous
-        newhead = head
-        print("Keyword Deletion:")
+        newhead = head.copy()
         for oldkey in head.keys():
-            print(oldkey)
             if oldkey not in mandatorykey:
                 try:
                     del newhead[oldkey]
-                    print("deleted")
                 except KeyError:
-                    print("pass")
                     pass
         
         # If biasfile keyword set subtract master bias from current file with given master bias file

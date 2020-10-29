@@ -70,15 +70,14 @@ def autopipeastrometry(pipevar=None):
 
         targ = head['TARGNAME']
         sat = head['SATURATE']
-        # ascen = head['OBSRA']
-        # decl = head['OBSDEC']
+        ascen = head['OBSRA']
+        decl = head['OBSDEC']
 
         if 'flat' in targ:
             continue
 
-        cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat)
-        #cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat) + ' -r ' + str(ascen) + ' -d ' + str(decl)
-        # cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -x ' + str(sat) + ' -ra ' + str(ascen) + ' -dec ' + str(decl)
+        #cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat)
+        cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat) + ' -r ' + str(ascen) + ' -d ' + str(decl)
 
 
         # Run direct astrometry

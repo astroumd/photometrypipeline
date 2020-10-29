@@ -9,8 +9,8 @@ RUN git clone --branch py3_astrometry https://github.com/astroumd/photometrypipe
 	&& cd photometrypipeline \
 	&& python setup.py build
 
-RUN export LANG=C.UTF-8 \
-    && conda update conda \
-    && conda install conda-build \
-    && conda develop /work/photometrypipeline
+#RUN export LANG=C.UTF-8 \
+#    && conda update conda \
+#    && conda install conda-build \
+#    && conda develop /work/photometrypipeline
 

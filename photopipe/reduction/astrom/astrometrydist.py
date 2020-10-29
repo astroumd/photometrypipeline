@@ -39,7 +39,7 @@ def distance(obj1, obj2):
     # Calculates and returns distance in arcseconds
     dist_deg = dist_rad * 180. / numpy.pi
     dist_sec = dist_deg * 3600.
-    print(obj1.ra_rad, obj2.ra_rad, dra, obj1.dec_rad, obj2.dec_rad, ddec, dist_rad, dist_deg, dist_sec, )
+    #print(obj1.ra_rad, obj2.ra_rad, dra, obj1.dec_rad, obj2.dec_rad, ddec, dist_rad, dist_deg, dist_sec, )
     return dist_sec
 
 

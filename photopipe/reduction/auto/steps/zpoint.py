@@ -5,12 +5,7 @@ import numpy as np
 import photopipe.reduction.auto.autoproc_depend as apd
 from astropy import wcs
 import re
-import datetime
 from astropy.time import Time
-import sys
-from scipy import interpolate
-from photopipe.reduction.astrom import autoastrometry3
-from photopipe.photometry.dependencies import get_SEDs
 
 
 inpipevar = {

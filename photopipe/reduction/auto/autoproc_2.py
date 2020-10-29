@@ -180,7 +180,7 @@ def autoproc_2(
         pipevar['rmifiles'] = 1
 
     # Step options
-    steps = ['prepare', 'flatten', 'makesky', 'skysub', 'crclean', 'astrometry', 'stack']
+    steps = ['prepare', 'flatten', 'makesky', 'skysub', 'crclean', 'astrometry','zpoint', 'stack']
 
     # If start is specified, truncate steps to start at specified step.
     # If invalid step end program with error

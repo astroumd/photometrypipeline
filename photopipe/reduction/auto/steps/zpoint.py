@@ -9,7 +9,6 @@ import datetime
 from astropy.time import Time
 import sys
 from scipy import interpolate
-from photopipe.reduction.astrom import autoastrometry3
 from photopipe.photometry.dependencies import get_SEDs
 
 
@@ -39,7 +38,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
         SWarp, get_SEDs, calc_zpt, findsexobj (sextractor)
     """
 
-    print('STACK')
+    print('ZPOINT')
     if pipevar is None:
         pipevar = inpipevar
     if customcatfilt is None:
@@ -77,6 +76,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
     # Grab information in the headers of astrometry corrected file and save to array
     for i, f in enumerate(files):
         head = pf.getheader(f)
+        data = pf.getdata(f)
         obstime = Time(head['DATE-OBS'], format='isot', scale='utc')
 
         # Strip target name of whitespace
@@ -87,15 +87,17 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
         filesatvs += [head['SATURATE']]
         # filearms1 += [head['ASTRRMS1']]; filearms2 += [head['ASTRRMS2']]
         filetime += [obstime.jd]
+        fileroot = os.path.basename(f)
+        zfile = pipevar['imworkingdir'] + 't' + fileroot
+        apd.write_fits(zfile, data, head)
+
+    files = glob.glob(pipevar['imworkingdir'] + 't**sfp' + pipevar['prefix'] + '*.fits')
+    print(pipevar['imworkingdir'] + 't**sfp' + pipevar['prefix'] + '*.fits')
+    print(files)
 
     files = np.array(files)
     filetargs = np.array(filetargs)
-    fileexpos = np.array(fileexpos)
     filefilts = np.array(filefilts)
-    # filesatvs = np.array(filesatvs)
-    fileairmv = np.array(fileairmv)
-    # filearms1 = np.array(filearms1); filearms2 = np.array(filearms2)
-    filetime = np.array(filetime)
     targets = set(filetargs)
 
     # Dictionary of corresponding columns for catalog file
@@ -131,7 +133,8 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
             # Find stars for each individual frame and try to find matches with coadded
             # frame with each frame optimized with PSF size
             for sfile in stacklist:
-                head = pf.getheader(sfile)
+
+                head = pf.getheader(sfile).copy()
                 ipixscl = head['PIXSCALE']
                 # apd.findsexobj(sfile, 3.0, pipevar,pix=ipixscl,aperture=20.0, quiet=quiet)
                 apd.findsexobj(sfile, 1.5, pipevar, pix=ipixscl, aperture=20.0, quiet=quiet)
@@ -146,12 +149,20 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                 elon = svars[8, :]
 
                 # astropy does not like SWarp PV keywords or unicode, temporarily delete
-                for key in head.keys():
-                    if any(x in key for x in ['PV1_', 'PV2_', 'COMMENT', 'HISTORY']):
-                        try:
-                            del head[key]
-                        except KeyError as error:
-                            print(error)
+                headcopy = head.copy()
+                for key in headcopy.keys():
+                    for comp_key in ['PV1_', 'PV2_', 'COMMENT', 'HISTORY']:
+                        if key.startswith(comp_key):
+                            try:
+                                del head[key]
+                            except KeyError as error:
+                                print(error)
+
+                    # if any(x in key for x in ['PV1_', 'PV2_', 'COMMENT', 'HISTORY']):
+                    #     try:
+                    #         del head[key]
+                    #     except KeyError as error:
+                    #         print(error)
 
                 w = wcs.WCS(head)
                 wrd = w.all_pix2world(np.transpose([xim, yim]), 0)
@@ -251,7 +262,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                 else:
                     zpts = [np.inf]
 
-                    # Move files with bad zeropoint calculations to folder 'badzptfit'
+            # Move files with bad zeropoint calculations to folder 'badzptfit'
             # and do not use those frames
             zpts = np.array(zpts)
             goodframes = np.isfinite(zpts)
@@ -293,11 +304,6 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
 
                 removedframes += badnewflxsc
 
-                # Remove files that have bad newflxsc values from list of stack
-                bad = set(badnewflxsc)
-                newstack = [x for x in newstack if x not in bad]
-
-            newtextslist = ' '.join(newstack)
-
-            pipevar['newtextslist'] = newtextslist
-
+            if len(removedframes) > 0:
+                print('Removed frames with bad zeropoint fits: ')
+                print(removedframes)

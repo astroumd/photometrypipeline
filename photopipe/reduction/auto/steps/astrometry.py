@@ -9,7 +9,7 @@ import datetime
 from astropy.time import Time
 import sys
 from scipy import interpolate
-from photopipe.reduction.astrom import autoastrometry3
+from photopipe.reduction.astrom import vlt_autoastrometry as autoastro
 from photopipe.photometry.dependencies import get_SEDs
 
 
@@ -26,7 +26,7 @@ def autopipeastrometry(pipevar=None):
         autopipepipeastrometry
     PURPOSE:
         Calculate astrometry of image files to fix WCS coordinates (shift and rotation)
-        in header. Using fast astrometry solver (autoastrometry3.py) that using
+        in header. Using fast astrometry solver (vlt_autoastrometry.py) that using
         pair-distance matching and asterism matching.  Returns file with corrected WCS
         coordinates saved as 'a'+fitsfile. Run Scamp for additional astrometry
         corrections, twice, once for basic individual LOOSE correction, second correct all
@@ -38,7 +38,7 @@ def autopipeastrometry(pipevar=None):
     EXAMPLE:
         autopipeastrometry(pipevar=inpipevar)
     DEPENDENCIES:
-        autoproc_depend.astrometry, autoastrometry3.py, scamp, sextractor
+        autoproc_depend.astrometry, vlt_autoastrometry.py, scamp, sextractor
     FUTURE IMPROVEMENTS:
         Better distinction between first and second scamp run
     """
@@ -76,8 +76,8 @@ def autopipeastrometry(pipevar=None):
         if 'flat' in targ:
             continue
 
-        cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -x ' + str(sat) + ' -ra ' + str(ascen) + ' -dec ' + str(decl)
-
+        cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat) + ' -r ' + str(ascen) + ' -d ' + str(decl)
+        # cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat)
 
         # Run direct astrometry
         if pipevar['verbose'] > 0:

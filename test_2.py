@@ -94,4 +94,4 @@ print('reduced_path', reduced_path)
 
 autoproc_2(datadir=selected_path+os.path.sep,
          imdir=reduced_path+os.path.sep,
-         redo=1, start = 'astrometry', nomastersky=True)
+         redo=1, start="zpoint", nomastersky=True)

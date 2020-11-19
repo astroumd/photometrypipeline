@@ -18,7 +18,9 @@ from scipy.interpolate import interp1d
 import scipy.spatial.kdtree
 from threading import Thread
 from time import strftime
-from urllib.request import urlopen
+#import urllib.request
+import csv
+from six.moves import urllib
 import sys
 import warnings
 import pandas as pd
@@ -168,7 +170,12 @@ class online_catalog_query:
         request = 'http://www.aavso.org/cgi-bin/apass_download.pl?ra={}&dec={}&radius={}&outtype=1'.format(
             ra, dec, boxsize
         )
-        o = urlopen(request).read()
+        #o = urlopen(request).read()
+        o = urllib.request.urlopen(request).read().decode()
+        # o = csv.reader(o0.read().decode('utf-8'))
+        #o = o0.read()
+        #o = [oline.decode('utf-8') for oline in o]
+
         apass_objects = self._parse_apass(o)
         if len(apass_objects) == 0:
             # no matches
@@ -234,6 +241,7 @@ class online_catalog_query:
 
         out = Popen(request, shell=True, stdout=PIPE, stderr=PIPE)
         o, e = out.communicate()
+        o = o.decode()
         if e:
             if e[:8] != '#...url=':
                 raise IOError('findsdss8 problem: ' + e)
@@ -304,6 +312,7 @@ class online_catalog_query:
         request = 'find2mass -c {} {} -bs {} -eb -sr -m 1000000'.format(ra, dec, boxsize)
         out = Popen(request, shell=True, stdout=PIPE, stderr=PIPE)
         o, e = out.communicate()
+        o = o.decode()
         if e:
             if e[:8] != '#...url=':
                 raise IOError('find2mass problem: ' + e)
@@ -410,7 +419,7 @@ class online_catalog_query:
         request = 'findusnob1 -c {} {} -bs {} -eb -sr -m 1000000'.format(ra, dec, boxsize)
         out = Popen(request, shell=True, stdout=PIPE, stderr=PIPE)
         o, e = out.communicate()
-
+        o = o.decode()
         if e:
             if e[:8] != '#...url=':
                 raise IOError('findusnob1 problem: ' + e)

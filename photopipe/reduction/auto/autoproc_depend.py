@@ -102,7 +102,7 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
         ]
 
         # Finds list of unnecessary keywords, then deletes extraneous
-        newhead = head
+        newhead = head.copy()
         for oldkey in head.keys():
             if oldkey not in mandatorykey:
                 try:

@@ -90,4 +90,4 @@ print('reduced_path', reduced_path)
 
 autoproc(datadir=selected_path+os.path.sep,
          imdir=reduced_path+os.path.sep,
-         redo=1, start = 'astrometry', nomastersky=True)
+         redo=1, start = 'stack', nomastersky=True)

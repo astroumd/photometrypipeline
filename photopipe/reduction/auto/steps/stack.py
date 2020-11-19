@@ -9,7 +9,6 @@ import datetime
 from astropy.time import Time
 import sys
 from scipy import interpolate
-from photopipe.reduction.astrom import autoastrometry3
 from photopipe.photometry.dependencies import get_SEDs
 
 
@@ -19,6 +18,68 @@ inpipevar = {
     'fullastrofail': '',	'pipeautopath': '', 'refdatapath': '', 'defaultspath': ''
 }
 def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
+    if pipevar is None:
+        pipevar = inpipevar
+    if customcatfilt is None:
+        customcatfilt = []
+
+    # If swarp configuration file ('default.swarp') does not exist, move swarp
+    # output default configuration file
+    if not os.path.isfile('default.swarp'):
+        os.system(pipevar['swarpcommand'] + ' -d > default.swarp')
+
+    qtcmd = 'True'
+    quiet = 1
+    if pipevar['verbose'] > 0:
+        quiet = 0
+        qtcmd = 'False'
+
+    # Find files that have had zpoint performed on them, stop program if don't exist
+    files = glob.glob(pipevar['imworkingdir'] + 't**sfp' + pipevar['prefix'] + '*.fits')
+    print(pipevar['imworkingdir'] + 't**sfp' + pipevar['prefix'] + '*.fits')
+    print(files)
+    if len(files) == 0:
+        print('Did not find any files! Check your data directory path!')
+        return
+
+    filetargs = []
+    fileexpos = []
+    filefilts = []
+    fileairmv = []
+    # filesatvs = []; filearms1 = []; filearms2 = []; filetime  = []
+    filesatvs = []
+    filetime = []
+
+    # Grab information in the headers of zeropoint + Fluxscale corrected file and save to array
+    for i, f in enumerate(files):
+        head = pf.getheader(f)
+        obstime = Time(head['DATE-OBS'], format='isot', scale='utc')
+
+        # Strip target name of whitespace
+        filetargs += [re.sub(r'\s+', '', head['TARGNAME'])]
+        fileexpos += [head['EXPTIME']]
+        filefilts += [head['FILTER']]
+        fileairmv += [head['AIRMASS']]
+        filesatvs += [head['SATURATE']]
+        # filearms1 += [head['ASTRRMS1']]; filearms2 += [head['ASTRRMS2']]
+        filetime += [obstime.jd]
+
+    files = np.array(files)
+    filetargs = np.array(filetargs)
+    fileexpos = np.array(fileexpos)
+    filefilts = np.array(filefilts)
+    # filesatvs = np.array(filesatvs)
+    fileairmv = np.array(fileairmv)
+    # filearms1 = np.array(filearms1); filearms2 = np.array(filearms2)
+    filetime = np.array(filetime)
+    targets = set(filetargs)
+
+    # Dictionary of corresponding columns for catalog file
+    catdict = {'u': 2, 'g': 3, 'r': 4, 'i': 5, 'z': 6, 'y': 7,
+               'B': 8, 'V': 9, 'R': 10, 'I': 11, 'J': 12, 'H': 13, 'K': 14,
+               'ue': 15, 'ge': 16, 're': 17, 'ie': 18, 'ze': 19, 'ye': 20,
+               'Be': 21, 'Ve': 22, 'Re': 23, 'Ie': 24, 'Je': 25, 'He': 26, 'Ke': 27, 'mode': 28}
+
     # Finds files with same target and the filters associated with this target
     for targ in targets:
 
@@ -39,20 +100,23 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             if sum(stacki) == 0:
                 continue
 
+            stacklist = files[stacki]
             stackexps = fileexpos[stacki]
             stackairm = fileairmv[stacki]
             stacktime = filetime[stacki]
             pipevar['stackexps'] = stackexps
 
-            pipevar['medexp'] = np.median(stackexps)
-            pipevar['medair'] = np.median(stackairm)
-            pipevar['minair'] = min(stackairm)
-            pipevar['maxair'] = max(stackairm)
-            pipevar['totexp'] = sum(stackexps)
-            pipevar['nstack'] = len(stacklist)
-            pipevar['firsttime'] = Time(stacktime[0], format='jd', scale='utc').isot
-            pipevar['lasttime'] = Time(stacktime[-1], format='jd', scale='utc').isot
-            pipevar['medtime'] = Time(np.median(stacktime), format='jd', scale='utc').isot
+            medexp = np.median(stackexps)
+            medair = np.median(stackairm)
+            minair = min(stackairm)
+            maxair = max(stackairm)
+            totexp = sum(stackexps)
+            nstack = len(stacklist)
+            firsttime = Time(stacktime[0], format='jd', scale='utc').isot
+            lasttime = Time(stacktime[-1], format='jd', scale='utc').isot
+            medtime = Time(np.median(stacktime), format='jd', scale='utc').isot
+
+            newtextslist = ' '.join(stacklist)
 
             stackcmd = pipevar['swarpcommand']
 
@@ -74,7 +138,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             # Coadd with flux scale
             stackcmd = stackcmd + ' -SUBTRACT_BACK N -WRITE_XML N -IMAGEOUT_NAME ' + \
                        outfl + ' -WEIGHTOUT_NAME ' + outwt + \
-                       ' -FSCALE_KEYWORD NEWFLXSC ' + pipevar['newtextslist']
+                       ' -FSCALE_KEYWORD NEWFLXSC ' + newtextslist
 
             if pipevar['verbose'] > 0:
                 print(stackcmd)
@@ -171,7 +235,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                 os.system(sedcmd)
 
                 if not os.path.isfile(catfile):
-                    zpts += [float('NaN')]
+                    #zpts += [float('NaN')]
                     continue
 
                 # Read in catalog file
@@ -218,15 +282,12 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             chead['MAXEXP'] = (max(stackexps), 'Length of longest exposure')
             chead['MINEXP'] = (min(stackexps), 'Length of shortest exposure')
 
-            for i, f in enumerate(newstack):
+            for i, f in enumerate(stacklist):
                 chead['STACK' + str(i)] = f
 
             cdata = pf.getdata(outfl)
             pf.update(outfl, cdata, chead)
 
-            if len(removedframes) > 0:
-                print('Removed frames with bad zeropoint fits: ')
-                print(removedframes)
 
             # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
             # sky-*.fits, sfp(PREFIX)*.fits, zsfp(PREFIX)*.fits files
@@ -236,6 +297,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                 os.system('rm -f ' + pipevar['imworkingdir'] + '*sky-*.fits')
                 os.system('rm -f ' + pipevar['imworkingdir'] + 'sfp' + pipevar['prefix'] + '*.fits')
                 os.system('rm -f ' + pipevar['imworkingdir'] + 'zsfp' + pipevar['prefix'] + '*.fits')
-                os.system('rm -f ' + pipevar['imworkingdir'] + 'a*fp' + pipevar['prefix'] + '*.im')
-                os.system('rm -f ' + pipevar['imworkingdir'] + 'a*fp' + pipevar['prefix'] + '*.stars')
-                os.system('rm -f ' + pipevar['imworkingdir'] + 'a*fp' + pipevar['prefix'] + '*.cat')
+                os.system('rm -f ' + pipevar['imworkingdir'] + 'azsfp' + pipevar['prefix'] + '*.fits')
+                os.system('rm -f ' + pipevar['imworkingdir'] + 't**fp' + pipevar['prefix'] + '*.im')
+                os.system('rm -f ' + pipevar['imworkingdir'] + 't**fp' + pipevar['prefix'] + '*.stars')
+                os.system('rm -f ' + pipevar['imworkingdir'] + 't**fp' + pipevar['prefix'] + '*.cat')

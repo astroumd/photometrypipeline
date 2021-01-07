@@ -18,6 +18,7 @@ inpipevar = {
     'fullastrofail': '',	'pipeautopath': '', 'refdatapath': '', 'defaultspath': ''
 }
 def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
+    print('STACK')
     if pipevar is None:
         pipevar = inpipevar
     if customcatfilt is None:
@@ -174,12 +175,15 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             elon = coaddvars[8, :]
 
             # astropy does not like SWarp PV keywords or unicode, temporarily delete
-            for key in head.keys():
-                try:
-                    if any(x in key for x in ['PV1_', 'PV2_', 'COMMENT', 'HISTORY']):
-                        del head[key]
-                except KeyError as error:
-                    print(error)
+            headcopy = head.copy()
+            for key in headcopy.keys():
+                print(key)
+                for comp_key in ['MJD-OBS', 'DATE-OBS', 'PV1_', 'PV2_', 'COMMENT', 'HISTORY']:
+                    if key.startswith(comp_key):
+                        try:
+                            del head[key]
+                        except KeyError as error:
+                            print(error)
 
             w = wcs.WCS(head)
             wrd = w.all_pix2world(np.transpose([xim, yim]), 0)

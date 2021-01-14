@@ -151,7 +151,6 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                 # astropy does not like SWarp PV keywords or unicode, temporarily delete
                 headcopy = head.copy()
                 for key in headcopy.keys():
-                    print(key)
                     for comp_key in ['PV1_', 'PV2_', 'COMMENT', 'HISTORY']:
                         if key.startswith(comp_key):
                             try:

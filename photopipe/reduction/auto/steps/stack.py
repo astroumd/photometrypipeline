@@ -98,6 +98,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             #          (filearms1 < 2.0e-4) & (filearms1 > 5.0e-6) &\
             #          (filearms2 < 2.0e-4) & (filearms2 > 5.0e-6)
 
+
             if sum(stacki) == 0:
                 continue
 
@@ -177,7 +178,6 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             # astropy does not like SWarp PV keywords or unicode, temporarily delete
             headcopy = head.copy()
             for key in headcopy.keys():
-                print(key)
                 for comp_key in ['MJD-OBS', 'DATE-OBS', 'PV1_', 'PV2_', 'COMMENT', 'HISTORY']:
                     if key.startswith(comp_key):
                         try:
@@ -196,6 +196,11 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             # Filter name correction:
             if thistargetfilter == 'Z' or thistargetfilter == 'Y':
                 thistargetfilter = thistargetfilter.lower()
+            if thistargetfilter == 'YISH':
+                thistargetfilter = 'y'
+
+            if 'SDSS' in thistargetfilter:
+                thistargetfilter = thistargetfilter[-1].lower()
 
             nocustomcat = False
             # If custom catalog provided, match the same objects as the *.im file

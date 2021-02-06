@@ -98,29 +98,48 @@ def autopipeprepare(pipevar=None):
 
     # Finds any master bias files and filter name from header keyword
     # Assumes camera name is in header under CAMERA
-    biasfiles = glob.glob(pipevar['imworkingdir'] + 'bias*')
+    biasfiles = glob.glob(pipevar['datadir'] + 'bias*.fits')
+    if len(biasfiles) == 0:
+        biasfiles = glob.glob(pipevar['imworkingdir'] + 'bias*.fits')
     biascamera = []
     if len(biasfiles) > 0:
         for bfile in biasfiles:
             head = pf.getheader(bfile)
             camera = int(head['CAMERA'])
             biascamera += [camera]
+    else:
+        print('Did not find any BIAS files! Check your data directory path!')
+
 
     # Finds any master dark files and filter name from header keyword
     # Assumes camera name is in header under CAMERA
-    darkfiles = glob.glob(pipevar['imworkingdir'] + 'dark*')
+    darkfiles = glob.glob(pipevar['datadir'] + 'dark*.fits')
+    if len(darkfiles) == 0:
+        darkfiles = glob.glob(pipevar['imworkingdir'] + 'dark*.fits')
     darkcamera = []
     if len(darkfiles) > 0:
         for dfile in darkfiles:
             head = pf.getheader(dfile)
             camera = int(head['CAMERA'])
             darkcamera += [camera]
+    else:
+        print('Did not find any DARK files! Check your data directory path!')
 
-            # For each file (that doesn't have an existing p file or can be overwritten),
+    # Flat files are already bias/dark subtracted
+    flatfiles = glob.glob(pipevar['datadir'] + 'flat*.fits')
+
+    # For each file (that doesn't have an existing p file or can be overwritten),
     # run pipeprepare on it with output file being saved into the imworkingdir,
     # will run bias subtraction if bias master available (checks based on how bias
     # file and data file are named
     for f in files:
+
+        if f in biasfiles:
+            continue
+        elif f in darkfiles:
+            continue
+        elif f in flatfiles:
+            continue
 
         fileroot = os.path.basename(f)
         outnameim = pipevar['imworkingdir'] + 'p' + fileroot
@@ -171,7 +190,9 @@ def autopipeimflatten(pipevar=None):
     print(pipevar['imworkingdir'])
     files = glob.glob(pipevar['imworkingdir'] + 'p' + pipevar['prefix'] + '*.fits')
     ffiles = glob.glob(pipevar['imworkingdir'] + 'fp' + pipevar['prefix'] + '*.fits')
-    flats = glob.glob(pipevar['imworkingdir'] + '*flat*.fits')
+    flats = glob.glob(pipevar['datadir'] + 'flat*.fits')
+    if len(flats) == 0:
+        flats = glob.glob(pipevar['imworkingdir'] + 'flat*.fits')
 
     if len(files) == 0:
         print('Did not find any files! Check your data directory path!')
@@ -195,6 +216,7 @@ def autopipeimflatten(pipevar=None):
     for f in files:
         print(f)
         fileroot = os.path.basename(f)
+
         outnameim = pipevar['imworkingdir'] + 'f' + fileroot
 
         if (outnameim not in ffiles) or (pipevar['overwrite'] != 0):

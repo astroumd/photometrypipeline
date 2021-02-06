@@ -113,31 +113,31 @@ class online_catalog_query:
 
     @staticmethod
     def _parse_apass(s):
-        """
+        '''
         Parse an APASS web request string.
-        
+
         s: a string of the CSV returned by a query to the APASS page.
-        Example:
-        s = urllib2.urlopen('http://www.aavso.org/cgi-bin/apass_download.pl?ra=0.5&dec=85.&radius=.25&outtype=1').read()
-        
+          Example:
+          s = urllib2.urlopen('http://www.aavso.org/cgi-bin/apass_download.pl?ra=0.5&dec=85.&radius=.25&outtype=1').read()
+
         Note: it is common for APASS to report -0 as the error for an observation; from their website,
          this merely means that the star was observed only once, and so their error determination
          code does not predict the error correctly.  Currently, this function adopts an error of 0.15mag
          for all of these observations. Missing observations are filled in with a zero.
-        """
+        '''
         out = []
         for line in s.split('\n')[1:]:
             # discard any sources that have more than one two observations
             if line.count('NA') > 4:
                 continue
             try:
-                line_row = line.split(',')
-                ra = float(line_row[0])
-                dec = float(line_row[2])
+                row = line.split(',')
+                ra = float(row[0])
+                dec = float(row[2])
                 # magnitudes and errors
-                #  in order: V, V_sig, B, B_sig, g, g_sig, r, r_sig, i, i_sig
+                #  in order: V, Verr, Vnobs, B, Berr, Bnobs, u, Uerr, SUnobs, g, SGerr, SGnobs, r, SRerr, SRnobs,i, SIerr, SInobs, z, SZerr, SZnobs, PanSTARRS_Y, Yerr, Ynobs
                 tmp = [ra, dec]
-                for obs in line_row[5:]:
+                for obs in row[4:]:
                     if (obs == '-0') or (obs == '0'):
                         # mark missing errors as 0.15
                         tmp.append(0.15)
@@ -146,7 +146,7 @@ class online_catalog_query:
                     else:
                         tmp.append(np.abs(float(obs)))
                 # reshuffle so that it goes g, r, i, B, V
-                tmp = tmp[:2] + tmp[6:] + tmp[4:6] + tmp[2:4]
+                tmp = tmp[:2] + tmp[11:13] + tmp[14:16] + tmp[17:19] + tmp[5:7] + tmp[2:4]
                 out.append(tmp)
             except:
                 # silently fail on sources that are not formatted properly,

@@ -241,7 +241,7 @@ def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
         fileroot = os.path.basename(fname)
         filedir = os.path.dirname(fname)
         outnameim = filedir + '/f' + fileroot
-        
+
         write_fits(outnameim, fdata, head)
 
 
@@ -463,6 +463,301 @@ def skypipecombine(
     write_fits(outfile, reflat, head_m)
 
 
+def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
+                       #    objthresh=6, algorithm='median', trimlo=None, trimhi=None, mincounts=1,
+                       objthresh=2.0, objthresh2=1.5, algorithm='median', trimlo=None, trimhi=None,
+                       mincounts=1, maxcounts=55000, satlevel=30000, type=None):
+    """
+    NAME:
+        skypipeindividual
+    PURPOSE:
+        Create sigma clipped sky flat.  Scales each file based on the overall
+        sigma clipped median, then removes objects selected with sextractor (uses flux
+        fraction radius) in each file. Removes saturated pixels.  Calculates the sky
+        values of each pixel and saves anything with non-finite values (saturated or
+        source) to the median of the entire frame.  Then subtract the sky from each
+        individual frame
+
+
+    INPUTS:
+        filelist - files to be processed
+        filt	 - filter of files
+        pipevar  - pipeline parameters in dictionary
+    OPTIONAL KEYWORDS:
+        removeobjects 	- specifies if you want objects removed
+        objthresh	- sets sigma in removeobjects (default is 2)
+        objthresh2      - set sigma for the refined selection of the object in the sky imae (default is 0.5)
+        algorithm       - algorithm to solve (mean or median, default is median)
+        trimlo			- trim off bottom of data in mean algorithm mode (default is 25%)
+        trimhi			- rim off top of data in mean algorithm mode (default is 25%)
+        mincounts		- sets minimum counts allowed (default is 1)
+        maxcounts		- sets maximum counts allowed (default is 55000)
+        satlevel		- sets saturation level (default is 30000)
+        type			- sets 'SKYTYPE' keyword in header of outfile to this string
+    EXAMPLE:
+        skypipecombine(filelist, 'sky-filt.fits', removeobjects=True, type='sky')
+    DEPENDENCIES:
+        medclip, Sextractor
+    FUTURE IMPROVEMENTS:
+        medclip slow find faster solution
+        Need to take saturation level from header?
+        Saved header is from middle file, maybe use blank?
+    """
+
+    # source position in pixel
+    posx = 100
+    posy = 100
+    half_src_pixels = 20
+
+    # Sets defaults for trimming (25% of list)
+    if trimlo != None: (len(filelist) + 1) / 4
+    if trimhi != None: trimlo
+
+    # If given list, then grab all filenames, saved to files
+    # if len(filelist) == 1:
+    #    f = open(filelist,'r')
+    #    files = f.read().splitlines()
+    #    f.close()
+    # else:
+    #    files = filelist
+
+    files = filelist
+    nfiles = len(files)
+    nmid = int(len(files) / 2)
+    print(files[int(nmid)])
+
+    # Read in middle file and initialize arrays
+    f = pf.open(files[nmid])
+    data_m = f[0].data
+    head_m = f[0].header
+    f.close()
+
+    nx = head_m['NAXIS1']
+    ny = head_m['NAXIS2']
+    pixsc = head_m['PIXSCALE']
+
+    data = np.zeros((nfiles, ny, nx)) + float('NaN')
+    skymeds = []
+    usefiles = []
+
+    z = 0
+    # For each file and make sure size matches middle file, calculate sigma clipped
+    # median (3sig, 6 iter), then if within counts limit save data into 3d data cube
+    # and save clipped median into skymed, and mark file as usable
+    # Increment z by one when this is true
+    for file in files:
+        f = pf.open(file)
+        data_i = f[0].data
+        head_i = f[0].header
+        f.close()
+
+        inx = head_i['NAXIS1']
+        iny = head_i['NAXIS2']
+
+        if (inx != nx) or (iny != ny):
+            print('File ' + file + ' has wrong dimensions (' + str(inx) + \
+            ' x ' + str(iny) + '; should have ' + str(nx) + ' x ' + str(ny) + ')')
+
+        # Perform 3 sigma clipped median and save to inmeds
+        inmed, instd = medclip(data_i, clipsig=5, maxiter=3)
+
+        # If median is within limits save data, otherwise exclude files
+        if inmed >= mincounts and inmed <= maxcounts:
+            if pipevar['verbose'] > 0:
+                print(file + ' (' + str(inmed) + ' counts/pix)')
+
+            skymeds += [inmed]
+            usefiles += [file]
+            data[z, :, :] = data_i
+            z += 1
+        else:
+            if inmed < mincounts:
+                print(file + ' (' + str(inmed) + ' counts/pix) - too few counts; excluding')
+            if inmed > maxcounts:
+                print(file + ' (' + str(inmed) + ' counts/pix) - too many counts; excluding')
+
+                # if z < 2:
+    #    print 'ERROR - Not enough counts to make a flat with these data!'
+    #    return
+
+    # Median of sigma clipped medians
+    medsky = np.median(skymeds)
+
+    # Scale each file by median of sigma clipped medians divided by median of data
+    # Corrects for each flat's changing sky background
+    for f in np.arange(z):
+        # for f in np.arange(z-1):
+        factor = medsky / skymeds[f]
+        data[f, :, :] = data[f, :, :] * factor
+
+    # Removes extraneous indexes in data for skipped files
+    if z != nfiles: data = data[0:z, :, :]
+
+    # Removes objects from field by calculating iterative median sigma clipping
+    # (5 sigma, 5 iter) and using the calculated stddev to remove 2sigma (or non-default
+    # object threshold) data from the median along with values above the saturation limit.
+
+    if removeobjects != None:
+        if pipevar['verbose'] > 0: print
+        '  Identifying objects...'
+
+        for f in np.arange(z):
+            # for f in np.arange(z-1):
+
+            oridata = np.copy(data[f, :, :])
+            indata = np.copy(data[f, :, :])
+            meddata = np.copy(data[f, :, :])
+            stddata = np.copy(data[f, :, :])
+            meddata_src = np.copy(data[f, :, :])
+            stddata_src = np.copy(data[f, :, :])
+
+            # Set sources above objthresh  limit to NaN
+
+            datamed, datastd = medclip(indata, clipsig=5, maxiter=5)
+
+            src_piece = np.copy(indata[posy - half_src_pixels - 1:posy + half_src_pixels - 1,
+                                posx - half_src_pixels - 1:posx + half_src_pixels - 1])
+            meddata_src[:, :] = datamed
+            stddata_src[:, :] = datastd
+            stddata_src[posy - half_src_pixels - 1:posy + half_src_pixels - 1,
+            posx - half_src_pixels - 1:posx + half_src_pixels - 1] = 0.001  # take out of the image everything above the median sky level around the source position
+
+            sourcepixels = np.where((indata - meddata_src) >= objthresh * stddata_src)
+            # sourcepixels = np.where(abs(indata-datamed)>= objthresh*datastd)
+
+            satpixels = np.where(indata >= satlevel)
+
+            if len(sourcepixels[0]) > 0:
+                indata[sourcepixels] = float('NaN')
+
+            if len(satpixels[0]) > 0:
+                indata[satpixels] = float('NaN')
+
+            # # Keep sources as NaN Value
+
+            # data[f,:,:] = indata
+            # Replace bad pixels with median of entire sky
+            good = np.isfinite(indata)
+            # allmed = np.median(indata[good])
+            bad = ~good  # Opposite of boolean array good
+            bad_ratio = np.sum(bad)/(bad.shape[0]*bad.shape[1])
+            print(bad_ratio)
+            # indata[bad] = allmed
+            # zeroel = np.nonzero(indata == 0)
+            # indata[zeroel] = allmed
+
+            # compute mean and std deviation in each part of the matrix considering a grid of nsq_piece*2 pixels squares
+            nsq_piece = round(14 * (0.36 / pixsc))  # half square length (optimal 5 for pixscle 0.36)
+
+            mi, mj = oridata.shape
+            for mii in ((np.arange(mi / (nsq_piece * 2)) + 1) * 2 * nsq_piece) - nsq_piece:
+                for mji in ((np.arange(mj / (nsq_piece * 2)) + 1) * 2 * nsq_piece) - nsq_piece:
+                    # sq_piece=np.copy(indata[max(0,mii-nsq_piece):min(mii+nsq_piece+1,mi-1), max(0,mji-nsq_piece):min(mji+nsq_piece+1,mj-1)])
+                    sq_piece = np.copy(indata[int(mii - nsq_piece):int(mii + nsq_piece + 1), int(mji - nsq_piece):int(mji + nsq_piece + 1)])
+                    # print "########### dimension :"
+                    # print sq_piece.shape
+                    # prova = medclip(sq_piece, clipsig=5, maxiter=5)
+                    # print prova
+                    datamedi, datastdi = medclip(sq_piece, clipsig=15, maxiter=5)
+                    meddata[int(mii - nsq_piece):int(mii + nsq_piece + 1), int(mji - nsq_piece):int(mji + nsq_piece + 1)] = datamedi
+                    stddata[int(mii - nsq_piece):int(mii + nsq_piece + 1), int(mji - nsq_piece):int(mji + nsq_piece + 1)] = datastdi
+
+            # remove the sources above objthresh2 limitv in the squares
+
+            sourcepixels_sq = np.where((indata - meddata) >= objthresh2 * stddata)
+
+            if len(sourcepixels_sq[0]) > 0:
+                indata[sourcepixels_sq] = float('NaN')
+
+            # # Keep sources as NaN Value
+
+            # good = np.isfinite(indata)
+            # allmed = np.median(indata[good])
+            # bad = ~good  # Opposite of boolean array good
+            # indata[bad] = allmed
+            # zeroel = np.nonzero(indata == 0)
+            # indata[zeroel] = allmed
+
+            data[f, :, :] = indata
+
+    reflat = np.zeros((ny, nx)) + float('NaN')
+
+    # If algorithm set to median, find 3 sigma clipped median of each pixel
+    # excluding NaN values (which are eventually set to median)
+    if algorithm == 'median':
+        if pipevar['verbose'] > 0: print
+        '  Median-combining...'
+
+        for y in np.arange(ny):
+            vector = data[:z - 1, y, :]
+            temp = np.isfinite(vector)
+            me, st = medclip2d(vector, clipsig=3, maxiter=5, overaxis=0)
+            reflat[y, :] = me
+
+        # reflat=np.median(data, axis=0)
+
+        # # Keep sources as NaN Value
+
+        # # Replace bad pixels with median of entire sky
+        # good = np.isfinite(reflat)
+        # allmed = np.median(reflat[good])
+        # bad = ~good  # Opposite of boolean array good
+        # reflat[bad] = allmed
+        # zeroel = np.nonzero(reflat == 0)
+        # reflat[zeroel] = allmed
+
+    # If algorithm set to mean, takes mean of trimmed sorted values. Default is to
+    # trim 25% off top and bottom, if not enough good data, set trimming to 0
+    if algorithm == 'mean':
+
+        if pipevar['verbose'] > 0: print
+        '  Combining via trimmed mean...'
+
+        for y in np.arange(ny):
+            for x in np.arange(nx):
+                slice = data[:, y, x]
+                good = np.isfinite(slice)
+
+                cslice = slice[good]
+                ctgood = len(cslice)
+
+                if ctgood == 0:
+                    reflat[y, x] = 1
+
+                itrimlo = trimlo
+                itrimhi = trimhi
+
+                while ctgood - itrimlo - itrimhi < 1:
+                    itrimlo = max(itrimlo - 1, 0)
+                    itrimhi = max(itrimhi - 1, 0)
+
+                cslice = np.sort(cslice)
+                cslice = cslice[itrimlo:ctgood - itrimhi]
+                reflat[y, x] = np.mean(cslice)
+
+    # Interpolates sky flat to remove NaN Values in case of source overlap
+    print("Interpolating")
+    skyflat = masked_interpolation(reflat)
+    good = np.isfinite(skyflat)
+    bad = ~good  # Opposite of boolean array good
+    bad_count = np.sum(bad)
+    print("Number of NaN Values: {}".format(bad_count))
+
+    # Adds header information to signify what files we used
+    for f in np.arange(z - 1):
+        head_m['SKY' + str(f)] = usefiles[f]
+
+
+    if type != None:
+        head_m['SKYTYPE'] = type
+
+    date = datetime.datetime.now().isoformat()
+    head_m.add_history('Processed by skypipecombine ' + date)
+
+    if pipevar['verbose'] > 0: print('  Written to ' + outfile)
+
+    pf.writeto(outfile, skyflat, head_m, clobber=True)
+
 def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
 
     """
@@ -509,17 +804,25 @@ def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
         files = filename  
     
     # Open flat    
-    flat = pf.getdata(flatname) 
+    flat = pf.getdata(flatname)
+    good = np.isfinite(flat)
+    bad = ~good  # Opposite of boolean array good
+    bad_count = np.sum(bad)
+    print("Number of NaN Values in SKyproc: {}".format(bad_count))
     
     # med = np.median(flat)
     
     # For each input file check if same size as flats (required). If there is a minimum 
     # or maximum flat value set, forces values outside of that range to NaN. Use finite 
-    # values above 0.1 to determine skycounts, and subtract flat along with median of 
+    # values above 0.1 to determine skycounts, and subtract flat along with median of
     # flattened data. Saves to new fits file
     for file_ in files:
         f = pf.open(file_)
         data = f[0].data
+        good = np.isfinite(data)
+        bad = ~good  # Opposite of boolean array good
+        bad_count = np.sum(bad)
+        print("Number of NaN Values in data: {}".format(bad_count))
         head = f[0].header
         f.close()
         
@@ -549,11 +852,15 @@ def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
         
         scalefr = imgtmp/flattmp
         fdata = data - scalefr * flat
+        good = np.isfinite(fdata)
+        bad = ~good  # Opposite of boolean array good
+        bad_count = np.sum(bad)
+        print("Number of NaN Values in fdata: {}".format(bad_count))
         
         tmp = np.median(fdata[np.isfinite(fdata)])
         fdata = fdata - tmp
 
-        skycts = np.median(fdata[goodsignal])
+        skycts = np.nanmedian(fdata[goodsignal])
         
         # Adds header keywords to denote new median counts and file we used to flatfield
         head['SFLATFLD'] = flatname
@@ -960,6 +1267,7 @@ def medclip(indata, clipsig=3.0, maxiter=5, verbose=0):
  
     keep = np.isfinite(skpix)
     skpix = skpix[keep]
+    print("Skypix: {}".format(len(skpix)))
     ct = indata.size
     iteration = 0
     numrej = len(skpix)
@@ -967,10 +1275,11 @@ def medclip(indata, clipsig=3.0, maxiter=5, verbose=0):
     
     while (iteration < maxiter) and (numrej > min(ndata * 0.01, 50)):
         lastct = ct
-        medval = np.median(skpix)
-        sig = np.std(skpix)
-        wsm = np.where(abs(skpix-medval) < clipsig*sig)
+        medval = np.nanmedian(skpix)
+        sig = np.nanstd(skpix)
+        wsm = np.where(abs(skpix-medval) <= clipsig*sig)
         ct = len(wsm[0])
+        print("Ct: {}".format(ct))
         if ct > 0:
             skpix = skpix[wsm]
  
@@ -1007,36 +1316,99 @@ def medclip2d(indata, clipsig=3.0, maxiter=5, verbose=0, overaxis=0):
     EXAMPLE:
         med, sigma = medclip2d(indata, sigma=5.0, overaxis=0)
     """
-        
+
     # Flatten array
     skpix = np.ma.masked_array(indata)
     skpix = np.ma.masked_invalid(skpix)
-    iteration = 0
-    
-    while iteration < maxiter:
-        medval = np.ma.median(skpix, axis=overaxis)
-        sig = np.ma.std(skpix, axis=overaxis)
+    iter = 0
+
+    while (iter < maxiter):
+        medval = np.nanmedian(skpix, axis=overaxis)
+        sig = np.nanstd(skpix, axis=overaxis)
 
         if overaxis == 0:
-            mask = (abs(skpix-medval) < clipsig*sig)
+            mask = (abs(skpix - medval) < clipsig * sig)
         else:
-            mask = (abs(skpix.T-medval) < clipsig*sig)
+            mask = (abs(skpix.T - medval) < clipsig * sig)
         if (mask == skpix.mask).all:
             break
         skpix.mask = mask
         # if ct <=2: return 'Too few remaining'
-        iteration += 1
+        iter += 1
 
-    med = np.ma.median(skpix, axis=overaxis)
-    sigma = np.ma.std(skpix, axis=overaxis)
-    
+    med = np.nanmedian(skpix, axis=overaxis)
+    sigma = np.nanstd(skpix, axis=overaxis)
+
     if verbose:
-        print('%.1f-sigma clipped median' % clipsig)
-        print('Mean computed in %i iterations' % iteration)
-        # noinspection PyStringFormat
+        print('%.1f-sigma clipped median' % (clipsig))
+        print('Mean computed in %i iterations' % (iter))
         print('Mean = %.6f, sigma = %.6f' % (med, sigma))
- 
-    return med, sigma  
+
+    return med, sigma
+
+def masked_interpolation(image, method='nearest'):
+    """
+    Interpolates over masked locations
+    Parameters
+    ----------
+
+    image : np.array
+    method : ‘linear’, ‘nearest’, ‘cubic’}, optional
+
+    Returns np.array
+    -------
+    """
+    bad_pixel_mask = ~np.isfinite(image)
+    print("Bad Pixel count {}".format(np.sum(bad_pixel_mask)))
+    x = np.arange(0, image.shape[1])
+    y = np.arange(0, image.shape[0])
+    # interpolated_image = np.copy(image)
+    # interpolated_image[bad_pixel_mask] = np.nan
+    assert isinstance(image, np.ndarray)
+    interpolated_image = np.ma.masked_invalid(image.copy())
+    xx, yy = np.meshgrid(x, y)
+    x1 = xx[~interpolated_image.mask]
+    y1 = yy[~interpolated_image.mask]
+    newarr = interpolated_image[~interpolated_image.mask]
+    assert isinstance(x1, np.ndarray)
+    assert isinstance(y1, np.ndarray)
+    interpolated_image = scipy.interpolate.griddata((x1, y1), newarr.ravel(), (xx, yy),
+                                      method=method)
+    return interpolated_image
+
+def identify_matches(queried_stars, found_stars, match_radius=3.):
+    '''
+    Use a kd-tree (3d) to match two lists of stars, using full spherical coordinate distances.
+
+    queried_stars, found_stars: numpy arrays of [ [ra,dec],[ra,dec], ... ] (all in decimal degrees)
+    match_radius: max distance (in arcseconds) allowed to identify a match between two stars.
+
+    Returns two arrays corresponding to queried stars:
+    indices - an array of the indices (in found_stars) of the best match. Invalid (negative) index if no matches found.
+    distances - an array of the distances to the closest match. NaN if no match found.
+    '''
+    # make sure inputs are arrays
+    queried_stars = np.array(queried_stars)
+    found_stars = np.array(found_stars)
+
+    ra1, dec1 = queried_stars[:, 0], queried_stars[:, 1]
+    ra2, dec2 = found_stars[:, 0], found_stars[:, 1]
+    dist = 2.778e-4 * match_radius  # convert arcseconds into degrees
+
+    cosd = lambda x: np.cos(np.deg2rad(x))
+    sind = lambda x: np.sin(np.deg2rad(x))
+    mindist = 2 * sind(dist / 2)
+    getxyz = lambda r, d: [cosd(r) * cosd(d), sind(r) * cosd(d), sind(d)]
+    xyz1 = np.array(getxyz(ra1, dec1))
+    xyz2 = np.array(getxyz(ra2, dec2))
+
+    tree2 = scipy.spatial.KDTree(xyz2.transpose())
+    ret = tree2.query(xyz1.transpose(), 1, 0, 2, mindist)
+    dist, ind = ret
+    dist = np.rad2deg(2 * np.arcsin(dist / 2))
+    ind[np.isnan(dist)] = -9999
+
+    return ind, dist
 
 
 def identify_matches(queried_stars, found_stars, match_radius=3.):

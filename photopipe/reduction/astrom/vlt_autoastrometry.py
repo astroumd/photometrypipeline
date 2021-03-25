@@ -476,7 +476,7 @@ def autoastrometry(
     if ncat > 16 and catdensity > 3 * density:
         print('Image is shallow.  Trimming reference catalog...')
         while catdensity > 3 * density:
-            catlist = catlist[0:len(catlist)*4/5]
+            catlist = catlist[0:int(len(catlist)*4/5)]
             ncat = len(catlist)
             catdensity = ncat / (2*boxsize/60.)**2
 

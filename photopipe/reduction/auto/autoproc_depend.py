@@ -7,6 +7,7 @@ import datetime
 from photopipe.reduction.auto import cosmics
 import scipy
 import matplotlib.pyplot as plt
+import time
 # Disable interactive mode
 plt.ioff()
 
@@ -465,7 +466,7 @@ def skypipecombine(
 
 def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
                        #    objthresh=6, algorithm='median', trimlo=None, trimhi=None, mincounts=1,
-                       objthresh=2.0, objthresh2=1.5, algorithm='median', trimlo=None, trimhi=None,
+                       objthresh=2.0, objthresh2=2.0, algorithm='median', trimlo=None, trimhi=None,
                        mincounts=1, maxcounts=55000, satlevel=30000, type=None):
     """
     NAME:
@@ -551,12 +552,16 @@ def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
         head_i = f[0].header
         f.close()
 
+        good = np.isfinite(data_i)
+        bad = ~good  # Opposite of boolean array good
+        #print("Bad pix: {}".format(np.sum(bad)))
+
         inx = head_i['NAXIS1']
         iny = head_i['NAXIS2']
 
         if (inx != nx) or (iny != ny):
             print('File ' + file + ' has wrong dimensions (' + str(inx) + \
-            ' x ' + str(iny) + '; should have ' + str(nx) + ' x ' + str(ny) + ')')
+                  ' x ' + str(iny) + '; should have ' + str(nx) + ' x ' + str(ny) + ')')
 
         # Perform 3 sigma clipped median and save to inmeds
         inmed, instd = medclip(data_i, clipsig=5, maxiter=3)
@@ -598,8 +603,7 @@ def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
     # object threshold) data from the median along with values above the saturation limit.
 
     if removeobjects != None:
-        if pipevar['verbose'] > 0: print
-        '  Identifying objects...'
+        if pipevar['verbose'] > 0: print('  Identifying objects...')
 
         for f in np.arange(z):
             # for f in np.arange(z-1):
@@ -626,6 +630,8 @@ def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
             # sourcepixels = np.where(abs(indata-datamed)>= objthresh*datastd)
 
             satpixels = np.where(indata >= satlevel)
+            #print("Length of source pix: {}".format(len(sourcepixels[0])))
+            #print("Length of sat pix: {}".format(len(satpixels[0])))
 
             if len(sourcepixels[0]) > 0:
                 indata[sourcepixels] = float('NaN')
@@ -638,10 +644,15 @@ def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
             # data[f,:,:] = indata
             # Replace bad pixels with median of entire sky
             good = np.isfinite(indata)
-            # allmed = np.median(indata[good])
+            out = usefiles[f].replace('fp', 'skymask_fp')
+            #pf.writeto(out, good.astype(np.int), head_m, clobber=True)
+            allmed = np.median(indata[good])
+            allstd = np.std(indata[good])
+            # print("All Median: {}".format(allmed))
+            # print("All Std: {}".format(allstd))
             bad = ~good  # Opposite of boolean array good
             bad_ratio = np.sum(bad)/(bad.shape[0]*bad.shape[1])
-            print(bad_ratio)
+            #print("Bad pix ratio: {}".format(bad_ratio))
             # indata[bad] = allmed
             # zeroel = np.nonzero(indata == 0)
             # indata[zeroel] = allmed
@@ -658,35 +669,33 @@ def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
                     # print sq_piece.shape
                     # prova = medclip(sq_piece, clipsig=5, maxiter=5)
                     # print prova
-                    datamedi, datastdi = medclip(sq_piece, clipsig=15, maxiter=5)
+                    datamedi, datastdi = medclip(sq_piece, clipsig=5, maxiter=5)
                     meddata[int(mii - nsq_piece):int(mii + nsq_piece + 1), int(mji - nsq_piece):int(mji + nsq_piece + 1)] = datamedi
                     stddata[int(mii - nsq_piece):int(mii + nsq_piece + 1), int(mji - nsq_piece):int(mji + nsq_piece + 1)] = datastdi
 
             # remove the sources above objthresh2 limitv in the squares
 
             sourcepixels_sq = np.where((indata - meddata) >= objthresh2 * stddata)
+            #print("Length of bad pix: {}".format(len(sourcepixels_sq[0])))
 
             if len(sourcepixels_sq[0]) > 0:
                 indata[sourcepixels_sq] = float('NaN')
 
-            # # Keep sources as NaN Value
-
-            # good = np.isfinite(indata)
-            # allmed = np.median(indata[good])
-            # bad = ~good  # Opposite of boolean array good
-            # indata[bad] = allmed
-            # zeroel = np.nonzero(indata == 0)
-            # indata[zeroel] = allmed
-
+            good = np.isfinite(meddata)
+            bad = ~good  # Opposite of boolean array good
+            indata[bad] = np.nan
             data[f, :, :] = indata
+            good2 = np.isfinite(indata)
+            out = usefiles[f].replace('fp', 'skymask2_fp')
+            #pf.writeto(out, good2.astype(np.int), head_m, clobber=True)
 
     reflat = np.zeros((ny, nx)) + float('NaN')
 
     # If algorithm set to median, find 3 sigma clipped median of each pixel
     # excluding NaN values (which are eventually set to median)
     if algorithm == 'median':
-        if pipevar['verbose'] > 0: print
-        '  Median-combining...'
+        if pipevar['verbose'] > 0:
+            print('  Median-combining...')
 
         for y in np.arange(ny):
             vector = data[:z - 1, y, :]
@@ -710,8 +719,7 @@ def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
     # trim 25% off top and bottom, if not enough good data, set trimming to 0
     if algorithm == 'mean':
 
-        if pipevar['verbose'] > 0: print
-        '  Combining via trimmed mean...'
+        if pipevar['verbose'] > 0: print('  Combining via trimmed mean...')
 
         for y in np.arange(ny):
             for x in np.arange(nx):
@@ -737,11 +745,17 @@ def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
 
     # Interpolates sky flat to remove NaN Values in case of source overlap
     print("Interpolating")
-    skyflat = masked_interpolation(reflat)
-    good = np.isfinite(skyflat)
-    bad = ~good  # Opposite of boolean array good
-    bad_count = np.sum(bad)
-    print("Number of NaN Values: {}".format(bad_count))
+    good = np.isfinite(reflat)
+    out = outfile.replace('.fits', 'skymask.fits')
+    pf.writeto(out, good.astype(np.int), head_m, clobber=True)
+    t1 = time.perf_counter()
+    skyflat = masked_interpolation(reflat, method='nearest')
+    t2 = time.perf_counter()
+    print("Interpolation Time: {:0.2f} s".format(t2-t1))
+    #good = np.isfinite(skyflat)
+    #bad = ~good  # Opposite of boolean array good
+    #bad_count = np.sum(bad)
+    #print("Number of NaN Values: {}".format(bad_count))
 
     # Adds header information to signify what files we used
     for f in np.arange(z - 1):
@@ -808,7 +822,7 @@ def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
     good = np.isfinite(flat)
     bad = ~good  # Opposite of boolean array good
     bad_count = np.sum(bad)
-    print("Number of NaN Values in SKyproc: {}".format(bad_count))
+    #print("Number of NaN Values in SKyproc: {}".format(bad_count))
     
     # med = np.median(flat)
     
@@ -822,7 +836,7 @@ def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
         good = np.isfinite(data)
         bad = ~good  # Opposite of boolean array good
         bad_count = np.sum(bad)
-        print("Number of NaN Values in data: {}".format(bad_count))
+        #print("Number of NaN Values in data: {}".format(bad_count))
         head = f[0].header
         f.close()
         
@@ -855,7 +869,7 @@ def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
         good = np.isfinite(fdata)
         bad = ~good  # Opposite of boolean array good
         bad_count = np.sum(bad)
-        print("Number of NaN Values in fdata: {}".format(bad_count))
+        #print("Number of NaN Values in fdata: {}".format(bad_count))
         
         tmp = np.median(fdata[np.isfinite(fdata)])
         fdata = fdata - tmp
@@ -1264,10 +1278,12 @@ def medclip(indata, clipsig=3.0, maxiter=5, verbose=0):
     
     # Flatten array
     skpix = indata.reshape(indata.size,)
- 
     keep = np.isfinite(skpix)
     skpix = skpix[keep]
-    print("Skypix: {}".format(len(skpix)))
+    #print("Skypix: {}".format(len(skpix)))
+    #print("Med: {}, Std: {}".format(np.nanmedian(skpix), np.nanstd(skpix)))
+    if len(skpix) == 0: # In case of all NaN slice
+        return np.nan, np.nan
     ct = indata.size
     iteration = 0
     numrej = len(skpix)
@@ -1279,17 +1295,18 @@ def medclip(indata, clipsig=3.0, maxiter=5, verbose=0):
         sig = np.nanstd(skpix)
         wsm = np.where(abs(skpix-medval) <= clipsig*sig)
         ct = len(wsm[0])
-        print("Ct: {}".format(ct))
+        #print("Ct: {}".format(ct))
         if ct > 0:
             skpix = skpix[wsm]
  
         numrej = abs(ct - lastct)
         if ct <= 2:
-            return 'Too few remaining'
+            #print("Count case!!!!")
+            return np.nan, np.nan
         iteration += 1
  
-    med = np.median(skpix)
-    sigma = np.std(skpix)
+    med = np.nanmedian(skpix)
+    sigma = np.nanstd(skpix)
  
     if verbose:
         print('%.1f-sigma clipped median' % clipsig)

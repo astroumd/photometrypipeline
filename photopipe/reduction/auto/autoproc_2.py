@@ -7,9 +7,10 @@ import photopipe.reduction.auto.steps.zpoint as zpt
 import os
 
 
+
 def autoproc_2(
         datadir=None, imdir=None, start=None, stop=None, only=None, step=None,
-        nocrclean=False, nomastersky=False, redo=False, quiet=False, rmifiles=False,
+        nocrclean=False, nomastersky=False, skyflattarg=True, redo=False, quiet=False, rmifiles=False,
         customcat=None, customcatfilt=None
 ):
     """
@@ -263,9 +264,13 @@ def autoproc_2(
             pre.autopipeprepare(pipevar=pipevar)
         if step == 'flatten':
             pre.autopipeimflatten(pipevar=pipevar)
-        if step == 'makesky' and not nomastersky:
+        if step == 'makesky' and not nomastersky and skyflattarg:
+            sky.autopipemakesky_targets(pipevar=pipevar)
+        elif step == 'makesky' and not nomastersky:
             sky.autopipemakesky(pipevar=pipevar)
-        if step == 'skysub' and not nomastersky:
+        if step == 'skysub' and not nomastersky and skyflattarg:
+            sky.autopipeskysub_targets(pipevar=pipevar)
+        elif step == 'skysub' and not nomastersky:
             sky.autopipeskysub(pipevar=pipevar)
         if step == 'skysub' and nomastersky:
             sky.autopipeskysubmed(pipevar=pipevar)

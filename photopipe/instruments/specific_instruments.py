@@ -4,6 +4,7 @@ from .instrument_class import instrument
 from astropy.io import fits as pf
 import re
 import os
+import glob
 
 
 class ratir(instrument):
@@ -300,8 +301,12 @@ class lmi(instrument):
             'BIAS': 'b', 'OBJECT': 'o'}
         
         datesearch = r"(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.\d+"
+
+        fits_check = glob('????????T??????C??.fits')
         
         for file in files:
+            if file in fits_check:
+                continue
             pyim = pf.open(file)
             h = pyim[0].header
             

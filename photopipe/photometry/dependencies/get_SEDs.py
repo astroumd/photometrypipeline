@@ -161,9 +161,8 @@ class online_catalog_query:
         boxsize = self.boxsize / 3600.  # in degrees
         # search for APASS objects around ra, dec, with a search radius of boxsize,
         #  and return the result in a CSV string
-        request = 'http://www.aavso.org/cgi-bin/apass_download.pl?ra={}&dec={}&radius={}&outtype=1'.format(
-            ra, dec, boxsize
-        )
+        request = 'http://www.aavso.org/cgi-bin/apass_dr10_download.pl?ra={}&dec={}&radius={}&outtype=1'.format(
+            ra, dec, boxsize)
         o = urlopen(request).read()
         apass_objects = self._parse_apass(o)
         if len(apass_objects) == 0:

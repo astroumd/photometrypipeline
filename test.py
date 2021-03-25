@@ -10,7 +10,7 @@ base_path = os.path.dirname(os.path.abspath(__file__))
 print('base_path', base_path)
 test_path = os.path.join(base_path, 'test')
 print('test_path', test_path)
-copy_path = os.path.join(test_path, 'copy')
+copy_path = os.path.join(test_path, 'Test_Lmi')
 print('copy_path', copy_path)
 selected_path = os.path.join(copy_path, 'selected')
 print('selected_path', selected_path)
@@ -22,7 +22,7 @@ print('reduced_path', reduced_path)
 # print('extracting files')
 # zf.extractall(copy_path)
 # print('extraction complete')
-#
+
 # print('start bias calibration')
 # bias_calib = preproc.choose_calib(
 #     'lmi',
@@ -90,4 +90,4 @@ print('reduced_path', reduced_path)
 
 autoproc(datadir=selected_path+os.path.sep,
          imdir=reduced_path+os.path.sep,
-         redo=1, start='astrometry', nomastersky=True)
+         redo=1, nomastersky=False)

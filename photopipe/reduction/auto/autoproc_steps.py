@@ -224,14 +224,14 @@ def autopipeimflatten(pipevar=None):
         os.system('rm -f ' + pipevar['imworkingdir'] + 'p' + pipevar['prefix'] + '*.fits')
 
 
-def autopipemakesky(pipevar=None):
+def autopipemakesky(pipevar=inpipevar):
     """
     NAME:
         autopipemakesky
     PURPOSE:
         Combine sky flats based on filter type (sigma clipping for sources)
     OPTIONAL KEYWORDS:
-        pipevar  - input pipeline parameters (typically set in ratautoproc.pro, 
+        pipevar  - input pipeline parameters (typically set in ratautoproc.pro,
                    but can be set to default)
     EXAMPLE:
         autopipemakesky(pipevar=inpipevar)
@@ -239,68 +239,66 @@ def autopipemakesky(pipevar=None):
         astroproc_depend.skypipecombine, astroproc_depend.medclip, Sextractor
     FUTURE IMPROVEMENTS:
         skypipecombine slow, find better algorithm
-    """   
-    
+    """
+
     print 'MAKE SKY'
-    if pipevar is None:
-        pipevar = inpipevar
+
     # Copies necessary parameter file for sextractor if not in current working directory
-    if not os.path.isfile('source.param'): 
+    if not os.path.isfile('source.param'):
         os.system('cp ' + pipevar['defaultspath'] + '/source.param .')
-    if not os.path.isfile('sex_source.config'): 
+    if not os.path.isfile('sex_source.config'):
         os.system('cp ' + pipevar['defaultspath'] + '/sex_source.config .')
-    if not os.path.isfile('sex.conv'): 
+    if not os.path.isfile('sex.conv'):
         os.system('cp ' + pipevar['defaultspath'] + '/sex.conv .')
-    if not os.path.isfile('defaulf.nnw'): 
+    if not os.path.isfile('defaulf.nnw'):
         os.system('cp ' + pipevar['defaultspath'] + '/default.nnw .')
-        
+
     # Finds files with given prefix
     files = glob.glob(pipevar['imworkingdir'] + 'fp' + pipevar['prefix'] + '*.fits')
 
     if len(files) == 0:
         print 'Did not find any files! Check your data directory path!'
         return
-    
+
     filters = []
-    for f in files:
-        head = pf.getheader(f)
-        head_filter = head['FILTER']
-        filters += [head_filter]
+    for file in files:
+        head = pf.getheader(file)
+        filter = head['FILTER']
+        filters += [filter]
     filters = np.array(filters)
-    
+
     # Unique list of filters
     filterlist = set(filters)
-    
+
     # For each unique filter, combine sky files using skycombine if more than 2 files
     # Otherwise return list of unprocessed files
     for filt in filterlist:
         skyflats = np.where(filters == filt)
         outflatname = pipevar['imworkingdir'] + 'sky-' + filt + '.fits'
-        
+
         if len(skyflats[0]) >= 2:
-        
+
             if os.path.isfile(outflatname) and pipevar['overwrite'] == 0:
-                print 'Skipping makesky for '+filt+'. File already exists'
+                print 'Skipping makesky for ' + filt + '. File already exists'
                 continue
 
             files = np.array(files)
             if pipevar['verbose']:
                 print filt, '-band sky flats.'
                 print files[skyflats]
-                             
-                apd.skypipecombine(
-                    files[skyflats], outflatname, filt,
-                    # apd.skypipecombine(files[skyflats], outflatname, file,
-                    pipevar, removeobjects=True, type_='sky')
+
+                apd.skypipecombine_new(files[skyflats], outflatname, filt,
+                                       #                apd.skypipecombine(files[skyflats], outflatname, file,
+                                       pipevar, removeobjects=True, type='sky')
         else:
             print 'Unable to produce a flat field for this setting: ' + filt
             print 'Will not be able to further process ' + str(len(skyflats)) + \
                   ' image(s) without a flat from another source:'
 
             for i in np.arange(len(skyflats[0])):
-                print '    ' + str(files[skyflats[i]])           
+                print '    ' + str(files[skyflats[i]])
 
-    # If remove intermediate files keyword set, delete p(PREFIX)*.fits files
+                # If remove intermediate files keyword set, delete p(PREFIX)*.fits files
     if pipevar['rmifiles'] != 0:
         os.system('rm -f ' + pipevar['imworkingdir'] + 'p' + pipevar['prefix'] + '*.fits')
 
@@ -373,77 +371,76 @@ def autopipeskysubmed(pipevar=None):
         os.system('rm -f ' + pipevar['imworkingdir'] + 'fp' + pipevar['prefix'] + '*.fits')
         os.system('rm -f ' + pipevar['imworkingdir'] + '*sky-*.fits')
 
-        
-def autopipeskysub(pipevar=None):
+
+def autopipeskysub(pipevar=inpipevar):
     """
     NAME:
         autopipeskysub
     PURPOSE:
         Subtracts master sky flat from data and subtracts median.
     OPTIONAL KEYWORDS:
-        pipevar  - input pipeline parameters (typically set in ratautoproc.pro, 
+        pipevar  - input pipeline parameters (typically set in ratautoproc.pro,
                    but can be set to default)
     EXAMPLE:
         autopipeskysub(pipevar=inpipevar)
     DEPENDENCIES:
         autoproc_depend.skypipeproc
     """
-    
+
     print 'SKY-SUBTRACT'
-    if pipevar is None:
-        pipevar = inpipevar
+
     # Find data that needs to be sky subtracted
     files = glob.glob(pipevar['imworkingdir'] + 'fp' + pipevar['prefix'] + '*.fits')
+    sfiles = glob.glob(pipevar['imworkingdir'] + 'sfp' + pipevar['prefix'] + '*.fits')
 
     if len(files) == 0:
         print 'Did not find any files! Check your data directory path!'
         return
-    
+
     skys = glob.glob(pipevar['imworkingdir'] + '*sky-*.fits')
-    
+
     if len(skys) == 0:
         print 'No master sky files found, cannot sky subtract'
         return
-        
+
     # Find the associated filter of each master skyflat
     skyfilts = []
     for sky in skys:
         head = pf.getheader(sky)
-        head_filter = head['FILTER']
-        skyfilts += [head_filter]
-    
-    # For each file if output files don't exist or override set check if we have master 
-    # skyflat for filter, sky subtract if it exists using skypipeproc
-    for f in files:
+        filter = head['FILTER']
+        skyfilts += [filter]
 
-        fileroot = os.path.basename(f)
-        outfile = pipevar['imworkingdir'] + 's' + fileroot    
-    
+    # For each file if output files don't exist or override set check if we have master
+    # skyflat for filter, sky subtract if it exists using skypipeproc
+    for file in files:
+
+        fileroot = os.path.basename(file)
+        outfile = pipevar['imworkingdir'] + 's' + fileroot
+
         if os.path.isfile(outfile) and pipevar['overwrite'] == 0:
-            print 'Skipping sky subtraction for ' + f + '. File already exists'
+            print 'Skipping sky subtraction for ' + file + '. File already exists'
             continue
-            
-        head = pf.getheader(f)
-        head_filter = head['FILTER']
+
+        head = pf.getheader(file)
+        filter = head['FILTER']
 
         # Find corresponding master skyflat
         try:
-            skyloc = skyfilts.index(head_filter)
-            skyfile = skys[skyloc]      
+            skyloc = skyfilts.index(filter)
+            skyfile = skys[skyloc]
         except:
-            print 'Sky field not found for ', f
-            pipevar['flatfail'] += ' ' + f
+            print 'Sky field not found for ', file
+            pipevar['flatfail'] += ' ' + file
             continue
-        
+
         if pipevar['verbose'] > 0:
-            print 'Sky subtracting', f, 'using', skyfile
-        
-        apd.skypipeproc(f, skyfile, outfile)
+            print 'Sky subtracting', file, 'using', skyfile
+
+        apd.skypipeproc(file, skyfile, outfile)
 
     # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
     # and sky-*.fits files
     if pipevar['rmifiles'] != 0:
-        
         os.system('rm -f ' + pipevar['imworkingdir'] + 'p' + pipevar['prefix'] + '*.fits')
         os.system('rm -f ' + pipevar['imworkingdir'] + 'fp' + pipevar['prefix'] + '*.fits')
         os.system('rm -f ' + pipevar['imworkingdir'] + '*sky-*.fits')

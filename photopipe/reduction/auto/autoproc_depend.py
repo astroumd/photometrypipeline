@@ -746,16 +746,21 @@ def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
     # Interpolates sky flat to remove NaN Values in case of source overlap
     print("Interpolating")
     good = np.isfinite(reflat)
-    out = outfile.replace('.fits', 'skymask.fits')
-    pf.writeto(out, good.astype(np.int), head_m, clobber=True)
+    bad = ~good  # Opposite of boolean array good
+    bad_count = np.sum(bad)
+    print("Number of NaN Values: {}".format(bad_count))
+    #out = outfile.replace('.fits', 'skymask.fits')
+    #pf.writeto(out, good.astype(np.int), head_m, clobber=True)
+    skyflat = np.copy(reflat)
     t1 = time.perf_counter()
-    skyflat = masked_interpolation(reflat, method='nearest')
+    mi, mj = reflat.shape
+    for mii in ((np.arange(mi / (nsq_piece * 2)) + 1) * 2 * nsq_piece) - nsq_piece:
+        for mji in ((np.arange(mj / (nsq_piece * 2)) + 1) * 2 * nsq_piece) - nsq_piece:
+            sq_piece = np.copy(reflat[int(mii - nsq_piece):int(mii + nsq_piece + 1), int(mji - nsq_piece):int(mji + nsq_piece + 1)])
+            interp_flat = masked_interpolation(sq_piece, method='nearest')
+            skyflat[int(mii - nsq_piece):int(mii + nsq_piece + 1),int(mji - nsq_piece):int(mji + nsq_piece + 1)] = interp_flat
     t2 = time.perf_counter()
     print("Interpolation Time: {:0.2f} s".format(t2-t1))
-    #good = np.isfinite(skyflat)
-    #bad = ~good  # Opposite of boolean array good
-    #bad_count = np.sum(bad)
-    #print("Number of NaN Values: {}".format(bad_count))
 
     # Adds header information to signify what files we used
     for f in np.arange(z - 1):
@@ -1376,7 +1381,6 @@ def masked_interpolation(image, method='nearest'):
     -------
     """
     bad_pixel_mask = ~np.isfinite(image)
-    print("Bad Pixel count {}".format(np.sum(bad_pixel_mask)))
     x = np.arange(0, image.shape[1])
     y = np.arange(0, image.shape[0])
     # interpolated_image = np.copy(image)

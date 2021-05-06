@@ -103,9 +103,8 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./'):
                 continue
             else:
                 temp = input(
-                    af.bcolors.WARNING + "Only {} frames available to make master {} for {} {}.  Continue? (y/n): ".format(
-                        len(fns), mtype, band, sorttype.lower()) + af.bcolors.ENDC
-                )
+                    af.bcolors.WARNING + "Only {} frames available to make master {} for {} {}.  Continue? (y/n): ".format(len(fns), mtype, band, sorttype.lower()) + af.bcolors.ENDC)
+                print("test")
                 if temp.lower() != 'y' and temp.lower() != 'yes':
                     af.print_warn("Skipping {}...".format(band))
                     continue

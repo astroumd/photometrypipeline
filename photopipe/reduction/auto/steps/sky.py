@@ -230,7 +230,7 @@ def autopipemakesky_targets(pipevar=inpipevar):
             continue
 
         thistargetfilts = set(filters[thistarget])
-        print(thistargetfilts)
+        print("{} Filters: {}".format(targ,thistargetfilts))
 
         for filt in thistargetfilts:
             skyflats = np.where(np.logical_and(filters == filt, targets == targ))

@@ -24,6 +24,7 @@ from six.moves import urllib
 import sys
 import warnings
 import pandas as pd
+import os
 
 import multiprocessing as mp
 
@@ -32,8 +33,12 @@ N_CORES = mp.cpu_count()  # use all the cpus you have
 # use the __file__ variable to point to the static files
 # Note: __file__ points to the location of this file,
 #  so the static files below MUST be in the same folder.
+base_path = os.path.dirname(os.path.abspath(__file__))
+print(base_path)
 try:
-    MODELS = np.load('photopipe/photometry/dependencies/all_models.npy')
+    model_path = os.path.join(base_path, 'all_models.npy')
+    #print(model_path)
+    MODELS = np.load(model_path)
     # rezero so that K=0 for all models
     for row in MODELS[1:]:
         row[1:] = row[1:] - row[-1]
@@ -43,7 +48,9 @@ except IOError as error:
 except:
     raise IOError('cannot find models file')
 try:
-    err_dict =pd.read_pickle(r'photopipe/photometry/dependencies/err_dict.p')
+    pickle_path = os.path.join(base_path, 'err_dict.p')
+    #print(pickle_path)
+    err_dict =pd.read_pickle(pickle_path)
     ERR_FUNCTIONS = {}
     for mode in [0, 1, 2]:
         ERR_FUNCTIONS[mode] = {}

@@ -762,6 +762,7 @@ def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
     t2 = time.perf_counter()
     print("Interpolation Time: {:0.2f} s".format(t2-t1))
 
+
     # Adds header information to signify what files we used
     for f in np.arange(z - 1):
         head_m['SKY' + str(f)] = usefiles[f]
@@ -1381,6 +1382,7 @@ def masked_interpolation(image, method='nearest'):
     -------
     """
     bad_pixel_mask = ~np.isfinite(image)
+    #print("Bad Pixel count {}".format(np.sum(bad_pixel_mask)))
     x = np.arange(0, image.shape[1])
     y = np.arange(0, image.shape[0])
     # interpolated_image = np.copy(image)

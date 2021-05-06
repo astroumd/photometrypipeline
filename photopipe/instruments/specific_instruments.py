@@ -4,7 +4,7 @@ from .instrument_class import instrument
 from astropy.io import fits as pf
 import re
 import os
-import glob
+from glob import glob
 
 
 class ratir(instrument):
@@ -307,6 +307,7 @@ class lmi(instrument):
         for file in files:
             if file in fits_check:
                 continue
+            print(file)
             pyim = pf.open(file)
             h = pyim[0].header
             

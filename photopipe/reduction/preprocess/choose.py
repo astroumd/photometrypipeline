@@ -80,10 +80,11 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0, 1, 2, 3], auto=False, 
 
     # dictionary to store selected fits files by camera or filter
     fits_list_dict = {}
-    #fits_check = glob('????????T??????C??.fits')
+
 
     #if len(fits_check) == 0:
     if len(glob(instrum.original_file_format())) != 0:
+        print("Changing file names:")
         files = instrum.change_file_names(glob(instrum.original_file_format()))
 
         fits_check_2 = glob('????????T??????C??.fits')

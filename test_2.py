@@ -14,9 +14,7 @@ base_path = os.path.dirname(os.path.abspath(__file__))
 print('base_path', base_path)
 test_path = os.path.join(base_path, 'test')
 print('test_path', test_path)
-copy_path = os.path.join(test_path, 'copy')
-print(os.listdir(base_path))
-#print(os.listdir(base_path))
+copy_path = os.path.join(test_path, 'April_18_2021')
 print('copy_path', copy_path)
 selected_path = os.path.join(copy_path, 'selected')
 print('selected_path', selected_path)
@@ -99,4 +97,4 @@ for f in glob.glob(os.path.join(base_path, 'flat*.fits')):
 #          redo=1, start='makesky', nomastersky=False)
 autoproc_2(datadir=selected_path+os.path.sep,
          imdir=reduced_path+os.path.sep,
-         redo=1, nomastersky=True, skyflattarg=False)
+         redo=1, nomastersky=False, skyflattarg=False)

@@ -1,5 +1,5 @@
-#Photometry processing library (misc function that can be reused)
-
+# Photometry processing library (misc function that can be reused)
+import os
 import astropy.io.fits as pf
 import fnmatch
 from numpy import sqrt
@@ -267,7 +267,7 @@ def djs_iterstat(InputArr, SigRej=3.0, MaxIter=10, Mask=0,
         if BinData == 1:
             HRange = InputArr[SaveMask==1].max()-InputArr[SaveMask==1].min()
             bins_In = arange(HRange)+InputArr[SaveMask==1].min()
-            Bins, N = histOutline.histOutline(InputArr[SaveMask == 1], binsIn = bins_In)
+            Bins, N = np.histOutline.histOutline(InputArr[SaveMask == 1], binsIn = bins_In)
             FMode = Bins[(where(N == N.max()))[0]].mean()
         else:
             FMode = 0

@@ -5,6 +5,7 @@ import numpy as np
 import photopipe.reduction.auto.autoproc_depend as apd
 from astropy import wcs
 import re
+import matplotlib.pyplot as plt
 import datetime
 from astropy.time import Time
 import sys
@@ -88,6 +89,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
         # filearms1 += [head['ASTRRMS1']]; filearms2 += [head['ASTRRMS2']]
         filetime += [obstime.jd]
         fileroot = os.path.basename(f)
+        print(fileroot)
         zfile = pipevar['imworkingdir'] + 't' + fileroot
         apd.write_fits(zfile, data, head)
 
@@ -129,15 +131,17 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
             stacklist = files[stacki]
 
             zpts = []
+            it_num = 0 #for testing
 
             # Find stars for each individual frame and try to find matches with coadded
             # frame with each frame optimized with PSF size
-            for sfile in stacklist:
 
+            for sfile in stacklist:
+                print("working")
                 head = pf.getheader(sfile).copy()
                 ipixscl = head['PIXSCALE']
-                # apd.findsexobj(sfile, 3.0, pipevar,pix=ipixscl,aperture=20.0, quiet=quiet)
-                apd.findsexobj(sfile, 1.5, pipevar, pix=ipixscl, aperture=20.0, quiet=quiet)
+                apd.findsexobj(sfile, 3.0, pipevar,pix=ipixscl,aperture=20.0, quiet=quiet) ### Change this
+                #apd.findsexobj(sfile, 1.5, pipevar, pix=ipixscl, aperture=20.0, quiet=quiet)
                 starfile = sfile + '.stars'
 
                 svars = np.loadtxt(starfile, unpack=True)
@@ -147,6 +151,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                 mage = svars[4, :]
                 flag = svars[5, :]
                 elon = svars[8, :]
+                fwhm = svars[10, :]
 
                 # astropy does not like SWarp PV keywords or unicode, temporarily delete
                 headcopy = head.copy()
@@ -247,9 +252,11 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                         obswts[i] = 1.0 / (max(obserr[i], 0.01) ** 2)
 
                 if len(refmag) > 0 and len(obskpm) > 0 and len(obswts) > 0:
+                    #zpt, scats, rmss = apd.calc_zpt(np.array([refmag]), np.array([obskpm]),np.array([obswts]), sigma=3.0)
                     zpt, scats, rmss = apd.calc_zpt(np.array([refmag]), np.array([obskpm]),
-                                                    np.array([obswts]), sigma=3.0)
-
+                                                    np.array([obswts]), sigma=3.0,
+                                                    plotter=pipevar['imworkingdir'] + 'zpt_' + targ + '_' + thistargetfilter + '_{}.png'.format(it_num))
+                    it_num += 1 #testing
                     # Reload because we had to remove distortion parameters before
                     head = pf.getheader(sfile)
                     data = pf.getdata(sfile)
@@ -261,6 +268,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                     zpts += zpt
                 else:
                     zpts = [np.inf]
+                    it_num += 1 #tesing
 
             # Move files with bad zeropoint calculations to folder 'badzptfit'
             # and do not use those frames
@@ -307,3 +315,18 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
             if len(removedframes) > 0:
                 print('Removed frames with bad zeropoint fits: ')
                 print(removedframes)
+
+            #### Testing ####
+            print(np.shape(zpts))
+            plt.hist(zpts.flatten())
+            # for row in zpts:
+            #     xx = np.zeros(len(row))+it_num
+            #     yy = np.array(row)+25.0
+            #     plt.plot(xx,yy, '*')
+            #     it_num += 1
+            #     #plt.errorbar(xx, yy, yerr=1.0 / np.sqrt(wts_init), fmt='.')
+            plt.title('Abs. Zeropoint Histogram')
+            plt.xlabel('Abs. Zeropoint')
+            plt.ylabel('Counts')
+            plt.savefig(pipevar['imworkingdir'] + 'zpoint_values.png')
+            plt.clf()

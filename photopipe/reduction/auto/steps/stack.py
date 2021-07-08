@@ -161,8 +161,8 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             cpsfdi = 1.34 * float(head['SEEPIX'])
 
             # Run sextractor again on new coadd file
-            # apd.findsexobj(outfl, 3.0, pipevar, pix=pixscl, aperture=cpsfdi,
-            apd.findsexobj(outfl, 1.5, pipevar, pix=pixscl, aperture=cpsfdi,
+            apd.findsexobj(outfl, 3.0, pipevar, pix=pixscl, aperture=cpsfdi,
+            #apd.findsexobj(outfl, 1.5, pipevar, pix=pixscl, aperture=cpsfdi,
                            wtimage=outwt, quiet=quiet)
 
             head = pf.getheader(outfl)
@@ -270,7 +270,8 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             czpts, cscats, crmss = apd.calc_zpt(
                 np.array([refmag]), np.array([obskpm]), np.array([obswts]), sigma=1.0,
                 # np.array([obswts]), sigma=1.0,
-                plotter=pipevar['imworkingdir'] + 'zpt_' + thistargetfilter + '.ps')
+                #plotter=pipevar['imworkingdir'] + 'zpt_' + thistargetfilter + '.ps')
+                plotter=pipevar['imworkingdir'] + 'zpt_COADD_' + targ + '_' + thistargetfilter + '.png')
 
             chead = pf.getheader(outfl)
             chead['SPIX'] = (cpsfdi, 'Final aperture size')

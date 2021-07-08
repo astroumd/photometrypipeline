@@ -40,6 +40,10 @@ import matplotlib.pyplot as pl
 # Disable interactive mode
 pl.ioff()
 
+catdict = {'u': 2, 'g': 3, 'r': 4, 'i': 5, 'z': 6, 'y': 7,
+               'B': 8, 'V': 9, 'R': 10, 'I': 11, 'J': 12, 'H': 13, 'K': 14,
+               'ue': 15, 'ge': 16, 're': 17, 'ie': 18, 'ze': 19, 'ye': 20,
+               'Be': 21, 'Ve': 22, 'Re': 23, 'Ie': 24, 'Je': 25, 'He': 26, 'Ke': 27, 'mode': 28}
 
 def photom(prefchar='coadd'):
 
@@ -283,31 +287,39 @@ def photom(prefchar='coadd'):
 		# Plot Astrometry Error
 		print("Creating astronomy error file for filter : {}".format(filter))
 		cvars = np.loadtxt(catfile, unpack=True)
+		refmag = cvars[catdict[filter], :]
+		mode = cvars[catdict['mode'], :]
+		flag = cvars[5]
+		elon = cvars[8]
+		# Find catalog filter values and only cutoff values of actual detections
+		goodind = (mode != -1) & (refmag < 90.0) & (flag < 8) & (elon <= 1.5)
+		#cvars = cvars[]
 		ra_cat = cvars[0, :]
 		dec_cat = cvars[1, :]
-		ra_im = sexout[2, :]
-		dec_im = sexout[3, :]
+		x_im = sexout[0, :]
+		y_im = sexout[1, :]
+		catpix = w.all_world2pix(np.transpose([ra_cat, dec_cat]), 0)
 		nsources = len(ra_cat)
-		ra_err = np.zeros(nsources)
-		dec_err = np.zeros(nsources)
+		x_err = np.zeros(nsources)
+		y_err = np.zeros(nsources)
 		for i in range(nsources):
-			ra_err[i] = ra_im[i] - ra_cat[i]
-			#print("Im:{:.4f}, Cat:{:.4f}, Err:{:.4f}".format(ra_im[i],ra_cat[i],ra_err[i]))
-			dec_err[i] = dec_im[i] - dec_cat[i]
-			#print("Im:{:.4f}, Cat:{:.4f}, Err:{:.4f}".format(dec_im[i], dec_cat[i], dec_err[i]))
+			x_err[i] = x_im[i] - catpix[i,0]
+			#print("Im:{:.4f}, Cat:{:.4f}, Err:{:.4f}".format(x_im[i],catpix[i,0],x_err[i]))
+			y_err[i] = y_im[i] - catpix[i,1]
+			#print("Im:{:.4f}, Cat:{:.4f}, Err:{:.4f}".format(y_im[i], catpix[i,1], y_err[i]))
 
 		fig = pl.figure(1, figsize=(8, 8))
 		ax1 = fig.add_subplot(211)
 		#ax1.set_xlim([min(ra_im), max(ra_im)])
 		#ax1.set_ylim([min(ra_err),max(ra_err)])
-		ax1.plot(ra_im, ra_err, marker='o', linestyle='None')
-		ax1.set_xlabel('RA (deg)')
-		ax1.set_ylabel(r"$\Delta$RA (deg)")
+		ax1.plot(x_im, x_err, marker='o', linestyle='None')
+		ax1.set_xlabel('X (pix)')
+		ax1.set_ylabel(r"$\Delta$X (pix)")
 		ax2 = fig.add_subplot(212)
 		# ax2.set_xlim([min(ra_im), max(ra_im)])
 		# ax2.set_ylim([min(ra_err),max(ra_err)])
-		ax2.plot(dec_im, dec_err, marker='o', linestyle='None')
-		ax2.set_xlabel('DEC (deg)')
-		ax2.set_ylabel(r"$\Delta$DEC (deg)")
+		ax2.plot(y_im, y_err, marker='o', linestyle='None')
+		ax2.set_xlabel('Y (pix)')
+		ax2.set_ylabel(r"$\Delta$Y (pix)")
 		pl.savefig('astronomy_stats_' + filter + '.png', bbox_inches='tight')
 		pl.clf()

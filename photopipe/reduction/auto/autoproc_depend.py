@@ -8,6 +8,7 @@ from photopipe.reduction.auto import cosmics
 import scipy
 import matplotlib.pyplot as plt
 import time
+from operator import itemgetter
 # Disable interactive mode
 plt.ioff()
 
@@ -1180,13 +1181,56 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
   
     # Find difference between catalog and observed magnitudes
     diff = catmag - obsmag
+    wts_init = np.copy(wts)
     print(np.shape(obsmag))
     # print diff
     # Find number of observations and stars	
     sz = np.shape(obsmag)
     nobs = sz[0]
     nstars = sz[1]
-    
+
+    #### New ####
+    # Sigma clip
+    med, sig = medclip(diff, 3.0, 2)
+    print("Med: {}, Sigma: {}".format(med, sigma))
+    keep = np.where(abs(diff - med) < 3 * sig)
+    diff_1 = diff[keep]
+    catmag_1 = catmag[keep]
+    obsmag_1 = obsmag[keep]
+    wts_1 = wts[keep]
+
+    # Remove dim sources above provided threshold
+    err_thresh = 0.03
+    wt_thresh = 1 / (err_thresh ** 2)
+    keep = np.where(wts_1 > wt_thresh)
+    diff_2 = diff_1[keep]
+    catmag_2 = catmag_1[keep]
+    obsmag_2 = obsmag_1[keep]
+    wts_2 = wts_1[keep]
+
+    constant_fit(diff_2, catmag_2, 0.07, plotter)
+
+    if plotter is not None:
+        plt.plot(catmag_1, diff_1, '*')
+        plt.errorbar(catmag_1, diff_1, yerr=1.0 / np.sqrt(wts_1), fmt='.')
+        plt.title('Before Robust Scatter with Sigma Clipping')
+        plt.ylabel('Difference between Catalog and Observed')
+        plt.xlabel('Catalog magnitude')
+        filename = plotter.replace('zpt', 'zptall_sigmaclip')
+        plt.savefig(filename)
+        plt.clf()
+
+        plt.plot(catmag_2, diff_2, '*')
+        plt.errorbar(catmag_2, diff_2, yerr=1.0 / np.sqrt(wts_2), fmt='.')
+        plt.title('Before Robust Scatter with sigma clip and Dim Removal')
+        plt.ylabel('Difference between Catalog and Observed')
+        plt.xlabel('Catalog magnitude')
+        filename = plotter.replace('zpt', 'zptall_sigmaclip_dimrmv')
+        plt.savefig(filename)
+        plt.clf()
+
+
+
     # For each observation (i.e. frame) find the weighted difference and store zeropoint
     # and new magnitude with zeropoint correction
     z = []
@@ -1195,12 +1239,13 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
         indz = sum(diff[i, :]*wts[i, :])/sum(wts[i, :])
         z += [indz]
         modmag[i, :] = obsmag[i, :] + indz
+
     
     # Find difference of catalog and zeropoint corrected values. Remove any values with 
     # weights set to 0 or lower.  Calculate robust scatter on these values.  If difference 
     # with these weights is not within sigma*robust scatter then set weight to 0
-    # adiff1 = catmag - modmag TODO: determine if this not being used is a bug
-    # scats, rmss = robust_scat(adiff1, wts, nobs, nstars, sigma) TODO: determine if this not being used is a bug
+    adiff1 = catmag - modmag
+    scats, rmss = robust_scat(adiff1, wts, nobs, nstars, sigma)
 
     z2 = []
     # Recalculate zeropoint using corrected weights (difference still same)        
@@ -1215,15 +1260,24 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
     scats, rmss = robust_scat(adiff2, wts, nobs, nstars, sigma)   
     
     if plotter is not None:
-
         keep = np.where(wts != 0)
         print(np.shape(catmag[keep]))
         plt.plot(catmag[keep], adiff2[keep], '*')
         plt.errorbar(catmag[keep], adiff2[keep], yerr=1.0/np.sqrt(wts[keep]), fmt='.')
-        
+
+        plt.title('Post Robust Scatter')
         plt.ylabel('Difference between Catalog and Observed')
         plt.xlabel('Catalog magnitude')
         plt.savefig(plotter)
+        plt.clf()
+
+        plt.plot(catmag, diff, '*')
+        #plt.errorbar(catmag, diff, yerr=1.0 / np.sqrt(wts_init), fmt='.')
+        plt.title('Before Robust Scatter')
+        plt.ylabel('Difference between Catalog and Observed')
+        plt.xlabel('Catalog magnitude')
+        filename = plotter.replace('zpt','zptall')
+        plt.savefig(filename)
         plt.clf()
 
     return z2, scats, rmss
@@ -1433,37 +1487,38 @@ def identify_matches(queried_stars, found_stars, match_radius=3.):
 
     return ind, dist
 
+def constant_fit(diffdata, catdata, thres, plot):
+    fitlist = []
+    length = len(diffdata)
+    for i in range(length):
+        fitlist += [(diffdata[i],catdata[i])]
+    fitlist = np.asarray(sorted(fitlist, key=itemgetter(1)))
+    diff = fitlist[:,0]
+    med = []
+    sig = []
+    cat = []
+    min_num = int(max(length/10, 4))
+    for i in range(2*int(length/min_num)-1):
+        med += [np.median(diff[i*int(min_num/2):min_num + i*int(min_num/2)])]
+        sig += [np.std(diff[i*int(min_num/2):min_num + i*int(min_num/2)])]
+        cat += [fitlist[(i+1)*int(min_num/2),1]]
+    sig = np.asarray(sig)
+    cat = np.asarray(cat)
+    med = np.asarray(med)
+    keep = np.where(sig < thres)
+    lower = min(cat[keep])
+    upper = max(cat[keep])
+    plt.plot(cat, med, '*')
+    plt.plot(catdata, diffdata, 'b*')
+    plt.vlines([lower, upper],[min(diffdata),min(diffdata)],[max(diffdata),max(diffdata)],colors=['k','k'], linestyles='dashed')
+    plt.errorbar(cat, med, yerr=sig, fmt='.')
+    plt.title('Running Median')
+    plt.ylabel('Running Median, Difference')
+    plt.xlabel('Catalog magnitude')
+    filename = plot.replace('zpt', 'median')
+    plt.savefig(filename)
+    plt.clf()
 
-def identify_matches(queried_stars, found_stars, match_radius=3.):
-    """
-    Use a kd-tree (3d) to match two lists of stars, using full spherical coordinate distances.
-    
-    queried_stars, found_stars: numpy arrays of [ [ra,dec],[ra,dec], ... ] (all in decimal degrees)
-    match_radius: max distance (in arcseconds) allowed to identify a match between two stars.
-    
-    Returns two arrays corresponding to queried stars:
-    indices - an array of the indices (in found_stars) of the best match. Invalid (negative) index if no matches found.
-    distances - an array of the distances to the closest match. NaN if no match found.
-    """
-    # make sure inputs are arrays
-    queried_stars = np.array(queried_stars)
-    found_stars = np.array(found_stars)
-    
-    ra1, dec1 = queried_stars[:, 0], queried_stars[:, 1]
-    ra2, dec2 = found_stars[:, 0], found_stars[:, 1]
-    dist = 2.778e-4*match_radius  # convert arcseconds into degrees
-    
-    cosd = lambda x: np.cos(np.deg2rad(x))
-    sind = lambda x: np.sin(np.deg2rad(x))
-    mindist = 2 * sind(dist/2) 
-    getxyz = lambda r, d: [cosd(r)*cosd(d), sind(r)*cosd(d), sind(d)]
-    xyz1 = np.array(getxyz(ra1, dec1))
-    xyz2 = np.array(getxyz(ra2, dec2))
-    
-    tree2 = scipy.spatial.KDTree(xyz2.transpose())
-    ret = tree2.query(xyz1.transpose(), 1, 0, 2, mindist)
-    dist, ind = ret
-    dist = np.rad2deg(2*np.arcsin(dist/2))
-    ind[np.isnan(dist)] = -9999
-    
-    return ind, dist
+
+
+

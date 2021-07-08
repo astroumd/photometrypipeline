@@ -133,6 +133,7 @@ def autopipeprepare(pipevar=None):
     # will run bias subtraction if bias master available (checks based on how bias
     # file and data file are named
     for f in files:
+        print(f)
 
         if f in biasfiles:
             continue

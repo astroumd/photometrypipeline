@@ -5,6 +5,9 @@ import photopipe.reduction.auto.steps.sky as sky
 import photopipe.reduction.auto.steps.stack as stk
 import photopipe.reduction.auto.steps.zpoint as zpt
 import os
+import time
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 
@@ -259,29 +262,70 @@ def autoproc_2(
     if isinstance(steps, str):
         steps = [steps]
     # Runs each processing step specified in the correct order (crclean is optional)
+    t = []
     for step in steps:
         if step == 'prepare':
+            t += [time.perf_counter()]
             pre.autopipeprepare(pipevar=pipevar)
         if step == 'flatten':
+            t += [time.perf_counter()]
             pre.autopipeimflatten(pipevar=pipevar)
         if step == 'makesky' and not nomastersky and skyflattarg:
+            t += [time.perf_counter()]
             sky.autopipemakesky_targets(pipevar=pipevar)
         elif step == 'makesky' and not nomastersky:
+            t += [time.perf_counter()]
             sky.autopipemakesky(pipevar=pipevar)
         if step == 'skysub' and not nomastersky and skyflattarg:
+            t += [time.perf_counter()]
             sky.autopipeskysub_targets(pipevar=pipevar)
         elif step == 'skysub' and not nomastersky:
+            t += [time.perf_counter()]
             sky.autopipeskysub(pipevar=pipevar)
         if step == 'skysub' and nomastersky:
+            t += [time.perf_counter()]
             sky.autopipeskysubmed(pipevar=pipevar)
         if step == 'crclean' and not nocrclean:
+            t += [time.perf_counter()]
             crc.autopipecrcleanim(pipevar=pipevar)
+        if step == 'crclean' and nocrclean:
+            t += [time.perf_counter()]
         if step == 'astrometry':
+            t += [time.perf_counter()]
             ast.autopipeastrometry(pipevar=pipevar),
         if step == 'zpoint':
+            t += [time.perf_counter()]
             zpt.autopipezpoint(pipevar=pipevar, customcat=customcat, customcatfilt=customcatfilt)
         if step == 'stack':
+            t += [time.perf_counter()]
             stk.autopipestack(pipevar=pipevar, customcat=customcat, customcatfilt=customcatfilt)
+    t += [time.perf_counter()]
+
+    debug = True
+    if debug:
+        os.chdir(datadir)
+        times = np.zeros(len(t))
+        filename = os.path.join(datadir, 'time_analysis.txt')
+        list = ['Preprocess', 'Prepare', 'MakeSky', 'Skysub', 'Crclean', 'Astro', 'Zpoint', 'Stack', 'Total']
+        for i in range(len(t)-1):
+            times[i] = t[i+1]-t[i]
+            print("{}: {}".format(list[i+1],times[i]))
+        total = sum(times)
+        times[len(t) - 1] = total
+        percent = [i/total for i in times]
+        np.savetxt(filename, np.vstack((times,percent)), fmt='%10.2f',
+                   header='Preprocess\t Prepare\t MakeSky\t Skysub\t Crclean\t Astro\t Zpoint\t Stack\t Total\t')
+        labels = 'Preprocess', 'Prepare', 'Makesky', 'Skysub', 'Crclean', 'Astro', 'Zpoint', 'Stack'
+        percent = np.array(percent)
+        percent = percent[0:8]
+        fig1, ax1 = plt.subplots()
+        ax1.pie(percent, labels=labels, autopct='%1.1f%%',
+                shadow=True, startangle=90)
+        ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+        plt.tight_layout()
+        plt.savefig('time_analysis.png')
+        plt.clf()
+
 
     # Prints the files that were not flat fielded due to problems with file
     if pipevar['flatfail'] != '':

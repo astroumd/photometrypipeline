@@ -2,7 +2,7 @@ import glob
 import os
 import astropy.io.fits as pf
 import numpy as np
-import autoproc_depend as apd
+import photopipe.reduction.auto.autoproc_depend as apd
 from astropy import wcs
 import re
 import datetime
@@ -11,6 +11,9 @@ import sys
 from scipy import interpolate
 from photopipe.reduction.astrom import vlt_autoastrometry
 from photopipe.photometry.dependencies import get_SEDs
+
+from astropy import units as u
+from astropy.coordinates import Angle
 
 
 inpipevar = {
@@ -34,7 +37,7 @@ def autopipedefaults(pipevar=None):
     EXAMPLE:
         autopipedefaults(pipevar=inpipevar)
     """
-    print 'Setting pipeline parameters (DEFAULTS)'
+    print('Setting pipeline parameters (DEFAULTS)')
     if pipevar is None:
         pipevar = inpipevar
     path = os.path.dirname(os.path.abspath(__file__))
@@ -59,7 +62,7 @@ def autopipedefaults(pipevar=None):
         pipevar['defaultspath'] = pipevar['pipeautopath']+'/defaults'
 
     if pipevar['imworkingdir'] != '' and not(os.path.exists(pipevar['imworkingdir'])): 
-        print 'Creating imaging working directory: ',  pipevar['imworkingdir']
+        print('Creating imaging working directory: ',  pipevar['imworkingdir'])
         os.makedirs(pipevar['imworkingdir'])
 
     pipevar['autoastrocommand'] = os.path.abspath(vlt_autoastrometry.__file__)
@@ -83,7 +86,7 @@ def autopipeprepare(pipevar=None):
         autoproc_depend.pipeprepare()
     """
     
-    print 'PREPARE'
+    print('PREPARE')
     if pipevar is None:
         pipevar = inpipevar
     # Looks for existing files in given data directory using prefix
@@ -91,11 +94,11 @@ def autopipeprepare(pipevar=None):
     pfiles = glob.glob(pipevar['imworkingdir'] + 'p' + pipevar['prefix'] + '*.fits')
     
     if len(files) == 0:
-        print 'Did not find any files! Check your data directory path!'
+        print('Did not find any files! Check your data directory path!')
         return
     
     if pipevar['verbose']:
-        print 'Found', len(files), 'files'
+        print('Found', len(files), 'files')
     
     # Finds any master bias files and filter name from header keyword
     # Assumes camera name is in header under CAMERA
@@ -146,7 +149,7 @@ def autopipeprepare(pipevar=None):
                 f, outname=outnameim, biasfile=biasfile, darkfile=darkfile, verbose=pipevar['verbose']
             )
         else:
-            print 'Skipping prepare. File already exists'
+            print('Skipping prepare. File already exists')
 
 
 def autopipeimflatten(pipevar=None):
@@ -164,17 +167,18 @@ def autopipeimflatten(pipevar=None):
         autoproc_depend.flatpipeproc()
     """
     
-    print 'FLATTEN'
+    print('FLATTEN')
     if pipevar is None:
         pipevar = inpipevar
     # Finds prepared files and checks to see if there are any existing flattened files
     # Find flats in imworkingdir with name flat somewhere in a fits file name
+    print(pipevar['imworkingdir'])
     files = glob.glob(pipevar['imworkingdir'] + 'p' + pipevar['prefix'] + '*.fits')
     ffiles = glob.glob(pipevar['imworkingdir'] + 'fp' + pipevar['prefix'] + '*.fits')
     flats = glob.glob(pipevar['imworkingdir'] + '*flat*.fits')
 
     if len(files) == 0:
-        print 'Did not find any files! Check your data directory path!'
+        print('Did not find any files! Check your data directory path!')
         return
     
     # If there are flats, then grab the filter from each of them, 
@@ -186,14 +190,14 @@ def autopipeimflatten(pipevar=None):
             head_filter = head['FILTER']
             flatfilts += [head_filter]
     else:
-        print 'No flats found for any filter!'
+        print('No flats found for any filter!')
         return
     
     # Create outfile name and check to see if outfile already exists.  If it doesn't or
     # overwrite enabled then take filter from file and find where the flat filter matches
     # If no flats match filter, store in pipevar.flatfail, otherwise run flatproc on file
     for f in files:
-        print f
+        print(f)
         fileroot = os.path.basename(f)
         outnameim = pipevar['imworkingdir'] + 'f' + fileroot
         
@@ -204,33 +208,33 @@ def autopipeimflatten(pipevar=None):
             try:
                 flatfileno = flatfilts.index(head_filter)
             except:
-                print 'Flat field not found for ' + f + ' (filter=' + head_filter + ')'
+                print('Flat field not found for ' + f + ' (filter=' + head_filter + ')')
                 pipevar['flatfail'] += ' ' + f
                 continue
             
             flatfile = flats[flatfileno]
         
             if pipevar['verbose']:
-                print 'Flattening', f, 'using', flatfile
+                print('Flattening', f, 'using', flatfile)
             
             apd.flatpipeproc(f, flatfile, flatminval=0.3)
         
         else:
-            print 'Skipping flatten. File already exists'
+            print('Skipping flatten. File already exists')
             
     # If remove intermediate files keyword set, delete p(PREFIX)*.fits files
     if pipevar['rmifiles'] != 0:
         os.system('rm -f ' + pipevar['imworkingdir'] + 'p' + pipevar['prefix'] + '*.fits')
 
 
-def autopipemakesky(pipevar=None):
+def autopipemakesky(pipevar=inpipevar):
     """
     NAME:
         autopipemakesky
     PURPOSE:
         Combine sky flats based on filter type (sigma clipping for sources)
     OPTIONAL KEYWORDS:
-        pipevar  - input pipeline parameters (typically set in ratautoproc.pro, 
+        pipevar  - input pipeline parameters (typically set in ratautoproc.pro,
                    but can be set to default)
     EXAMPLE:
         autopipemakesky(pipevar=inpipevar)
@@ -238,71 +242,68 @@ def autopipemakesky(pipevar=None):
         astroproc_depend.skypipecombine, astroproc_depend.medclip, Sextractor
     FUTURE IMPROVEMENTS:
         skypipecombine slow, find better algorithm
-    """   
-    
-    print 'MAKE SKY'
-    if pipevar is None:
-        pipevar = inpipevar
+    """
+
+    print('MAKE SKY')
+
     # Copies necessary parameter file for sextractor if not in current working directory
-    if not os.path.isfile('source.param'): 
+    if not os.path.isfile('source.param'):
         os.system('cp ' + pipevar['defaultspath'] + '/source.param .')
-    if not os.path.isfile('sex_source.config'): 
+    if not os.path.isfile('sex_source.config'):
         os.system('cp ' + pipevar['defaultspath'] + '/sex_source.config .')
-    if not os.path.isfile('sex.conv'): 
+    if not os.path.isfile('sex.conv'):
         os.system('cp ' + pipevar['defaultspath'] + '/sex.conv .')
-    if not os.path.isfile('defaulf.nnw'): 
+    if not os.path.isfile('defaulf.nnw'):
         os.system('cp ' + pipevar['defaultspath'] + '/default.nnw .')
-        
+
     # Finds files with given prefix
     files = glob.glob(pipevar['imworkingdir'] + 'fp' + pipevar['prefix'] + '*.fits')
 
     if len(files) == 0:
-        print 'Did not find any files! Check your data directory path!'
+        print('Did not find any files! Check your data directory path!')
         return
-    
+
     filters = []
-    for f in files:
-        head = pf.getheader(f)
-        head_filter = head['FILTER']
-        filters += [head_filter]
+    for file in files:
+        head = pf.getheader(file)
+        filter = head['FILTER']
+        print(filter)
+        filters += [filter]
     filters = np.array(filters)
-    
+
     # Unique list of filters
     filterlist = set(filters)
-    
     # For each unique filter, combine sky files using skycombine if more than 2 files
     # Otherwise return list of unprocessed files
     for filt in filterlist:
         skyflats = np.where(filters == filt)
         outflatname = pipevar['imworkingdir'] + 'sky-' + filt + '.fits'
-        
+
         if len(skyflats[0]) >= 2:
-        
+
             if os.path.isfile(outflatname) and pipevar['overwrite'] == 0:
-                print 'Skipping makesky for '+filt+'. File already exists'
+                print('Skipping makesky for ' + filt + '. File already exists')
                 continue
 
             files = np.array(files)
             if pipevar['verbose']:
-                print filt, '-band sky flats.'
-                print files[skyflats]
-                             
-                apd.skypipecombine(
-                    files[skyflats], outflatname, filt,
-                    # apd.skypipecombine(files[skyflats], outflatname, file,
-                    pipevar, removeobjects=True, type_='sky')
+                print(filt, '-band sky flats.')
+                print(files[skyflats])
+
+                apd.skypipecombine_new(files[skyflats], outflatname, filt,
+                                       #                apd.skypipecombine(files[skyflats], outflatname, file,
+                                       pipevar, removeobjects=True, type='sky')
         else:
-            print 'Unable to produce a flat field for this setting: ' + filt
-            print 'Will not be able to further process ' + str(len(skyflats)) + \
-                  ' image(s) without a flat from another source:'
+            print('Unable to produce a flat field for this setting: ' + filt)
+            print('Will not be able to further process ' + str(len(skyflats)) + \
+            ' image(s) without a flat from another source:')
 
             for i in np.arange(len(skyflats[0])):
-                print '    ' + str(files[skyflats[i]])           
+                print('    ' + str(files[skyflats[i]]))
 
-    # If remove intermediate files keyword set, delete p(PREFIX)*.fits files
+                # If remove intermediate files keyword set, delete p(PREFIX)*.fits files
     if pipevar['rmifiles'] != 0:
         os.system('rm -f ' + pipevar['imworkingdir'] + 'p' + pipevar['prefix'] + '*.fits')
-
 
 def autopipeskysubmed(pipevar=None):
     """
@@ -319,25 +320,25 @@ def autopipeskysubmed(pipevar=None):
         autoproc_depend.skypipeproc
     """
     
-    print 'SKY-SUBTRACT MEDIAN ONLY'
+    print('SKY-SUBTRACT MEDIAN ONLY')
     if pipevar is None:
         pipevar = inpipevar
     # Find data that needs to be sky subtracted
     files = glob.glob(pipevar['imworkingdir'] + 'fp' + pipevar['prefix'] + '*.fits')
 
     if len(files) == 0:
-        print 'Did not find any files! Check your data directory path!'
+        print('Did not find any files! Check your data directory path!')
         return
     
     # For each file if output files don't exist or override set check if we have master 
     # skyflat for filter, sky subtract if it exists using skypipeproc
     for f in files:
-        print f
+        print(f)
         fileroot = os.path.basename(f)
         outfile = pipevar['imworkingdir'] + 's' + fileroot    
     
         if os.path.isfile(outfile) and pipevar['overwrite'] == 0:
-            print 'Skipping sky subtraction for ' + f + '. File already exists'
+            print('Skipping sky subtraction for ' + f + '. File already exists')
             continue
             
         head = pf.getheader(f)
@@ -357,12 +358,12 @@ def autopipeskysubmed(pipevar=None):
         # head_filter = head['FILTER'] TODO: determine if this not being used is a bug
         
         if pipevar['verbose'] > 0:
-            print 'Sky subtracting median only'
+            print('Sky subtracting median only')
             
         date = datetime.datetime.now().isoformat()
         head.add_history('Processed by skypipeprocmed ' + date)   
              
-        pf.writeto(outfile, data, head, clobber=pipevar['overwrite'])
+        pf.writeto(outfile, data, head, overwrite=pipevar['overwrite'])
 
     # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
     # and sky-*.fits files
@@ -372,77 +373,76 @@ def autopipeskysubmed(pipevar=None):
         os.system('rm -f ' + pipevar['imworkingdir'] + 'fp' + pipevar['prefix'] + '*.fits')
         os.system('rm -f ' + pipevar['imworkingdir'] + '*sky-*.fits')
 
-        
-def autopipeskysub(pipevar=None):
+
+def autopipeskysub(pipevar=inpipevar):
     """
     NAME:
         autopipeskysub
     PURPOSE:
         Subtracts master sky flat from data and subtracts median.
     OPTIONAL KEYWORDS:
-        pipevar  - input pipeline parameters (typically set in ratautoproc.pro, 
+        pipevar  - input pipeline parameters (typically set in ratautoproc.pro,
                    but can be set to default)
     EXAMPLE:
         autopipeskysub(pipevar=inpipevar)
     DEPENDENCIES:
         autoproc_depend.skypipeproc
     """
-    
-    print 'SKY-SUBTRACT'
-    if pipevar is None:
-        pipevar = inpipevar
+
+    print('SKY-SUBTRACT')
+
     # Find data that needs to be sky subtracted
     files = glob.glob(pipevar['imworkingdir'] + 'fp' + pipevar['prefix'] + '*.fits')
+    sfiles = glob.glob(pipevar['imworkingdir'] + 'sfp' + pipevar['prefix'] + '*.fits')
 
     if len(files) == 0:
-        print 'Did not find any files! Check your data directory path!'
+        print('Did not find any files! Check your data directory path!')
         return
-    
+
     skys = glob.glob(pipevar['imworkingdir'] + '*sky-*.fits')
-    
+
     if len(skys) == 0:
-        print 'No master sky files found, cannot sky subtract'
+        print('No master sky files found, cannot sky subtract')
         return
-        
+
     # Find the associated filter of each master skyflat
     skyfilts = []
     for sky in skys:
         head = pf.getheader(sky)
-        head_filter = head['FILTER']
-        skyfilts += [head_filter]
-    
-    # For each file if output files don't exist or override set check if we have master 
-    # skyflat for filter, sky subtract if it exists using skypipeproc
-    for f in files:
+        filter = head['FILTER']
+        skyfilts += [filter]
 
-        fileroot = os.path.basename(f)
-        outfile = pipevar['imworkingdir'] + 's' + fileroot    
-    
+    # For each file if output files don't exist or override set check if we have master
+    # skyflat for filter, sky subtract if it exists using skypipeproc
+    for file in files:
+
+        fileroot = os.path.basename(file)
+        outfile = pipevar['imworkingdir'] + 's' + fileroot
+
         if os.path.isfile(outfile) and pipevar['overwrite'] == 0:
-            print 'Skipping sky subtraction for ' + f + '. File already exists'
+            print('Skipping sky subtraction for ' + file + '. File already exists')
             continue
-            
-        head = pf.getheader(f)
-        head_filter = head['FILTER']
+
+        head = pf.getheader(file)
+        filter = head['FILTER']
 
         # Find corresponding master skyflat
         try:
-            skyloc = skyfilts.index(head_filter)
-            skyfile = skys[skyloc]      
+            skyloc = skyfilts.index(filter)
+            skyfile = skys[skyloc]
         except:
-            print 'Sky field not found for ', f
-            pipevar['flatfail'] += ' ' + f
+            print('Sky field not found for ', file)
+            pipevar['flatfail'] += ' ' + file
             continue
-        
+
         if pipevar['verbose'] > 0:
-            print 'Sky subtracting', f, 'using', skyfile
-        
-        apd.skypipeproc(f, skyfile, outfile)
+            print('Sky subtracting', file, 'using', skyfile)
+
+        apd.skypipeproc(file, skyfile, outfile)
 
     # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
     # and sky-*.fits files
     if pipevar['rmifiles'] != 0:
-        
         os.system('rm -f ' + pipevar['imworkingdir'] + 'p' + pipevar['prefix'] + '*.fits')
         os.system('rm -f ' + pipevar['imworkingdir'] + 'fp' + pipevar['prefix'] + '*.fits')
         os.system('rm -f ' + pipevar['imworkingdir'] + '*sky-*.fits')
@@ -466,14 +466,14 @@ def autopipecrcleanim(pipevar=None):
         Get readnoise from header
     """
     
-    print 'CRCLEAN'
+    print('CRCLEAN')
     if pipevar is None:
         pipevar = inpipevar
     # Find data that needs to be cosmic ray zapped
     files = glob.glob(pipevar['imworkingdir'] + 'sfp' + pipevar['prefix'] + '*.fits')
 
     if len(files) == 0:
-        print 'Did not find any files! Check your data directory path!'
+        print('Did not find any files! Check your data directory path!')
         return
  
     # For each file check that objects meet count limits and exposure time
@@ -488,7 +488,7 @@ def autopipecrcleanim(pipevar=None):
         try:
             target = head['TARGNAME']
         except:
-            print 'Requires header keywords: TARGNAME. Check file.'
+            print('Requires header keywords: TARGNAME. Check file.')
             continue
         
         if 'flat' in target.lower():
@@ -500,11 +500,11 @@ def autopipecrcleanim(pipevar=None):
         outfile = pipevar['imworkingdir'] + 'z' + fileroot 
           
         if os.path.isfile(outfile) and pipevar['overwrite'] == 0:
-            print 'Skipping crzap for ' + f + '. File already exists'
+            print('Skipping crzap for ' + f + '. File already exists')
             continue 
                 
         if pipevar['verbose'] > 0:
-            print 'Cleaning cosmic rays from', f
+            print('Cleaning cosmic rays from', f)
         
         # Runs cosmics.py
         apd.cosmiczap(f, outfile, sigclip=6.0, maxiter=1, verbose=pipevar['verbose'])
@@ -525,7 +525,7 @@ def autopipeastrometry(pipevar=None):
         autopipepipeastrometry
     PURPOSE:
         Calculate astrometry of image files to fix WCS coordinates (shift and rotation) 
-        in header. Using fast astrometry solver (vlt_autoastrometry.py) that using 
+        in header. Using fast astrometry solver (autoastrometry3.py) that using
         pair-distance matching and asterism matching.  Returns file with corrected WCS 
         coordinates saved as 'a'+fitsfile. Run Scamp for additional astrometry 
         corrections, twice, once for basic individual LOOSE correction, second correct all
@@ -537,12 +537,12 @@ def autopipeastrometry(pipevar=None):
     EXAMPLE:
         autopipeastrometry(pipevar=inpipevar)
     DEPENDENCIES:
-        autoproc_depend.astrometry, vlt_autoastrometry.py, scamp, sextractor
+        autoproc_depend.astrometry, autoastrometry3.py, scamp, sextractor
     FUTURE IMPROVEMENTS:
         Better distinction between first and second scamp run
     """
     
-    print 'ASTROMETRY'
+    print('ASTROMETRY')
     if pipevar is None:
         pipevar = inpipevar
     files = glob.glob(pipevar['imworkingdir'] + 'zsfp' + pipevar['prefix'] + '*.fits')
@@ -552,7 +552,7 @@ def autopipeastrometry(pipevar=None):
         files = glob.glob(pipevar['imworkingdir'] + 'sfp' + pipevar['prefix'] + '*.fits')
 
     if len(files) == 0:
-        print 'Did not find any files! Check your data directory path!'
+        print('Did not find any files! Check your data directory path!')
         return
     
     # Calculate relative astrometric solution
@@ -562,23 +562,26 @@ def autopipeastrometry(pipevar=None):
         outfile = pipevar['imworkingdir'] + 'a' + fileroot
         
         if os.path.isfile(outfile) and pipevar['overwrite'] == 0:
-            print 'Skipping astrometry for ' + f + '. File already exists'
+            print('Skipping astrometry for ' + f + '. File already exists')
             continue
         
         head = pf.getheader(f)
         
         targ = head['TARGNAME']
         sat = head['SATURATE']
+        ascen = head['OBSRA']
+        decl = head['OBSDEC']
         
         if 'flat' in targ:
             continue
         
         cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat)
+        #cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat) + ' -r ' + str(ascen) + ' -d ' + str(decl)
         
         # Run direct astrometry
         if pipevar['verbose'] > 0:
             os.system(cmd)
-            print cmd
+            print(cmd)
         else:
             os.system(cmd + ' -q')
             
@@ -607,7 +610,7 @@ def autopipeastrometry(pipevar=None):
         afiles = glob.glob(pipevar['imworkingdir'] + 'asfp' + pipevar['prefix'] + '*.fits')
 
     if len(afiles) == 0:
-        print 'Did not find any files! Check your data directory path!'
+        print('Did not find any files! Check your data directory path!')
         return
     
     afiletarg = []
@@ -639,8 +642,8 @@ def autopipeastrometry(pipevar=None):
             # If scamp has already been run, skip
             try:
                 test = head['ASTIRMS1']
-                print 'Skipping scamp astrometry for: ', atarg, afilt, ' Files already exist'
-                print 'head["ASTIRMS1"]: {}'.format(test)
+                print('Skipping scamp astrometry for: ', atarg, afilt, ' Files already exist')
+                print('head["ASTIRMS1"]: {}'.format(test))
                 continue 
             except:                    
                 # Run sextractor to find sources, then use those catalogs to run scamp
@@ -680,7 +683,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
         SWarp, get_SEDs, calc_zpt, findsexobj (sextractor)
     """
   
-    print 'STACK'
+    print('STACK')
     if pipevar is None:
         pipevar = inpipevar
     if customcatfilt is None:
@@ -701,10 +704,10 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
     
     # Find files that have had astrometry performed on them, stop program if don't exist
     files = glob.glob(pipevar['imworkingdir'] + 'a*sfp' + pipevar['prefix'] + '*.fits')
-    print pipevar['imworkingdir'] + 'a*sfp' + pipevar['prefix'] + '*.fits'
-    print files
+    print(pipevar['imworkingdir'] + 'a*sfp' + pipevar['prefix'] + '*.fits')
+    print(files)
     if len(files) == 0:
-        print 'Did not find any files! Check your data directory path!'
+        print('Did not find any files! Check your data directory path!')
         return
 
     filetargs = []
@@ -805,7 +808,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                         try:
                             del head[key]
                         except KeyError as error:
-                            print error
+                            print(error)
                         
                 w = wcs.WCS(head)
                 wrd = w.all_pix2world(np.transpose([xim, yim]), 0)
@@ -818,6 +821,8 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                 # Filter name correction:
                 if thistargetfilter == 'Z' or thistargetfilter == 'Y':
                     thistargetfilter = thistargetfilter.lower()
+                if thistargetfilter == 'YISH':
+                    thistargetfilter = 'y'
                 
                 if 'SDSS' in thistargetfilter:
                     thistargetfilter = thistargetfilter[-1].lower()
@@ -828,7 +833,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                 # indices                    
                 if customcat is not None and thistargetfilter in customcatfilt:
 
-                    print 'USING CUSTOM CATALOG'
+                    print('USING CUSTOM CATALOG')
                     in_data = np.loadtxt(imfile)
                     input_coords = in_data[:, :2]
                     cat_data = np.loadtxt(customcat, skiprows=1)
@@ -860,7 +865,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                              thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
                                     
                     if pipevar['verbose'] > 0:
-                        print sedcmd
+                        print(sedcmd)
                     os.system(sedcmd)
                 
                     if not os.path.isfile(catfile):
@@ -974,11 +979,11 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                 ' -FSCALE_KEYWORD NEWFLXSC ' + newtextslist
                        
             if pipevar['verbose'] > 0:
-                print stackcmd
+                print(stackcmd)
             
             os.system(stackcmd)
             head = pf.getheader(outfl)
-            print outfl
+            print(outfl)
             pixscl = head['PIXSCALE']
             
             try:
@@ -1012,7 +1017,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                     if any(x in key for x in ['PV1_', 'PV2_', 'COMMENT', 'HISTORY']):
                         del head[key]
                 except KeyError as error:
-                    print error
+                    print(error)
                         
             w = wcs.WCS(head)
             wrd = w.all_pix2world(np.transpose([xim, yim]), 0)
@@ -1032,7 +1037,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             # indices                    
             if customcat is not None and thistargetfilter in customcatfilt:
 
-                print 'USING CUSTOM CATALOG'
+                print('USING CUSTOM CATALOG')
                 in_data = np.loadtxt(imfile)
                 input_coords = in_data[:, :2]
                 cat_data = np.loadtxt(customcat, skiprows=1)
@@ -1064,7 +1069,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                          thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
                 
                 if pipevar['verbose'] > 0:
-                    print sedcmd
+                    print(sedcmd)
                 os.system(sedcmd)
                 
                 if not os.path.isfile(catfile):
@@ -1122,8 +1127,8 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             pf.update(outfl, cdata, chead)
 
             if len(removedframes) > 0:
-                print 'Removed frames with bad zeropoint fits: '
-                print removedframes
+                print('Removed frames with bad zeropoint fits: ')
+                print(removedframes)
 
     # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
     # sky-*.fits, sfp(PREFIX)*.fits, zsfp(PREFIX)*.fits files

@@ -56,7 +56,7 @@ def plot_seds(filters):
     files = glob.glob('seds/*.seds.txt')
 
     if len(files) == 0:
-        print 'Did not find any SEDs files! Check your data directory path!'
+        print('Did not find any SEDs files! Check your data directory path!')
         return    
 
     figure = pl.figure()
@@ -87,7 +87,7 @@ def plot_seds(filters):
         ax_row = 0
         ax_col = 0 if len(filters_map) > 2 else 1
 
-        for filter, seds in filters_map.iteritems():
+        for filter, seds in filters_map.items():
 
             for i, sed in enumerate(seds):
                 plot_x = []
@@ -167,9 +167,9 @@ def printhtml(filters, colnames, omitted_colnames, headers, headers_names):
     t = t + '</tr>\n' 
 
     colors = ['black', 'purple', 'blue', 'aqua', 'green', 'orange', 'red', 'yellow', 'magenta']
-    print 'Plotting AB Magnitude comparison'
+    print('Plotting AB Magnitude comparison')
     plot_mag(filters, plotdict, colors)
-    print 'Plotting SEDs'
+    print('Plotting SEDs')
     plot_seds(filters)
 
     #Create html page that displays images made in plotphotom.py and values from finalmags.txt
@@ -187,9 +187,9 @@ def printhtml(filters, colnames, omitted_colnames, headers, headers_names):
 
     im_wid = 400
 
-    f.write( '<IMG SRC="./color.png" width="' + `im_wid` + '"><BR>\n' )
+    f.write( '<IMG SRC="./color.png" width="' + repr(im_wid) + '"><BR>\n' )
     for i in range(len(zffiles)):
-        f.write( '<IMG SRC="./' + zffiles[i] + '" width="' + `im_wid` + '">\n' )
+        f.write( '<IMG SRC="./' + zffiles[i] + '" width="' + repr(im_wid) + '">\n' )
         if (i+1)%3 == 0:
             f.write( '<BR>\n' )
 

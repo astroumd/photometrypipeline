@@ -89,3 +89,12 @@ ENV/
 
 # Rope project settings
 .ropeproject
+/test/April_18_2021/
+/test/April_18_2021_Extra/
+/test/Aug_17/
+/test/copy/
+/test/Feb_06_2021/
+/test/Jan_28_2020/
+/photopipe/photometry/02_06_median/
+/photopipe/photometry/04_18_sky_alltargs/
+/Data/

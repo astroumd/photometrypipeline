@@ -26,29 +26,57 @@ Modified by Vicki Toy (vtoy@astro.umd.edu) 5/21/2014
 import numpy as np
 import os
 import astropy.io.fits as pf
-from dependencies import photprocesslibrary as pplib
+from photopipe.photometry.dependencies import photprocesslibrary as pplib
 from photopipe.reduction.auto import autoproc_steps as ap
-from string import index
+#from string import index
 from numpy import shape
 from astropy import wcs
+from astropy import units as u
+from astropy.coordinates import SkyCoord
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as pl
+# Disable interactive mode
+pl.ioff()
+
+catdict = {'u': 2, 'g': 3, 'r': 4, 'i': 5, 'z': 6, 'y': 7,
+               'B': 8, 'V': 9, 'R': 10, 'I': 11, 'J': 12, 'H': 13, 'K': 14,
+               'ue': 15, 'ge': 16, 're': 17, 'ie': 18, 'ze': 19, 'ye': 20,
+               'Be': 21, 'Ve': 22, 'Re': 23, 'Ie': 24, 'Je': 25, 'He': 26, 'Ke': 27, 'mode': 28}
 
 def photom(prefchar='coadd'):
 
 	pipevar = {'getsedcommand':'get_SEDs', 'sexcommand':'sex' , 'swarpcommand':'swarp', 'refdatapath':'', 'defaultspath':'', 'imworkingdir':'' }
 	ap.autopipedefaults(pipevar=pipevar)
 
+	files = pplib.choosefiles(prefchar + '*.fits')
+	filters = []
+	for file in files:
+		head = pf.getheader(file)
+		filter = head['FILTER']
+		filters += [filter]
+	filters = np.array(filters)
+	filters = set(filters)
+
 	# Identify files (must have same number of images files as weight files)
-	zffiles     = pplib.choosefiles(prefchar + '*_?.fits')
-	weightfiles = pplib.choosefiles(prefchar + '*_?.weight.fits')
+	zffiles = []
+	weightfiles = []
+	for filter in filters:
+		zffiles.extend(pplib.choosefiles(prefchar + '*_{}.fits'.format(filter)))
+		#print(zffiles)
+		weightfiles.extend(pplib.choosefiles(prefchar + '*_{}.weight.fits'.format(filter)))
+		#print(weightfiles)
+	coaddfiles = np.copy(zffiles)
 	
 	if len(zffiles) > len(weightfiles):
-		print 'Must have matching weight file to each image file to run automatic crop.'
-		print 'To use manual crop user manualcrop keyword and change crop values by hand'
+		print('Must have matching weight file to each image file to run automatic crop.')
+		print('To use manual crop user manualcrop keyword and change crop values by hand')
 		return -1
 	
 	numfiles = len(zffiles)
-		
+	print("Number of files {}".format(numfiles))
+
 	# Resample all images using SWarp to a reference image called multicolor using weight files
 	swarpstr = ''
 	for i in range(numfiles):		
@@ -56,8 +84,8 @@ def photom(prefchar='coadd'):
 
 	stackcmd = 'swarp ' + swarpstr + '-DELETE_TMPFILES N -WRITE_XML N -SUBTRACT_BACK N -WEIGHT_TYPE MAP_WEIGHT -IMAGEOUT_NAME multicolor.fits -WEIGHTOUT_NAME multicolor.weight.fits'
 	stackcmd = stackcmd + ' -COPY_KEYWORDS OBJECT,TARGNAME,TELESCOP,FILTER,INSTRUME,OBSERVAT,PIXSCALE,ORIGIN,CCD_TYPE,JD,DATE-OBS,DATE1,DATEN,AIRMASS,TOTALEXP,FLATFLD,FLATTYPE,SEEPIX,ABSZPT,ABSZPTSC,ABSZPRMS'
-	print stackcmd
-	os.system( stackcmd )
+	print(stackcmd)
+	os.system(stackcmd)
 
 	# Rename all the resampled files to crop files
 	for i in range(numfiles):
@@ -65,6 +93,7 @@ def photom(prefchar='coadd'):
 		ifile = tmp + '.resamp.fits'
 		ofile = tmp + '.ref.fits'
 		mvcmd = 'mv -f ' + ifile + ' ' + ofile
+		print(mvcmd)
 		os.system(mvcmd)
 		
 		ifile = tmp + '.resamp.weight.fits'
@@ -72,7 +101,7 @@ def photom(prefchar='coadd'):
 		mvcmd = 'mv -f ' + ifile + ' ' + ofile
 		os.system(mvcmd)
 
-	coaddfiles = pplib.choosefiles(prefchar+'*_?.ref.fits')
+	coaddreffiles = pplib.choosefiles(prefchar+'*.ref.fits')
 
 	ra1arr  = []
 	dec1arr = []
@@ -80,7 +109,7 @@ def photom(prefchar='coadd'):
 	dec2arr = []
 
 	# Finds the RA and DEC of the first and the last pixel of each cropped coadded file
-	for files in coaddfiles:
+	for files in coaddreffiles:
 
 		fitsfile = pf.open(files)
 		fitsheader = fitsfile[0].header
@@ -107,7 +136,7 @@ def photom(prefchar='coadd'):
 
 	# Crops data so the size of every filter image matches and saves to file 'coadd*.multi.fits'
 	# Same for weight file
-	for files in coaddfiles:
+	for files in coaddreffiles:
 		newfile = files[:-4]+'multi.fits'
 		fitsfile = pf.open(files)
 		fitsheader = fitsfile[0].header
@@ -164,7 +193,7 @@ def photom(prefchar='coadd'):
 	if not os.path.exists('ratir_nir.nnw'): 
 		os.system('cp '+propath+'/defaults/ratir_nir.nnw .')
 
-	coaddfiles = pplib.choosefiles(prefchar+'*_?.fits')
+	#coaddfiles = pplib.choosefiles(prefchar+'*_?.fits')
 
 	# Uses sextractor to find the magnitude and location of sources for each file
 	# Saves this information into 'fluxes_*.txt' files
@@ -178,17 +207,19 @@ def photom(prefchar='coadd'):
 			abszprms = hdr['ABSZPRMS']
 			pixscale = hdr['PIXSCALE']
 		except KeyError as error:
-			print error
+			print(error)
 			continue
 
 		# Finds filter name and makes sure it is capitalized correctly
 		filter = files.split('_')[-1].split('.')[0]
 
-		if filter.lower() in ('j','h','k'):
+		if filter in ('SDSS-U', 'SDSS-G', 'SDSS-R', 'SDSS-I', 'SDSS-Z'):
+			filter = filter[-1].lower()
+		elif filter.lower() in ('j','h','k'):
 			filter = filter.upper()
 		else:
 			filter = filter.lower()
-		
+		#print(filter)
 		compfile = files
 
 		# Use individual image, not multi image now for individual detections
@@ -221,7 +252,6 @@ def photom(prefchar='coadd'):
 			filter + ' ' + catfile + " 15 True True"
 		os.system(sedcmd)
 		#
-		
 		# tout = np.transpose(sexout[0:8,:]) #Only include through fluxerr
 		indexes = np.array([np.arange(len(sexout[0,:]))])
 		tout = np.hstack((sexout[0:8,:].T, indexes.T))
@@ -239,3 +269,57 @@ def photom(prefchar='coadd'):
 			amfile, tsorted, fmt='%15.6f ' * 8 + '%i',
 			header='X\t Y\t RA\t DEC\t CAL_MAG\t CAL_MAG_ERR\t CAL_FLUX\t CAL_FLUX_ERR\t CAT_INDEX\t'
 		)
+
+		# Creates Region File using RA, DEC, and FWMH
+		print("Creating region file for filter : {}".format(filter))
+		fwmh = sexout[9,:] #FWMH each source in pixels
+		region_file = open("region_" + filter +".REG", "w")
+		a = '# Region file format: DS9 version 4.1\nglobal color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1'
+		region_file.write(a)
+		for i in range(len(wrd[:,0])):
+			c = SkyCoord(ra=wrd[i,0] * u.degree, dec=wrd[i,1] * u.degree)
+			ra, dec = c.to_string('hmsdms').split()
+			ra = ra.replace("h", ":").replace("m", ":").replace("s", "")
+			dec = dec.replace("d", ":").replace("m", ":").replace("s", "")
+			region_file.write('\ncircle({},{},{:.4f}")'.format(ra, dec, fwmh[i]*pixscale))
+		region_file.close()
+
+		# Plot Astrometry Error
+		print("Creating astronomy error file for filter : {}".format(filter))
+		cvars = np.loadtxt(catfile, unpack=True)
+		refmag = cvars[catdict[filter], :]
+		mode = cvars[catdict['mode'], :]
+		flag = cvars[5]
+		elon = cvars[8]
+		# Find catalog filter values and only cutoff values of actual detections
+		goodind = (mode != -1) & (refmag < 90.0) & (flag < 8) & (elon <= 1.5)
+		#cvars = cvars[]
+		ra_cat = cvars[0, :]
+		dec_cat = cvars[1, :]
+		x_im = sexout[0, :]
+		y_im = sexout[1, :]
+		catpix = w.all_world2pix(np.transpose([ra_cat, dec_cat]), 0)
+		nsources = len(ra_cat)
+		x_err = np.zeros(nsources)
+		y_err = np.zeros(nsources)
+		for i in range(nsources):
+			x_err[i] = x_im[i] - catpix[i,0]
+			#print("Im:{:.4f}, Cat:{:.4f}, Err:{:.4f}".format(x_im[i],catpix[i,0],x_err[i]))
+			y_err[i] = y_im[i] - catpix[i,1]
+			#print("Im:{:.4f}, Cat:{:.4f}, Err:{:.4f}".format(y_im[i], catpix[i,1], y_err[i]))
+
+		fig = pl.figure(1, figsize=(8, 8))
+		ax1 = fig.add_subplot(211)
+		#ax1.set_xlim([min(ra_im), max(ra_im)])
+		#ax1.set_ylim([min(ra_err),max(ra_err)])
+		ax1.plot(x_im, x_err, marker='o', linestyle='None')
+		ax1.set_xlabel('X (pix)')
+		ax1.set_ylabel(r"$\Delta$X (pix)")
+		ax2 = fig.add_subplot(212)
+		# ax2.set_xlim([min(ra_im), max(ra_im)])
+		# ax2.set_ylim([min(ra_err),max(ra_err)])
+		ax2.plot(y_im, y_err, marker='o', linestyle='None')
+		ax2.set_xlabel('Y (pix)')
+		ax2.set_ylabel(r"$\Delta$Y (pix)")
+		pl.savefig('astronomy_stats_' + filter + '.png', bbox_inches='tight')
+		pl.clf()

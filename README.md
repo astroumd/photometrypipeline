@@ -9,7 +9,9 @@
 PhotoPipe is a pipeline for automated reduction, photometry and astrometry, written in Python (2.7), and designed to process imaging data from the following instruments:
 
 * [RATIR](http://butler.lab.asu.edu/RATIR/): the Reionization and Transients Infrared/Optical Project.
-* [RIMAS](https://lowell.edu/research/research-facilities/4-3-meter-dct/rimas/): the Rapid infrared IMAger Spectrometer.
+* [RIMAS](https://lowell.edu/research/research-facilities/4-3-meter-ldt/rimas/): the Rapid infrared IMAger Spectrometer.
+* [LMI](https://lowell.edu/research/research-facilities/4-3-meter-ldt/the-large-monolithic-imager/): the Large Monolithic Imager.
+
 
 This project is based on the previous versions of the pipeline by [cenko](https://github.com/cenko/RATIR-GSFC) and [vickitoy](https://github.com/vickitoy/photometry_pipeline).  
 Built at the NASA Goddard Space Flight Center, in collaboration with the University of Maryland.
@@ -19,24 +21,28 @@ Built at the NASA Goddard Space Flight Center, in collaboration with the Univers
 
 ## Full Documentation
 
-See the [Wiki](https://github.com/maxperry/photometrypipeline/wiki) for full documentation, examples, operational details and other information.
+See [this] (https://github.com/RIMAS-RATIR-DCT/photometrypipeline/tree/master/Documentation) for full documentation, examples, operational details and other information.
 
 
 ## Prerequisites
 
-The pipeline can be installed with very little additional software. However, depending on the installation, different libraries and software may be required. Please see the [Installation](#installation) section below, and the dedicated [wiki page](https://github.com/maxperry/photometrypipeline/wiki/Prerequisites) for a full list of prerequisites.
+The pipeline can be installed with very little additional software. However, depending on the installation, different libraries and software may be required. Please see the [Installation](#installation) section below, and the dedicated [file](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Prerequisites.md) for a full list of prerequisites.
 
 
 ## Installation
 
-The easiest way to get up and running with the pipeline is to download the ready-to-use **virtual machine** box and run it with Vagrant.
+The easiest way to get up and running with the pipeline is to run the ready-to-use **docker container**.
 
 Alternatively, it can be installed on Linux or macOS either with `pip`, or with the provided installation scripts.
 _(**WARNING:** compiling the dependencies can take more than 6 hours.)_
 
 #### 1) Download a pre-configured Virtual Machine (PhotoPipe-VM)
 
-Please refer to the virtual machine [repository](https://github.com/maxperry/photometrypipeline-vm).
+The docker container can be used if you have docker installed by running:
+
+    $ docker run -it joedurbak/photopipe bash
+    
+More detailed instructions on installing, configuring, and rerunning the same container are available for both [Mac](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Docker-Instructions-on-Mac.md) and [Windows](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Docker-Instructions-on-Windows.md) operating systems
 
 #### 2) Install on your machine from PyPI or git
 
@@ -45,7 +51,7 @@ Please refer to the virtual machine [repository](https://github.com/maxperry/pho
 * Or, clone from `git`:
 
  ```
- $ git clone git@github.com:maxperry/photometrypipeline.git
+ $ git clone https://github.com/RIMAS-RATIR-DCT/photometrypipeline.git
  $ cd photometrypipeline
  $ sudo python setup.py install
  ```
@@ -53,10 +59,11 @@ Please refer to the virtual machine [repository](https://github.com/maxperry/pho
 **NOTE (macOS)**: If the installation fails with `sudo: port: command not found` make sure that [MacPorts](https://guide.macports.org/#installing) is installed and `/opt/local/bin` is in the $PATH (e.g. `export PATH=/opt/local/bin:/opt/local/sbin:$PATH`).
 
 #### 3) Manual Installation
-If you to run the pipeline from the Python enviroment rather than using the `photopipe` command as described in the [Usage](#usage) section, please follow the step by step instructions in the wiki pages below to install all the dependencies manually.
+If you to run the pipeline from the Python environment rather than using the `photopipe` command as described in the [Usage](#usage) section, please follow the step by step instructions in the wiki pages below to install all the dependencies manually.
 
-* [Instructions for macOS](https://github.com/maxperry/photometrypipeline/wiki/Manual-Installation-(macOS))
-* [Instructions for Linux-Debian](https://github.com/maxperry/photometrypipeline/wiki/Manual-Installation-(Linux-Debian))
+* [Instructions for macOS](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Mac-Installation-Instructions.md)
+* [Instructions for Linux-Debian](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Linux-Debian-Installation-Instructions.md)
+* [Instructions for Windows-WSL-Debian](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/Windows-Installation-Instructions.md)
 
 
 ## Usage
@@ -65,32 +72,17 @@ The following steps can be reproduced using the test data downloadable [here](ht
 
 #### 1) Create a new directory with the following structure:
  
- **NOTE for PhotoPipe-VM**: Create the `imdata` directory in the VM's shared data dir (should be `./photopipe-vm/data`) 
+ **NOTE for photopipe docker container**: Create the `data` directory as a shared volume (should be `- v /absolute/path/to/data:/data`) 
  
  ```
-imdata  
+data  
 │
-└───bias
-│   │   20160628T032914C0b.fits
-│   │   20160628T032914C1b.fits
-│   │   ...
-│   
-└───dark
-│   │   20160628T040211C0d.fits
-│   │   20160628T040211C1d.fits
-│   │   ...   
-│
-└───flat
-│   │   20160628T024207C0f.fits
-│   │   20160628T024207C1f.fits
-│   │   ...    
-│
-└───science
-│   │   20160628T043940C0o.fits
-│   │   20160628T043940C1o.fits
-│   │   ...    
-│
-└───science_selected
+|
+│   20160628T032914C0b.fits
+│   20160628T032914C1b.fits
+│   ...
+|
+└───selected
 │
 └───reduced
 ```
@@ -106,11 +98,11 @@ imdata
  2. Run the following script:
  
   ```python
-  from photopipe.reduction import preproc
+  from photopipe.reduction.preprocess import choose, master
   
   # Bias frames calibration 
   
-  bias_calib = preproc.choose_calib( 'ratir', 
+  bias_calib = choose.choose_calib( 'ratir', 
                                      'bias', 
                                      workdir='/vagrant_data/imdata/bias/', 
                                      cams=[0,1], 
@@ -123,7 +115,7 @@ imdata
  
   # Dark frames calibration
   
-  dark_calib = preproc.choose_calib( 'ratir', 
+  dark_calib = choose.choose_calib( 'ratir', 
                                      'dark', 
                                      workdir='/vagrant_data/imdata/dark/', 
                                      cams=[0,1], 
@@ -135,7 +127,7 @@ imdata
 
   # Flat frames calibration 
   
-  flat_calib = preproc.choose_calib( 'ratir', 
+  flat_calib = choose.choose_calib( 'ratir', 
                                      'flat', 
                                      workdir='/vagrant_data/imdata/flat/', 
                                      cams=[0,1,2,3], 
@@ -154,7 +146,7 @@ imdata
   # Select science frames
   # (selected frames will be copied to target_dir)
   
-  science_dict = preproc.choose_science( 'ratir', 
+  science_dict = choose.choose_science( 'ratir', 
                                          workdir='/vagrant_data/imdata/science, 
                                          targetdir='/vagrant_data/imdata/science_selected', 
                                          cams=[0,1,2,3], 
@@ -172,14 +164,14 @@ imdata
   # Make master frames
   # (saves to the current dir)
   
-  preproc.mkmaster('ratir', bias_calib, 'bias')
+  master.mkmaster('ratir', bias_calib, 'bias')
 
-  preproc.mkmaster('ratir', dark_calib, 'dark')
+  master.mkmaster('ratir', dark_calib, 'dark')
  
-  preproc.mkmaster('ratir', flat_calib, 'flat')  
+  master.mkmaster('ratir', flat_calib, 'flat')  
  ```
  
- See [wiki page](https://github.com/maxperry/photometrypipeline/wiki/preproc.py) for `preproc` functions reference.
+ See [documentation](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/preproc.py.md) for `preproc` functions reference.
 
  **WARNING**:
   1. Always use absolute paths terminated by a `/` when setting `dir` parameters. 
@@ -199,7 +191,7 @@ imdata
   ```
  3. Reduced frames will be saved to `imdir` using `coadd` as prefix in the filename.
  
- See [wiki page](https://github.com/maxperry/photometrypipeline/wiki/autoproc.py) for `autoproc` function reference.
+ See [documentation](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/autoproc.py.md) for `autoproc` function reference.
 
 #### 4) Photometry
 
@@ -212,11 +204,11 @@ imdata
   ```
  **NOTE**: It's important to start python from the `photometry` dir containing the `coadd` files.
  
- **[autoredux](https://github.com/maxperry/photometrypipeline/blob/master/photopipe/photometry/autoredux.py)** will run the following scripts:
+ **[autoredux](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/photopipe/photometry/autoredux.py)** will run the following scripts:
 
-  1.  **[photom.py](https://github.com/maxperry/photometrypipeline/blob/master/photopipe/photometry/photom.py)**: Samples and crops all files, creates a multicolor image used to find all sources, then finds the *aperture photometry* for each of those sources (resampled) using sextractor (with corrected zeropoint).  
+  1.  **[photom.py](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/photopipe/photometry/photom.py)**: Samples and crops all files, creates a multicolor image used to find all sources, then finds the *aperture photometry* for each of those sources (resampled) using sextractor (with corrected zeropoint).  
         - Output: *.am (absolute magnitude) files for w/ RA and DEC identified by sextractor
-  2. **[plotphotom.py](https://github.com/maxperry/photometrypipeline/blob/master/photopipe/photometry/plotphotom.py)**: Plots photometry results to a HTML page.
+  2. **[plotphotom.py](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/photopipe/photometry/plotphotom.py)**: Plots photometry results to a HTML page.
  
 ## Bugs and Feedback
 

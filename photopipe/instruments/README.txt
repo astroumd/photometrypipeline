@@ -59,8 +59,8 @@ To add a new instrument:
         BINX
         BINY
         WAVELENG
-        TARGNAME
-        PIXSCALE
+        TARGNAME #Not optional
+        PIXSCALE #Not optional
         WAVELENG
         UTC
         OBJECT

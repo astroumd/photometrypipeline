@@ -69,7 +69,7 @@ backend      : TkAgg
 
 ## Where your matplotlib data lives if you installed to a non-default
 ## location.  This is where the matplotlib fonts, bitmaps, etc reside
-#datapath : /home/jdhunter/mpldata
+##datapath : /home/jdhunter/mpldata
 
 
 #### LINES

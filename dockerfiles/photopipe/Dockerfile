@@ -4,7 +4,7 @@ WORKDIR /work
 
 RUN pip install astride
 
-RUN apt-get install -y vim nano emacs gedit
+#RUN apt-get install -y vim nano emacs gedit
 
 RUN git clone --branch py3 https://c2499497b5dd9fc93f9d67000bc15f1c514b850f@github.com/RIMAS-RATIR-DCT/photometrypipeline.git \
 	&& cd photometrypipeline \

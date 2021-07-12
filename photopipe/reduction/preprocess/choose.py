@@ -21,10 +21,11 @@ from photopipe.reduction.dependencies import astro_functs as af
 from photopipe.instruments.specific_instruments import instrument_dict
 
 # Preprocessing constants
-FITS_IN_KEY = lambda n: 'IMCMB{:03}'.format(int(n)) # function to make FITS keywords to store file names of combined frames
+FITS_IN_KEY = lambda n: 'IMCMB{:03}'.format(int(n))
+# function to make FITS keywords to store file names of combined frames
 
 
-def choose_calib(instrument, ftype, workdir='.', cams=[0, 1, 2, 3], auto=False, reject_sat=True, amin=0.2, amax=0.8,
+def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, reject_sat=True, amin=0.2, amax=0.8,
                  save_select=True, figsize=(8, 5), noplot=False):
     """
     NAME:
@@ -58,14 +59,15 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0, 1, 2, 3], auto=False, 
 
     # check for non-list camera argument
     if type(cams) is not list:
-        cams = [cams]  # convert to list
+        cams = list(cams)  # convert to list
 
     # check for non-integer camera designators
     if type(cams[0]) is not int:
         af.print_err("Error: cameras must be specified by an integer. Exiting...")
         return
 
-    if not noplot: pl.ion()  # pylab in interactive mode
+    if not noplot:
+        pl.ion()  # pylab in interactive mode
 
     # move to working directory
     start_dir = os.getcwd()
@@ -125,7 +127,7 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0, 1, 2, 3], auto=False, 
         for fits_fn in fits_list:
 
             fits_id = fits_fn.split('.')[0]  # fits file name with extention removed
-            print(f'{fits_fn}')
+            print('{}'.format(fits_fn))
 
             # open data
             hdulist = pf.open(fits_fn, mode='update')
@@ -158,9 +160,9 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0, 1, 2, 3], auto=False, 
             [im1, m, s, sfrac] = image_summary(im, sat_pt, cam_i, instrum, split=instrum.is_cam_split(cam_i))
 
             if instrum.is_cam_split(cam_i) == True:
-                [m1, m2] = m;
-                [s1, s2] = s;
-                [im1, im2] = im1;
+                [m1, m2] = m
+                [s1, s2] = s
+                [im1, im2] = im1
                 [sfrac1, sfrac2] = sfrac
 
                 # if auto select then find values with correct ranges
@@ -173,14 +175,14 @@ def choose_calib(instrument, ftype, workdir='.', cams=[0, 1, 2, 3], auto=False, 
                 # flats are selected based on median value
                 elif ftype is instrum.flatname:
 
-                    vmin = amin * sat_pt;
+                    vmin = amin * sat_pt
                     vmax = amax * sat_pt
 
                     if instrum.is_cam_split(cam_i) == True:
 
                         # check whether median values are in specified range
                         # bottom side
-                        if m1 > vmin and m1 < vmax:
+                        if vmin < m1 < vmax:
                             print('\t* Filter used: {}'.format(instrum.get_filter(h, 'C{}a'.format(cam_i))))
                             af.print_blue("\t* Bottom side selected.")
                             imfits_1 = savefile(fits_id, im1, instrum.get_filter(h, 'C{}a'.format(cam_i)), h)
@@ -410,7 +412,7 @@ def savefile(file, im, filter, h):
     newfile = '{}_{}.fits'.format(file, filter)
     h['FILTER'] = filter
     if os.path.exists(newfile): os.remove(newfile) # delete old copy
-    pf.writeto(newfile, im, header=h, clobber=True) # save object frame
+    pf.writeto(newfile, im, header=h, overwrite=True) # save object frame
     return newfile
 
 
@@ -783,7 +785,7 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
                                                            instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_img_post)))
                         im_img = im[instrum.slice('C{}{}'.format(cam_i, f_img_post))]
                         hnew = instrum.change_header_keywords(h_c, 'C{}{}'.format(cam_i, f_img_post))
-                        pf.writeto(imfits, im_img, header=hnew, clobber=True)  # save object frame
+                        pf.writeto(imfits, im_img, header=hnew, overwrite=True)  # save object frame
                         ## 'has_key()' depreciated; changed  to 'in'
                         if instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_img_post)) in fits_list_dict:
                             fits_list_dict[instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_img_post))].append(imfits)
@@ -795,7 +797,7 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
                                                             instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_sky_post)))
                         im_sky = im[instrum.slice('C{}{}'.format(cam_i, f_sky_post))]
                         hnew = instrum.change_header_keywords(h_c, 'C{}{}'.format(cam_i, f_sky_post))
-                        pf.writeto(skyfits, im_sky, header=hnew, clobber=True)  # save sky frame
+                        pf.writeto(skyfits, im_sky, header=hnew, overwrite=True)  # save sky frame
                         ## 'has_key()' depreciated; changed  to 'in'
                         if instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_sky_post)) in fits_list_dict:
                             fits_list_dict[instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_sky_post))].append(skyfits)
@@ -809,7 +811,7 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
                         imfits = '{}/{}_{}_{}.fits'.format(targetdir, fits_id, instrum.objname, cam_i)
                         im_img = im[instrum.slice('C{}'.format(cam_i))]
                         hnew = instrum.change_header_keywords(h_c, 'C{}'.format(cam_i))
-                        pf.writeto(imfits, im_img, header=hnew, clobber=True)
+                        pf.writeto(imfits, im_img, header=hnew, overwrite=True)
                         ## 'has_key()' depreciated; changed  to 'in'
                         if instrum.get_filter(h_c, 'C{}'.format(cam_i)) in fits_list_dict:
                             fits_list_dict[instrum.get_filter(h_c, 'C{}'.format(cam_i))].append(imfits)

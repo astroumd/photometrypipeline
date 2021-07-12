@@ -3,6 +3,7 @@ Purpose:    Creates master frames for each mtype (bias, dark, flat)
 """
 import os
 import pickle
+import sys
 
 # installed modules
 import astropy.io.fits as pf
@@ -13,7 +14,8 @@ from photopipe.reduction.dependencies import astro_functs as af
 from photopipe.instruments.specific_instruments import instrument_dict
 
 # Preprocessing constants
-FITS_IN_KEY = lambda n: 'IMCMB{:03}'.format(int(n)) # function to make FITS keywords to store file names of combined frames
+FITS_IN_KEY = lambda n: 'IMCMB{:03}'.format(int(n))
+# function to make FITS keywords to store file names of combined frames
 
 
 def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./'):
@@ -74,11 +76,13 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./'):
         # check if required files are present
         if instrum.has_cam_bias(cam_i):
             mbias_fn = '{}_{}.fits'.format(instrum.biasname, cam)
+            mbias_fn = os.path.join(master_dir, mbias_fn)
         else:
             mbias_fn = None
 
         if instrum.has_cam_dark(cam_i):
             mdark_fn = '{}_{}.fits'.format(instrum.darkname, cam)
+            mdark_fn = os.path.join(master_dir, mdark_fn)
         else:
             mdark_fn = None
 
@@ -103,8 +107,9 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./'):
                 continue
             else:
                 temp = input(
-                    af.bcolors.WARNING + "Only {} frames available to make master {} for {} {}.  Continue? (y/n): ".format(len(fns), mtype, band, sorttype.lower()) + af.bcolors.ENDC)
-                print("test")
+                    af.bcolors.WARNING +
+                    "Only {} frames available to make master {} for {} {}.  Continue? (y/n): ".format(
+                        len(fns), mtype, band, sorttype.lower()) + af.bcolors.ENDC)
                 if temp.lower() != 'y' and temp.lower() != 'yes':
                     af.print_warn("Skipping {}...".format(band))
                     continue
@@ -128,13 +133,13 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./'):
         # check that frames match
         for i in range(len(fns) - 1):
             if (filter_arr[i + 1] != filter_arr[0]) and (mtype is instrum.flatname):
-                af.print_err("Error: cannot combine flat frames with different filters. Skipping {} {}...".format(band,
-                                                                                                                  sorttype.lower()))
+                af.print_err("Error: cannot combine flat frames with different filters. Skipping {} {}...".format(
+                    band, sorttype.lower()))
                 continue
             if (exptime_arr[i + 1] != exptime_arr[0]) and (mtype is instrum.darkname):
                 af.print_err(
-                    "Error: cannot combine dark frames with different exposure times. Skipping {} {}...".format(band,
-                                                                                                                sorttype.lower()))
+                    "Error: cannot combine dark frames with different exposure times. Skipping {} {}...".format(
+                        band, sorttype.lower()))
                 continue
         if instrum.flatname:
             hdu.header['FILTER'] = filter_arr[0]  # add filter keyword to master frame
@@ -184,7 +189,7 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./'):
         # save master to fits
         hdulist = pf.HDUList([hdu])
         try:
-            hdulist.writeto('{}{}_{}.fits'.format(master_dir, mtype, band), clobber=True)
+            hdulist.writeto('{}{}_{}.fits'.format(master_dir, mtype, band), overwrite=True)
         except IOError:
             os.mkdir(master_dir)
-            hdulist.writeto('{}{}_{}.fits'.format(master_dir, mtype, band), clobber=True)
+            hdulist.writeto('{}{}_{}.fits'.format(master_dir, mtype, band), overwrite=True)

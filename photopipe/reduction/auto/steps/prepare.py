@@ -19,6 +19,15 @@ inpipevar = {
 }
 
 
+def findcals(pipevar, file_format_str):
+    calfiles = glob.glob(os.path.join(pipevar['caldir'], file_format_str))
+    if len(calfiles) == 0:
+        calfiles = glob.glob(os.path.join(pipevar['datadir'], file_format_str))
+    if len(calfiles) == 0:
+        calfiles = glob.glob(os.path.join(pipevar['imworkingdir'], file_format_str))
+    return calfiles
+
+
 def autopipedefaults(pipevar=None):
     """
     NAME:
@@ -81,7 +90,6 @@ def autopipeprepare(pipevar=None):
     DEPENDENCIES:
         autoproc_depend.pipeprepare()
     """
-
     print('PREPARE')
     if pipevar is None:
         pipevar = inpipevar
@@ -98,9 +106,8 @@ def autopipeprepare(pipevar=None):
 
     # Finds any master bias files and filter name from header keyword
     # Assumes camera name is in header under CAMERA
-    biasfiles = glob.glob(pipevar['datadir'] + 'bias*.fits')
-    if len(biasfiles) == 0:
-        biasfiles = glob.glob(pipevar['imworkingdir'] + 'bias*.fits')
+    biasfiles = findcals(pipevar, 'bias*.fits')
+
     biascamera = []
     if len(biasfiles) > 0:
         for bfile in biasfiles:
@@ -113,9 +120,8 @@ def autopipeprepare(pipevar=None):
 
     # Finds any master dark files and filter name from header keyword
     # Assumes camera name is in header under CAMERA
-    darkfiles = glob.glob(pipevar['datadir'] + 'dark*.fits')
-    if len(darkfiles) == 0:
-        darkfiles = glob.glob(pipevar['imworkingdir'] + 'dark*.fits')
+    darkfiles = findcals(pipevar, 'dark*.fits')
+
     darkcamera = []
     if len(darkfiles) > 0:
         for dfile in darkfiles:
@@ -126,7 +132,7 @@ def autopipeprepare(pipevar=None):
         print('Did not find any DARK files! Check your data directory path!')
 
     # Flat files are already bias/dark subtracted
-    flatfiles = glob.glob(pipevar['datadir'] + 'flat*.fits')
+    flatfiles = findcals(pipevar, 'flat*.fits')
 
     # For each file (that doesn't have an existing p file or can be overwritten),
     # run pipeprepare on it with output file being saved into the imworkingdir,
@@ -191,9 +197,7 @@ def autopipeimflatten(pipevar=None):
     print(pipevar['imworkingdir'])
     files = glob.glob(pipevar['imworkingdir'] + 'p' + pipevar['prefix'] + '*.fits')
     ffiles = glob.glob(pipevar['imworkingdir'] + 'fp' + pipevar['prefix'] + '*.fits')
-    flats = glob.glob(pipevar['datadir'] + 'flat*.fits')
-    if len(flats) == 0:
-        flats = glob.glob(pipevar['imworkingdir'] + 'flat*.fits')
+    flats = findcals(pipevar, 'flat*.fits')
 
     if len(files) == 0:
         print('Did not find any files! Check your data directory path!')

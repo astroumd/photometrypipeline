@@ -80,7 +80,7 @@ def autopipeskysubmed(pipevar=None):
         date = datetime.datetime.now().isoformat()
         head.add_history('Processed by skypipeprocmed ' + date)
 
-        pf.writeto(outfile, data, head, clobber=pipevar['overwrite'])
+        pf.writeto(outfile, data, head, overwrite=pipevar['overwrite'])
 
     # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
     # and sky-*.fits files

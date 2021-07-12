@@ -121,15 +121,29 @@ import shutil
 import astropy.io.fits as pyfits
 import os
 import sys
-import urllib.request
-from photopipe.reduction.astrom import astrometrydist
-from photopipe.reduction.astrom import astrometrystats
-from photopipe.reduction.astrom import astrometrysources
+from six.moves import urllib
+# import urllib.request
+
+try:
+    import astrometrydist
+    import astrometrysources
+    import astrometrystats
+
+except ImportError:
+    from photopipe.reduction.astrom import astrometrydist
+    from photopipe.reduction.astrom import astrometrystats
+    from photopipe.reduction.astrom import astrometrysources
+
+    # if os.path.basename(astrometrystats.__file__) != os.path.basename(__file__):
+    #     import astrometrydist
+    #     import astrometrysources
+    #     import astrometrystats
+
 import warnings
 
 try:
     import ephem
-except:
+except ImportError:
     pass
 
 sexpath = ''  # if "sex" works in any directory, leave blank
@@ -289,7 +303,7 @@ def autoastrometry(
         if os.path.isfile('temp.fits'):
             os.remove('temp.fits')
         fits[0].header = h
-        fits.writeto('temp.fits', output_verify='silentfix')  # ,clobber=True
+        fits.writeto('temp.fits', output_verify='silentfix')  # ,overwrite=True
         fits.close()
         fits = pyfits.open('temp.fits')
         h = fits[0].header
@@ -423,11 +437,11 @@ def autoastrometry(
                                "&dec=" + str(centerdec) + "&system=J2000&rad=" + str(-180)
                 commentlen = 4
 
-            #check = urllib.urlopen(testqueryurl)
+            # check = urllib.urlopen(testqueryurl)
             with urllib.request.urlopen(testqueryurl) as check:
                 checklines = check.readlines()
                 checklines = [(line.decode('utf-8')).strip() for line in checklines]
-                #checklines = [line + '\n' for line in checklines]
+                # checklines = [line + '\n' for line in checklines]
                 check.close()
 
             # Find comment line for those pulled by Harvard using comment identifier
@@ -538,7 +552,7 @@ def autoastrometry(
     if not quiet:
         print('After trimming: ')
         print('   ', len(goodsexlist), 'detected objects (%.2f/arcmin^2, %.1f/searchzone)' % (density, circdensity))
-        print('   ', len(catlist),     'catalog objects (%.2f/arcmin^2, %.1f/searchzone)' % (catdensity, circcatdensity))
+        print('   ', len(catlist), 'catalog objects (%.2f/arcmin^2, %.1f/searchzone)' % (catdensity, circcatdensity))
 
     # Sets position angle tolerance and calculates the expected number of false multiples
     patolerance = defaultpatolerance
@@ -698,7 +712,7 @@ def autoastrometry(
     except:
         pass
     fits[0].header = h
-    fits.writeto(outfile, output_verify='silentfix')  # ,clobber=True
+    fits.writeto(outfile, output_verify='silentfix')  # ,overwrite=True
     
     if not quiet:
         print('Written to '+outfile)

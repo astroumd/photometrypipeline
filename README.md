@@ -72,32 +72,17 @@ The following steps can be reproduced using the test data downloadable [here](ht
 
 #### 1) Create a new directory with the following structure:
  
- **NOTE for PhotoPipe-VM**: Create the `imdata` directory in the VM's shared data dir (should be `./photopipe-vm/data`) 
+ **NOTE for photopipe docker container**: Create the `data` directory as a shared volume (should be `- v /absolute/path/to/data:/data`) 
  
  ```
-imdata  
+data  
 │
-└───bias
-│   │   20160628T032914C0b.fits
-│   │   20160628T032914C1b.fits
-│   │   ...
-│   
-└───dark
-│   │   20160628T040211C0d.fits
-│   │   20160628T040211C1d.fits
-│   │   ...   
-│
-└───flat
-│   │   20160628T024207C0f.fits
-│   │   20160628T024207C1f.fits
-│   │   ...    
-│
-└───science
-│   │   20160628T043940C0o.fits
-│   │   20160628T043940C1o.fits
-│   │   ...    
-│
-└───science_selected
+|
+│   20160628T032914C0b.fits
+│   20160628T032914C1b.fits
+│   ...
+|
+└───selected
 │
 └───reduced
 ```
@@ -113,11 +98,11 @@ imdata
  2. Run the following script:
  
   ```python
-  from photopipe.reduction import preproc
+  from photopipe.reduction.preprocess import choose, master
   
   # Bias frames calibration 
   
-  bias_calib = preproc.choose_calib( 'ratir', 
+  bias_calib = choose.choose_calib( 'ratir', 
                                      'bias', 
                                      workdir='/vagrant_data/imdata/bias/', 
                                      cams=[0,1], 
@@ -130,7 +115,7 @@ imdata
  
   # Dark frames calibration
   
-  dark_calib = preproc.choose_calib( 'ratir', 
+  dark_calib = choose.choose_calib( 'ratir', 
                                      'dark', 
                                      workdir='/vagrant_data/imdata/dark/', 
                                      cams=[0,1], 
@@ -142,7 +127,7 @@ imdata
 
   # Flat frames calibration 
   
-  flat_calib = preproc.choose_calib( 'ratir', 
+  flat_calib = choose.choose_calib( 'ratir', 
                                      'flat', 
                                      workdir='/vagrant_data/imdata/flat/', 
                                      cams=[0,1,2,3], 
@@ -161,7 +146,7 @@ imdata
   # Select science frames
   # (selected frames will be copied to target_dir)
   
-  science_dict = preproc.choose_science( 'ratir', 
+  science_dict = choose.choose_science( 'ratir', 
                                          workdir='/vagrant_data/imdata/science, 
                                          targetdir='/vagrant_data/imdata/science_selected', 
                                          cams=[0,1,2,3], 
@@ -179,11 +164,11 @@ imdata
   # Make master frames
   # (saves to the current dir)
   
-  preproc.mkmaster('ratir', bias_calib, 'bias')
+  master.mkmaster('ratir', bias_calib, 'bias')
 
-  preproc.mkmaster('ratir', dark_calib, 'dark')
+  master.mkmaster('ratir', dark_calib, 'dark')
  
-  preproc.mkmaster('ratir', flat_calib, 'flat')  
+  master.mkmaster('ratir', flat_calib, 'flat')  
  ```
  
  See [documentation](https://github.com/RIMAS-RATIR-DCT/photometrypipeline/blob/master/Documentation/preproc.py.md) for `preproc` functions reference.

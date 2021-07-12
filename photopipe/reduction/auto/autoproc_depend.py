@@ -120,8 +120,8 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
             
             if np.shape(data) != np.shape(bias):
                 
-                print(pipe_file + ' could not be bias subtracted because it is not the same' +\
-                             ' size as the master bias, remove file to avoid confusion')
+                print(pipe_file + ' could not be bias subtracted because it is not the same' +
+                      ' size as the master bias, remove file to avoid confusion')
                 return
             
             if verbose > 0:
@@ -137,8 +137,8 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
                 
                 if np.shape(data) != np.shape(dark):
                     print(' ')
-                    print(pipe_file + ' could not be dark subtracted because it is not the same' +\
-                        ' size as the master dark, remove file to avoid confusion')
+                    print(pipe_file + ' could not be dark subtracted because it is not the same' +
+                          ' size as the master dark, remove file to avoid confusion')
                     return  
                           
                 if verbose > 0:
@@ -333,7 +333,7 @@ def skypipecombine(
         iny = head_i['NAXIS2']        
 
         if (inx != nx) or (iny != ny):
-            print('File ' + filename + ' has wrong dimensions ('+str(inx) + \
+            print('File ' + filename + ' has wrong dimensions ('+str(inx) +
                   ' x ' + str(iny)+'; should have '+str(nx)+' x '+str(ny)+')')
         
         # Perform 3 sigma clipped median and save to inmeds
@@ -646,7 +646,7 @@ def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
             # Replace bad pixels with median of entire sky
             good = np.isfinite(indata)
             out = usefiles[f].replace('fp', 'skymask_fp')
-            #pf.writeto(out, good.astype(np.int), head_m, clobber=True)
+            #pf.writeto(out, good.astype(np.int), head_m, overwrite=True)
             allmed = np.median(indata[good])
             allstd = np.std(indata[good])
             # print("All Median: {}".format(allmed))
@@ -688,7 +688,7 @@ def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
             data[f, :, :] = indata
             good2 = np.isfinite(indata)
             out = usefiles[f].replace('fp', 'skymask2_fp')
-            #pf.writeto(out, good2.astype(np.int), head_m, clobber=True)
+            #pf.writeto(out, good2.astype(np.int), head_m, overwrite=True)
 
     reflat = np.zeros((ny, nx)) + float('NaN')
 
@@ -751,7 +751,7 @@ def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
     bad_count = np.sum(bad)
     print("Number of NaN Values: {}".format(bad_count))
     #out = outfile.replace('.fits', 'skymask.fits')
-    #pf.writeto(out, good.astype(np.int), head_m, clobber=True)
+    #pf.writeto(out, good.astype(np.int), head_m, overwrite=True)
     skyflat = np.copy(reflat)
     t1 = time.perf_counter()
     mi, mj = reflat.shape
@@ -777,7 +777,7 @@ def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
 
     if pipevar['verbose'] > 0: print('  Written to ' + outfile)
 
-    pf.writeto(outfile, skyflat, head_m, clobber=True)
+    pf.writeto(outfile, skyflat, head_m, overwrite=True)
 
 def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
 
@@ -987,8 +987,7 @@ def astrometry(atfimages, scamprun=1, pipevar=None):
         else:
             print('No valid catalogs available for SCAMP, check that vlt_autoastrometry.py ran correctly')
             return
-        # !!!!!!!!!!!!!!!!!! I'M INDENTING EVERYTHING BELOW UNTIL NEXT COMMENT SINCE IT SEEMS LIKE A BUG TO NOT HAVE
-        # THE FOLLOWING IN THE FOR LOOP !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
     if scamprun == 1:
         loose = ' -MOSAIC_TYPE LOOSE'
         distdeg = 1
@@ -1017,8 +1016,6 @@ def astrometry(atfimages, scamprun=1, pipevar=None):
 
     os.system(scampcmd)
     os.system('rm ' + acatlist)
-    # !!!!!!!!!!!!!!!!!! I'M INDENTING EVERYTHING ABOVE UNTIL NEXT COMMENT SINCE IT SEEMS LIKE A BUG TO NOT HAVE
-    # THE PRECEDING IN THE FOR LOOP !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             
     # Adds header information to file and delete extra files
     for cfile in atfimages:

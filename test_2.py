@@ -1,6 +1,6 @@
 from photopipe.reduction.preprocess import choose
 from photopipe.reduction.preprocess import master
-from photopipe.reduction.auto.autoproc_2 import autoproc_2
+from photopipe.reduction.auto.autoproc import autoproc
 from shutil import move
 import os
 import glob
@@ -95,6 +95,6 @@ for f in glob.glob(os.path.join(base_path, 'flat*.fits')):
 # autoproc_2(datadir=selected_path+os.path.sep,
 #          imdir=reduced_path+os.path.sep,
 #          redo=1, start='makesky', nomastersky=False)
-autoproc_2(datadir=selected_path+os.path.sep,
+autoproc(datadir=selected_path+os.path.sep,
          imdir=reduced_path+os.path.sep,
          redo=1, nomastersky=False, skyflattarg=False)

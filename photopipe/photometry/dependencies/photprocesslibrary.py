@@ -157,7 +157,7 @@ def hextractlite(newfile, data, fitsheader, x1, x2, y1, y2):
     newdata = data[y1:y2+1, x1:x2+1]
 
     # Saves new fits file and header to specified fits file name
-    pf.writeto(newfile, newdata, fitsheader, clobber=True)
+    pf.writeto(newfile, newdata, fitsheader, overwrite=True)
 
 
 """

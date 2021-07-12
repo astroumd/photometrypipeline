@@ -6,6 +6,7 @@
         - is numpy mean() buggy? found cases where mean(array) < min(array)
         - added show_list() to aid users in reviewing results
 """
+from six.moves import input
 
 # standard modules
 import os
@@ -63,26 +64,26 @@ def print_err(msg):
 
 def imcombine(indata, type='median', ret_std=False):
     """
-	Written by John Capone (jicapone@astro.umd.edu).
-	
-	Purpose:        combine stack of frames
-	
-	Input:
-		indata:     stack of frames to be combined
-		type:       function used to combine the stack.  currently only mean or median
-		ret_std:    if set to true, return the standard deviation of each pixel.  default is false
-		
-	Output:
-		combined:   combined stack
-		sigma:      standard deviation of each pixel (optional)
-		
-	Notes:
-		- added normalization before combining
-		
-	Future Improvements:
-		- add outlier rejection
-	
-	"""
+    Written by John Capone (jicapone@astro.umd.edu).
+
+    Purpose:        combine stack of frames
+
+    Input:
+        indata:     stack of frames to be combined
+        type:       function used to combine the stack.  currently only mean or median
+        ret_std:    if set to true, return the standard deviation of each pixel.  default is false
+
+    Output:
+        combined:   combined stack
+        sigma:      standard deviation of each pixel (optional)
+
+    Notes:
+        - added normalization before combining
+
+    Future Improvements:
+        - add outlier rejection
+
+    """
 
     if indata.ndim != 3:
         print_warn("Warning: data should be 3D stack of frames.")
@@ -101,21 +102,21 @@ def imcombine(indata, type='median', ret_std=False):
 
 def robust_sigma(y, zero=False):
     """
-	Converted from IDL ROBUST_SIGMA function by John Capone (jicapone@astro.umd.edu).
-	
-	Purpose:  Calculate a resistant estimate of the dispersion of a distribution. 
-		For an uncontaminated distribution, this is identical to the standard deviation.
+    Converted from IDL ROBUST_SIGMA function by John Capone (jicapone@astro.umd.edu).
+
+    Purpose:  Calculate a resistant estimate of the dispersion of a distribution.
+        For an uncontaminated distribution, this is identical to the standard deviation.
 
     Input:
         y:    Vector of quantity for which the dispersion is to be calculated
-        zero: if set, the dispersion is calculated w.r.t. 0.0 rather than the central value of the vector. 
-        	If Y is a vector of residuals, this should be set.
-    
+        zero: if set, the dispersion is calculated w.r.t. 0.0 rather than the central value of the vector.
+            If Y is a vector of residuals, this should be set.
+
     Output:   robust_sigma returns the dispersion. In case of failure, returns value of -1.0
 
     Notes:
-        - 
-	"""
+    -
+    """
 
     eps = 1.0e-20
     if zero:
@@ -170,15 +171,15 @@ def show_list(fits_fns, nx=5, ny=3, size_mult=3.2, zoom_lvl=None, fontsize=8):
         1)  enter python or ipython environment
         2)  load function -> 'from rat_preproc import show_list'
         3)  run function -> 'show_list(fits_fns)'
-            - decreasing zoom_lvl (i.e. from 0.5 to 0.1) decreases the size of the displayed image, thus decreasing the amount of memory required
+            - decreasing zoom_lvl (i.e. from 0.5 to 0.1) decreases the size of the displayed image, thus decreasing the
+                amount of memory required
         4)  function will display arrays of images in list file for inspection by user
 
     Notes:
         - added escape character
         - user can now change font size
-	"""
-
-    nx = int(nx);
+    """
+    nx = int(nx)
     ny = int(ny)  # force parameter types to int
 
     if type(fits_fns) not in [list, dict]:
@@ -232,6 +233,7 @@ def show_list(fits_fns, nx=5, ny=3, size_mult=3.2, zoom_lvl=None, fontsize=8):
             fits_id = temp[0]  # fits file name with extention removed
 
             # open data
+            print("current directory", os.getcwd())
             hdulist = pf.open(dpath + fits_fn)
             im = hdulist[0].data
             h = hdulist[0].header
@@ -254,7 +256,7 @@ def show_list(fits_fns, nx=5, ny=3, size_mult=3.2, zoom_lvl=None, fontsize=8):
                 ax.set_title("{}".format(fits_id), fontsize=fontsize)  # title with identifier
 
         fig.canvas.draw()
-        usr_select = raw_input("Press any key to continue or \"q\" to quit: ")  # prompt user to continue
+        usr_select = input("Press any key to continue or \"q\" to quit: ")  # prompt user to continue
         fig.clear()  # clear image
 
         if usr_select.lower() == 'q':

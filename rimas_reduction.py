@@ -1,4 +1,4 @@
-from photopipe.reduction import preproc
+from photopipe.reduction.preprocess import choose, master
 from photopipe.reduction.auto.autoproc import autoproc
 from shutil import move
 import os
@@ -21,11 +21,11 @@ reduced_path = os.path.join(copy_path, 'reduced')
 print('reduced_path', reduced_path)
 
 print('start bias calibration')
-bias_calib = preproc.choose_calib(
+bias_calib = choose.choose_calib(
     'rimas',
     'bias',
     workdir=copy_path+os.path.sep,
-    cams=[0,1],
+    cams=[0, 1],
     auto=True,
     amin=0.0, amax=1.0,
     reject_sat=False,
@@ -34,11 +34,11 @@ bias_calib = preproc.choose_calib(
 )
 
 print('start flat calibration')
-flat_calib = preproc.choose_calib(
+flat_calib = choose.choose_calib(
     'rimas',
     'flat',
     workdir=copy_path+os.path.sep,
-    cams=[0,1],
+    cams=[0, 1],
     auto=True,
     amin=0.2, amax=0.8,
     reject_sat=False,
@@ -47,11 +47,11 @@ flat_calib = preproc.choose_calib(
 )
 
 print('start choose science')
-science_dict = preproc.choose_science(
+science_dict = choose.choose_science(
     'rimas',
     workdir=copy_path+os.path.sep,
     targetdir=selected_path+os.path.sep,
-    cams=[0,1],
+    cams=[0, 1],
     auto=True,
     save_select=True,
     calibrate=False,
@@ -59,9 +59,9 @@ science_dict = preproc.choose_science(
 )
 
 print('start mkmaster bias')
-preproc.mkmaster('rimas', bias_calib, 'bias')
+master.mkmaster('rimas', bias_calib, 'bias')
 print('start mkmaster flat')
-preproc.mkmaster('rimas', flat_calib, 'flat')
+master.mkmaster('rimas', flat_calib, 'flat')
 
 print('start move files master biases to selected folder')
 for f in glob.glob(os.path.join(base_path, 'bias*.fits')):

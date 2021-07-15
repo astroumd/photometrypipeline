@@ -70,7 +70,7 @@ skips the photometry step
 parser.add_argument(
     '--instrument', type=str, default='lmi', help='instrument data being processed, default: "lmi"'+instrument_str
 )
-parser.add_argument('--cams', type=str, default='0', help="camera numbers, example: --cams '0,1,2,3', default: '0'")
+parser.add_argument('--cams', type=str, default=None, help="camera numbers, example: --cams '0,1,2,3', default: all")
 parser.add_argument('--noautoselect', action="store_true", default=False, help="""
 - no automated frame selection. If 'bias', will select all, if 'flat' will select
     non-saturated frames with sufficient counts
@@ -186,8 +186,19 @@ def str_list_to_int_list(str_list, delimiter=','):
 
 
 def preprocess_cli():
+    if args.cams is None:
+        if args.instrument == 'lmi':
+            cams = [0]
+        elif args.instrument == 'ratir':
+            cams = [0, 1, 2, 3]
+        elif args.instrument == 'rimas':
+            cams = [0, 1]
+        else:
+            cams = [0, 1, 2, 3]
+    else:
+        cams = str_list_to_int_list(args.cams)
     preprocess_kwargs = {
-        'instrument': args.instrument, 'workdir': data_dir, 'cams': str_list_to_int_list(args.cams),
+        'instrument': args.instrument, 'workdir': data_dir, 'cams': cams,
         'auto': not args.noautoselect, 'reject_sat': not args.norejectsat, 'amin': args.amin, 'amax': args.amax,
         'save_select': not args.nosaveselect, 'noplot': args.noplot,
     }

@@ -1,7 +1,7 @@
 import json, sys, argparse, pkg_resources
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
-from photopipe.reduction import preproc
+from photopipe.reduction.preprocess import choose
 
 def execute():
 	# http://stackoverflow.com/a/23763283
@@ -43,7 +43,7 @@ def _execute_preprocessing(params):
 			_execute_choose_calib(call_params)
 
 def _execute_choose_calib(params):
-	preproc.choose_calib( params['instrument'], 
+	choose.choose_calib( params['instrument'],
 						  params['ftype'],
 						  params['workdir'],
 						  params['cams'],

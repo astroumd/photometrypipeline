@@ -1,7 +1,8 @@
-#Photometry processing library (misc function that can be reused)
-
+# Photometry processing library (misc function that can be reused)
+import os
 import astropy.io.fits as pf
 import fnmatch
+import os
 from numpy import sqrt
 import numpy as np
 
@@ -67,6 +68,7 @@ def choosefiles( selection, loc='.' ):
     """
     matches = []
     for files in os.listdir(loc):
+        #print(files)
         if fnmatch.fnmatch( files, selection ):
             matches.append(files)
     return matches
@@ -137,21 +139,25 @@ def hextractlite(newfile, data, fitsheader, x1, x2, y1, y2):
     fitsheader.add_history('Extracted Image: ['+ str(y1)+':'+str(y2+1)+','+str(x1)+':'+ str(x2+1)+']')
 
     # Naxis altered to reflect the new subarray
-    fitsheader.update('naxis1', x2-x1+1)
-    fitsheader.update('naxis2', y2-y1+1)
+    #fitsheader.update(('naxis1', int(x2-x1+1)))
+    #fitsheader.update(('naxis2', int(y2-y1+1)))
+    fitsheader['naxis1'] = x2 - x1 + 1
+    fitsheader['naxis2'] = y2 - y1 + 1
 
     # Crpix shifted by new origin
     oldcrpix1 = fitsheader['crpix1']
     oldcrpix2 = fitsheader['crpix2']
-    fitsheader.update('crpix1', oldcrpix1-x1)
-    fitsheader.update('crpix2', oldcrpix2-y1)
+    #fitsheader.update(('crpix1', int(oldcrpix1-x1)))
+    #fitsheader.update(('crpix2', int(oldcrpix2-y1)))
+    fitsheader['CRPIX1'] = oldcrpix1 - x1
+    fitsheader['CRPIX2'] = oldcrpix2 - y1
 
     # Extract subarray
     # Python has opposite coordinate convention
     newdata = data[y1:y2+1, x1:x2+1]
 
     # Saves new fits file and header to specified fits file name
-    pf.writeto(newfile, newdata, fitsheader, clobber=True)
+    pf.writeto(newfile, newdata, fitsheader, overwrite=True)
 
 
 """
@@ -216,10 +222,10 @@ def djs_iterstat(InputArr, SigRej=3.0, MaxIter=10, Mask=0,
     NGood = InputArr.size
     ArrShape = InputArr.shape
     if NGood == 0:
-        print 'No data points given'
+        print('No data points given')
         return 0, 0, 0, 0, 0
     if NGood == 1:
-        print 'Only one data point; cannot compute stats'
+        print('Only one data point; cannot compute stats')
         return 0, 0, 0, 0, 0
 
   #Determine Max and Min
@@ -267,7 +273,7 @@ def djs_iterstat(InputArr, SigRej=3.0, MaxIter=10, Mask=0,
         if BinData == 1:
             HRange = InputArr[SaveMask==1].max()-InputArr[SaveMask==1].min()
             bins_In = arange(HRange)+InputArr[SaveMask==1].min()
-            Bins, N = histOutline.histOutline(InputArr[SaveMask == 1], binsIn = bins_In)
+            Bins, N = np.histOutline.histOutline(InputArr[SaveMask == 1], binsIn = bins_In)
             FMode = Bins[(where(N == N.max()))[0]].mean()
         else:
             FMode = 0

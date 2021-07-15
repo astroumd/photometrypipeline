@@ -7,14 +7,15 @@ class instrument(object):
 
     def __init__(self, name, camnum):
         self.name = name
-        self.camname  = ['C'+str(i) for i in np.arange(camnum)]
+        self.camname = ['C'+str(i) for i in np.arange(camnum)]
         
         self.flatname = 'flat'
         self.biasname = 'bias'
         self.darkname = 'dark'
-        self.objname  = 'img'
+        self.objname = 'img'
         
-        self.ftype_post = {self.objname: 'o', self.flatname: 'f', 
+        self.ftype_post = {
+            self.objname: 'o', self.flatname: 'f',
             self.biasname: 'b', self.darkname: 'd'}
                 
     ########
@@ -77,7 +78,7 @@ class instrument(object):
         pass
         
     @abstractmethod
-    def get_centered_filter(self,h,idx):
+    def get_centered_filter(self, h, idx):
         # Input: header, index of camera
         # Output: filter name at center of indexed camera
         pass
@@ -94,4 +95,3 @@ class instrument(object):
         # Output: change file names in same directory to match 
         #         '????????T??????C{}{}.fits'.format(cam_i, ftype_post) format
         pass
-

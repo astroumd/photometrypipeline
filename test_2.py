@@ -5,24 +5,27 @@ from shutil import move
 import os
 import glob
 from zipfile import ZipFile
+
+# Is test.py but uses new preprocessing structure
+
 # testing git commit and push
 print("creating paths")
 base_path = os.path.dirname(os.path.abspath(__file__))
 print('base_path', base_path)
 test_path = os.path.join(base_path, 'test')
 print('test_path', test_path)
-copy_path = os.path.join(test_path, 'copy')
+copy_path = os.path.join(test_path, 'April_18_2021')
 print('copy_path', copy_path)
 selected_path = os.path.join(copy_path, 'selected')
 print('selected_path', selected_path)
 reduced_path = os.path.join(copy_path, 'reduced')
 print('reduced_path', reduced_path)
-zip_file = os.path.join(test_path, 'test.zip')
-print(zip_file, zip_file)
-zf = ZipFile(zip_file, 'r')
-print('extracting files')
-zf.extractall(copy_path)
-print('extraction complete')
+# zip_file = os.path.join(test_path, 'test.zip')
+# print(zip_file, zip_file)
+# zf = ZipFile(zip_file, 'r')
+# print('extracting files')
+# zf.extractall(copy_path)
+# print('extraction complete')
 
 print('start bias calibration')
 bias_calib = choose.choose_calib(
@@ -89,6 +92,9 @@ for f in glob.glob(os.path.join(base_path, 'flat*.fits')):
     print('moving {0} to {1}'.format(f_base_path, f_selected_path))
     move(f_base_path, f_selected_path)
 
+# autoproc_2(datadir=selected_path+os.path.sep,
+#          imdir=reduced_path+os.path.sep,
+#          redo=1, start='makesky', nomastersky=False)
 autoproc(datadir=selected_path+os.path.sep,
          imdir=reduced_path+os.path.sep,
-         redo=1, start = 'stack', nomastersky=True)
+         redo=1, nomastersky=False, skyflattarg=False)

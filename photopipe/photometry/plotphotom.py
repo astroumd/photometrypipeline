@@ -28,10 +28,12 @@ import glob
 import numpy as np
 import astropy.io.fits as pf
 from scipy.ndimage.interpolation import zoom
-from scipy.misc import bytescale
+#from scipy.misc import bytescale
 #import pylab as pl
 import scipy as sp
 from astropy import wcs
+from astropy.visualization import (ZScaleInterval, ImageNormalize)
+import imageio
 
 import matplotlib
 matplotlib.use('Agg')
@@ -40,10 +42,10 @@ import matplotlib.pyplot as pl
 pl.ioff()
 
 from photopipe.photometry.dependencies import photprocesslibrary as pplib
-import printhtml
+from photopipe.photometry import printhtml
 import os
 import sys
-import itertools, time, json, codecs, re
+import time, json, codecs, re
 
 def plotphotom(prefchar='coadd'):
     #Initialize arrays
@@ -66,7 +68,7 @@ def plotphotom(prefchar='coadd'):
         plotdict[name] = np.zeros(arr_size)
 
     # retrieve detection files
-    zffiles = pplib.choosefiles( prefchar+'*_?.ref.multi.fits' )
+    zffiles = pplib.choosefiles(prefchar+'*.ref.multi.fits' )
 
     #Save filter and data from each file into arrays and find overlapping stars
     #between filter files using final photometry file (comparing distances from RA and DEC)
@@ -76,12 +78,18 @@ def plotphotom(prefchar='coadd'):
     harr_map = [ { 'key': 'FILTER', 'title': 'Filter' } , { 'key': 'DATE1', 'title': 'start' }, { 'key': 'DATEN', 'title': 'stop' }, { 'key': 'TOTALEXP', 'title': 'exposure', 'format': '%.2f' }]
     nstars = 0
 
+    index = []
     for i in range(len(zffiles)):
-    
+        print(zffiles[i])
         #Find filter of each file and make sure that has the right capitalization
         cfilter = zffiles[i].split('_')[-1].split('.')[0]
+        if cfilter in ('SDSS-U', 'SDSS-G', 'SDSS-R', 'SDSS-I', 'SDSS-Z'):
+            cfilter = cfilter[-1].lower()
         if cfilter == 'Z' or cfilter == 'Y':
             cfilter = cfilter.lower()
+        if cfilter not in filters:
+            index += [i]
+            continue
         cfilterarr.append(cfilter)
         
         #Save data scaled by scale factor to imgarr
@@ -100,7 +108,7 @@ def plotphotom(prefchar='coadd'):
         try:
             x, y, ra, dec, mag, magerr, flux, fluxerr, catindex = np.loadtxt(pfile, unpack=True)
         except IOError as error:
-            print error
+            print(error)
             continue
 
         clen = len(mag)
@@ -153,7 +161,10 @@ def plotphotom(prefchar='coadd'):
                     plotdict[cfilter+'fluxerr'][nstars] = compfluxerr[j]
                     plotdict['catindex'][nstars] = compcatindex[j]
                     nstars += 1
-    
+
+    for i in sorted(index, reverse=True):
+        del zffiles[i]
+
     imgarr = np.array(imgarr)
     
     #Save stars to finalmags.txt with correct format and removes zeros
@@ -218,7 +229,7 @@ def plotphotom(prefchar='coadd'):
             if ifiltdict[filt2] < 0 and ifiltdict[filt1] < 0:
                 x = 0
         else:
-            print 'Valid filters were not supplied, set color to 0'
+            print('Valid filters were not supplied, set color to 0')
             x = 0
             
         return x 
@@ -238,27 +249,27 @@ def plotphotom(prefchar='coadd'):
         im_size = np.zeros(2)
 
     def bytearr( x, y, z ):
-        return np.zeros((x,y,z)).astype(np.uint8)
+        return np.zeros((int(x),int(y),int(z))).astype(np.uint8)
     
     #Create color of image and save to color.png    
     color = bytearr( im_size[0], im_size[1], 3 )     
         
     #Changes color into bytescale range and saves to color array
     if np.size(blue) > 1:
-        blue  = bytescale(blue,  0, 8, 250)
+        blue  = new_bytescale(blue,  0, 8, 250)
         color[:,:,2] = blue * 0.5
     if np.size(green) > 1:
-        green = bytescale(green, 0, 8, 250)
+        green = new_bytescale(green, 0, 8, 250)
         color[:,:,1] = green * 0.5
     if np.size(red) > 1:
-        red   = bytescale(red,   0, 8, 250)
+        red   = new_bytescale(red,   0, 8, 250)
         color[:,:,0] = red * 0.5
         
     color = color[::-1,:]
     fig = pl.figure('color image')
     pl.axis('off')
     pl.imshow( color, interpolation='None', origin='lower' )
-    sp.misc.imsave( 'color.png', color )
+    imageio.imwrite( 'color.png', color )
     
     #Find aperture size to make circles around sources that match sextractor aperture
     pline=''
@@ -287,10 +298,11 @@ def plotphotom(prefchar='coadd'):
         ofile = ifile.split('.')[0] + '.png'
 
         img     = imgarr[i]
+        #img = ImageNormalize(img, interval=ZScaleInterval())
         h       = harr[i]
         cfilter = cfilterarr[i]
         
-        scale   = bytescale(img, 0, 10, 255)
+        scale   = new_bytescale(img, -1, -1, 255)
         dpi     = 72. # px per inch
         figsize = (np.array(img.shape)/dpi)[::-1]
         fig     = pl.figure(i)
@@ -327,14 +339,14 @@ def plotphotom(prefchar='coadd'):
             pl.plot( ctemp[0], ctemp[1], c='#00ff00', lw=lw )
             texttoright = True
             if pixcrd[j][0]/scalefactor+40 < xlims[1] and pixcrd[j][1]/scalefactor+20 < ylims[1]:
-                pl.text( pixcrd[j][0]/scalefactor+15, pixcrd[j][1]/scalefactor, `j`, color='#00ff00', fontsize=fs, fontweight=fw )
+                pl.text( pixcrd[j][0]/scalefactor+15, pixcrd[j][1]/scalefactor, repr(j), color='#00ff00', fontsize=fs, fontweight=fw )
             else:
                 texttoright = False
-                pl.text( pixcrd[j][0]/scalefactor-45, pixcrd[j][1]/scalefactor-20, `j`, color='#00ff00', fontsize=fs, fontweight=fw )
+                pl.text( pixcrd[j][0]/scalefactor-45, pixcrd[j][1]/scalefactor-20, repr(j), color='#00ff00', fontsize=fs, fontweight=fw )
 
             if i == 0: 
                 #Store source data to json
-                jsondict["data"].append(dict({ "id": j, "x": pixcrd[j][0], "y": pixcrd[j][1], "textToRight": texttoright }, **dict(itertools.izip(names,store[:len(names),j]))))
+                jsondict["data"].append(dict({ "id": j, "x": pixcrd[j][0], "y": pixcrd[j][1], "textToRight": texttoright }, **dict(zip(names,store[:len(names),j]))))
 
         jsondict.update({ "referenceWidth": figsize[0] * dpi, "referenceHeight": figsize[1] * dpi })
         #Label plot and remove axes, save to filename+.png
@@ -345,8 +357,10 @@ def plotphotom(prefchar='coadd'):
     with open('photometry.json', 'wb') as f:
         json.dump(jsondict, codecs.getwriter('utf-8')(f), ensure_ascii=False)
 
+    ######################################
     #Prepare SEDs for plot
-    plotseds()
+    #plotseds()
+    ######################################
 
     #Create HTML to do quick look at data    
     printhtml.printhtml(filters, names, set(['catindex']), harr, harr_map)
@@ -355,14 +369,14 @@ def plotseds(prefchar='coadd'):
     files = glob.glob(prefchar + '*.seds.cat')
 
     if len(files) == 0:
-        print 'Did not find any cat files! Check your data directory path!'
+        print('Did not find any cat files! Check your data directory path!')
         return
 
     try:
         finalmags = np.loadtxt('./finalmags.txt')
         final_catindex = finalmags[:,2]
     except IOError as error:
-        print error
+        print(error)
         return
     
     catindex_dict = final_catindex.tolist()
@@ -370,7 +384,8 @@ def plotseds(prefchar='coadd'):
 
     for file in files:
         filter = file.split('_')[-1].split('.')[0]
-
+        if filter in ('SDSS-U', 'SDSS-G', 'SDSS-R', 'SDSS-I', 'SDSS-Z'):
+            filter = filter[-1].lower()
         if filter == 'Z' or filter == 'Y':
             filter = filter.lower()
 
@@ -419,3 +434,12 @@ def extract_header(header, header_map):
         result[key['title']] = header[key['key']]
 
     return result
+
+def new_bytescale(data,cl = -1,ch= -1,high= 255,low = 0):
+    if cl == -1 and ch == -1:
+        cl = np.amin(data)
+        ch = np.amax(data)
+    a = (high-low)/(ch-cl)
+    b = high - a*ch
+    new_data = data.copy() * a + b
+    return new_data.astype(np.uint8)

@@ -322,8 +322,10 @@ class lmi(instrument):
             print(_file)
             pyim = pf.open(_file)
             h = pyim[0].header
-            
-            obstype_post = obstype_postdict[h['OBSTYPE']]
+            if h['OBSTYPE'].upper() not in obstype_postdict.keys():
+                print('Found file, {},  with OBSTYPE {} which may be an error'.format(_file, h['OBSTYPE'].upper()))
+                continue
+            obstype_post = obstype_postdict[h['OBSTYPE'].upper()]
             
             idate = h['DATE-OBS']
             match = re.search(datesearch, idate)

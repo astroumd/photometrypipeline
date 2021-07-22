@@ -111,7 +111,10 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
                     del newhead[oldkey]
                 except KeyError:
                     pass
-        
+
+        # Create binary array of saturated pixels, save for later use
+        find_sats(outname,data,newhead)
+
         # If biasfile keyword set subtract master bias from current file with given master bias file
         # If they are not the same size, quit program without saving with preparation prefix (will not move
         # on in following processing steps)
@@ -155,6 +158,15 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
         
         if verbose > 0:
             print(pipe_file, '-> ', outname)
+
+def find_sats(fname, data, header):
+    sat = header['SATURATE']
+    saturated = np.where(data>sat,0,1)
+    print("# of Saturated Pixels: {}".format(np.sum(saturated)))
+    fileroot = os.path.basename(fname)
+    filedir = os.path.dirname(fname)
+    outname = filedir + "/"+ fileroot.replace("p", "SAT_", 1)
+    write_fits(outname, saturated, header)
 
 
 def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
@@ -686,9 +698,10 @@ def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
             bad = ~good  # Opposite of boolean array good
             indata[bad] = np.nan
             data[f, :, :] = indata
-            good2 = np.isfinite(indata)
-            out = usefiles[f].replace('fp', 'skymask2_fp')
-            #pf.writeto(out, good2.astype(np.int), head_m, overwrite=True)
+            if pipevar['debug'] != 0:
+                good2 = np.isfinite(indata)
+                out = usefiles[f].replace('fp', 'skymask2_fp')
+                pf.writeto(out, good2.astype(np.int), head_m, clobber=True)
 
     reflat = np.zeros((ny, nx)) + float('NaN')
 
@@ -750,8 +763,9 @@ def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
     bad = ~good  # Opposite of boolean array good
     bad_count = np.sum(bad)
     print("Number of NaN Values: {}".format(bad_count))
-    #out = outfile.replace('.fits', 'skymask.fits')
-    #pf.writeto(out, good.astype(np.int), head_m, overwrite=True)
+    if pipevar['debug'] != 0:
+        out = outfile.replace('.fits', 'skymask.fits')
+        pf.writeto(out, good.astype(np.int), head_m, clobber=True)
     skyflat = np.copy(reflat)
     t1 = time.perf_counter()
     mi, mj = reflat.shape
@@ -1178,36 +1192,54 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
   
     # Find difference between catalog and observed magnitudes
     diff = catmag - obsmag
-    wts_init = np.copy(wts)
-    print(np.shape(obsmag))
-    # print diff
-    # Find number of observations and stars	
-    sz = np.shape(obsmag)
-    nobs = sz[0]
-    nstars = sz[1]
+    #print(np.shape(obsmag))
 
     #### New ####
+    keep = np.where(wts != 0)
+    diff = diff[keep]
+    obsmag = obsmag[keep]
+    catmag = catmag[keep]
+    wts = wts[keep]
+    catmag_0 = np.copy(catmag)
+    diff_0 = np.copy(diff)
+    wts_0 = np.copy(wts)
+
     # Sigma clip
     med, sig = medclip(diff, 3.0, 2)
-    print("Med: {}, Sigma: {}".format(med, sigma))
+    #print("Med: {}, Sigma: {}".format(med, sigma))
     keep = np.where(abs(diff - med) < 3 * sig)
-    diff_1 = diff[keep]
-    catmag_1 = catmag[keep]
-    obsmag_1 = obsmag[keep]
-    wts_1 = wts[keep]
+    diff = diff[keep]
+    obsmag = obsmag[keep]
+    catmag = catmag[keep]
+    wts = wts[keep]
+    catmag_1 = np.copy(catmag)
+    diff_1 = np.copy(diff)
+    wts_1 = np.copy(wts)
 
     # Remove dim sources above provided threshold
-    err_thresh = 0.03
+    err_thresh = 20
     wt_thresh = 1 / (err_thresh ** 2)
-    keep = np.where(wts_1 > wt_thresh)
-    diff_2 = diff_1[keep]
-    catmag_2 = catmag_1[keep]
-    obsmag_2 = obsmag_1[keep]
-    wts_2 = wts_1[keep]
+    keep = np.where(wts > wt_thresh)
+    diff = np.array([diff[keep]])
+    obsmag = np.array([obsmag[keep]])
+    catmag = np.array([catmag[keep]])
+    wts = np.array([wts[keep]])
+    catmag_2 = np.copy(catmag[0])
+    diff_2 = np.copy(diff[0])
+    wts_2 = np.copy(wts[0])
 
-    constant_fit(diff_2, catmag_2, 0.07, plotter)
+    # constant_fit(diff_2, catmag_2, 1.0, plotter)
 
     if plotter is not None:
+        plt.plot(catmag_0, diff_0, '*')
+        plt.errorbar(catmag_0, diff_0, yerr=1.0 / np.sqrt(wts_0), fmt='.')
+        plt.title('Before Robust Scatter')
+        plt.ylabel('Difference between Catalog and Observed')
+        plt.xlabel('Catalog magnitude')
+        filename = plotter.replace('zpt', 'zptall')
+        plt.savefig(filename)
+        plt.clf()
+
         plt.plot(catmag_1, diff_1, '*')
         plt.errorbar(catmag_1, diff_1, yerr=1.0 / np.sqrt(wts_1), fmt='.')
         plt.title('Before Robust Scatter with Sigma Clipping')
@@ -1230,6 +1262,7 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
 
     # For each observation (i.e. frame) find the weighted difference and store zeropoint
     # and new magnitude with zeropoint correction
+    nobs, nstars = np.shape(diff)
     z = []
     modmag = np.copy(obsmag)
     for i in np.arange(nobs):
@@ -1254,27 +1287,17 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
     
     adiff2 = catmag - modmag2
     # Recalculate robust scatter and rms scatter value on twice zeropoint corrected mags
-    scats, rmss = robust_scat(adiff2, wts, nobs, nstars, sigma)   
+    scats, rmss = robust_scat(adiff2, wts, nobs, nstars, sigma)
     
     if plotter is not None:
         keep = np.where(wts != 0)
         print(np.shape(catmag[keep]))
         plt.plot(catmag[keep], adiff2[keep], '*')
         plt.errorbar(catmag[keep], adiff2[keep], yerr=1.0/np.sqrt(wts[keep]), fmt='.')
-
         plt.title('Post Robust Scatter')
         plt.ylabel('Difference between Catalog and Observed')
         plt.xlabel('Catalog magnitude')
         plt.savefig(plotter)
-        plt.clf()
-
-        plt.plot(catmag, diff, '*')
-        #plt.errorbar(catmag, diff, yerr=1.0 / np.sqrt(wts_init), fmt='.')
-        plt.title('Before Robust Scatter')
-        plt.ylabel('Difference between Catalog and Observed')
-        plt.xlabel('Catalog magnitude')
-        filename = plotter.replace('zpt','zptall')
-        plt.savefig(filename)
         plt.clf()
 
     return z2, scats, rmss
@@ -1515,6 +1538,8 @@ def constant_fit(diffdata, catdata, thres, plot):
     filename = plot.replace('zpt', 'median')
     plt.savefig(filename)
     plt.clf()
+
+
 
 
 

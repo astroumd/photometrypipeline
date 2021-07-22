@@ -258,19 +258,39 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             refmag = refmag[goodind]
             obsmag = mag[goodind]
             obserr = mage[goodind]
+            ra_im = wrd[:,0][goodind]
+            dec_im = wrd[:,1][goodind]
+
+            #find Sat sources
+            satfile = pipevar['imworkingdir'] + 'SATcoords_' + targ + '_' + thistargetfilter
+            var = np.loadtxt(satfile, unpack=True)
+            if np.shape(var) != (0,):
+                ra_sat = var[0, :]
+                dec_sat = var[1, :]
+                sat_coords = [(ra_sat[i],dec_sat[i]) for i in range(len(ra_sat))]
+
+                sat_ind = []
+                for i in range(len(ra_im)):
+                    if (ra_im[i],dec_im[i]) in sat_coords: sat_ind += [False]
+                    else: sat_ind += [True]
+
+                refmag = refmag[sat_ind]
+                obsmag = obsmag[sat_ind]
+                obserr = obserr[sat_ind]
+
             obswts = np.zeros(len(obserr))
             obskpm = np.zeros(len(obsmag))
 
             # Store magnitudes and weights (with minimum magnitude error of 0.01)
             for i in np.arange(len(obsmag)):
-                if obserr[i] < 0.1:
-                    obskpm[i] = obsmag[i]
-                    obswts[i] = 1.0 / (max(obserr[i], 0.01) ** 2)
+                obskpm[i] = obsmag[i]
+                obswts[i] = 1.0 / (max(obserr[i], 0.01) ** 2)
+                # if obserr[i] < 0.1:
+                #     obskpm[i] = obsmag[i]
+                #     obswts[i] = 1.0 / (max(obserr[i], 0.01) ** 2)
 
             czpts, cscats, crmss = apd.calc_zpt(
                 np.array([refmag]), np.array([obskpm]), np.array([obswts]), sigma=1.0,
-                # np.array([obswts]), sigma=1.0,
-                #plotter=pipevar['imworkingdir'] + 'zpt_' + thistargetfilter + '.ps')
                 plotter=pipevar['imworkingdir'] + 'zpt_COADD_' + targ + '_' + thistargetfilter + '.png')
 
             chead = pf.getheader(outfl)

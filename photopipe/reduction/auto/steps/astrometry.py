@@ -70,8 +70,10 @@ def autopipeastrometry(pipevar=None):
 
         targ = head['TARGNAME']
         sat = head['SATURATE']
-        ascen = head['OBSRA']
-        decl = head['OBSDEC']
+        # ascen = head['OBSRA']
+        # decl = head['OBSDEC']
+        ascen = head['CRVAL1']
+        decl = head['CRVAL2']
 
         if 'flat' in targ:
             continue

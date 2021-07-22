@@ -27,7 +27,7 @@ import numpy as np
 import os
 import astropy.io.fits as pf
 from photopipe.photometry.dependencies import photprocesslibrary as pplib
-from photopipe.reduction.auto import autoproc_steps as ap
+import photopipe.reduction.auto.steps.prepare as pre
 #from string import index
 from numpy import shape
 from astropy import wcs
@@ -48,7 +48,7 @@ catdict = {'u': 2, 'g': 3, 'r': 4, 'i': 5, 'z': 6, 'y': 7,
 def photom(prefchar='coadd'):
 
 	pipevar = {'getsedcommand':'get_SEDs', 'sexcommand':'sex' , 'swarpcommand':'swarp', 'refdatapath':'', 'defaultspath':'', 'imworkingdir':'' }
-	ap.autopipedefaults(pipevar=pipevar)
+	pre.autopipedefaults(pipevar=pipevar)
 
 	files = pplib.choosefiles(prefchar + '*.fits')
 	filters = []

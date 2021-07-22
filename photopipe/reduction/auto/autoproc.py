@@ -184,6 +184,8 @@ def autoproc(
         pipevar['datadir'] = datadir if datadir[-1] == '/' else datadir + '/'
     if rmifiles:
         pipevar['rmifiles'] = 1
+    if debug:
+        pipevar['debug'] = 1
 
     # Step options
     steps = ['prepare', 'flatten', 'makesky', 'skysub', 'crclean', 'astrometry', 'zpoint', 'stack']
@@ -303,29 +305,32 @@ def autoproc(
             stk.autopipestack(pipevar=pipevar, customcat=customcat, customcatfilt=customcatfilt)
     t += [time.perf_counter()]
 
-    # debug = True
-    if debug:
+    if pipevar['debug'] != 0:
         os.chdir(datadir)
         times = np.zeros(len(t))
         filename = os.path.join(datadir, 'time_analysis.txt')
-        lst = ['Preprocess', 'Prepare', 'MakeSky', 'Skysub', 'Crclean', 'Astro', 'Zpoint', 'Stack', 'Total']
+        _list = steps.append("total")
+        head = ''
+        for step in _list:
+            head += step + '\t '
         for i in range(len(t)-1):
             times[i] = t[i+1]-t[i]
-            print("{}: {}".format(lst[i+1], times[i]))
+            print("{}: {}".format(_list[i],times[i]))
         total = sum(times)
         times[len(t) - 1] = total
         percent = [i/total for i in times]
-        np.savetxt(filename, np.vstack((times, percent)), fmt='%10.2f',
-                   header='Preprocess\t Prepare\t MakeSky\t Skysub\t Crclean\t Astro\t Zpoint\t Stack\t Total\t')
-        labels = 'Preprocess', 'Prepare', 'Makesky', 'Skysub', 'Crclean', 'Astro', 'Zpoint', 'Stack'
+        np.savetxt(filename, np.vstack((times,percent)), fmt='%10.2f',
+                   header=head)
+        labels = tuple(steps)
+        percent = percent.pop()
         percent = np.array(percent)
-        percent = percent[0:8]
         fig1, ax1 = plt.subplots()
         ax1.pie(percent, labels=labels, autopct='%1.1f%%', shadow=True, startangle=90)
         ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
         plt.tight_layout()
         plt.savefig('time_analysis.png')
         plt.clf()
+
 
     # Prints the files that were not flat fielded due to problems with file
     if pipevar['flatfail'] != '':

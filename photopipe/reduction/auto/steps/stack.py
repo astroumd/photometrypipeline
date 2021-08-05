@@ -260,18 +260,27 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             obserr = mage[goodind]
             ra_im = wrd[:,0][goodind]
             dec_im = wrd[:,1][goodind]
+            file = pipevar['imworkingdir'] + 'SATtest2_' + targ + '_' + thistargetfilter
+            apd.plot(ra_im, dec_im, file,'*b')
+
 
             #find Sat sources
-            satfile = pipevar['imworkingdir'] + 'SATcoords_' + targ + '_' + thistargetfilter
-            var = np.loadtxt(satfile, unpack=True)
+            satfile = pipevar['imworkingdir'] + 'SATcoords_' + targ + '_' + thistargetfilter + '.txt'
+            var = np.loadtxt(satfile)
             if np.shape(var) != (0,):
-                ra_sat = var[0, :]
-                dec_sat = var[1, :]
-                sat_coords = [(ra_sat[i],dec_sat[i]) for i in range(len(ra_sat))]
+                ra_sat = var[:, 0]
+                dec_sat = var[:, 1]
 
                 sat_ind = []
+                thres = 0.001
                 for i in range(len(ra_im)):
-                    if (ra_im[i],dec_im[i]) in sat_coords: sat_ind += [False]
+                    key = False
+                    for j in range(len(ra_sat)):
+                        if all(np.isclose([ra_sat[j],dec_sat[j]],[ra_im[i],dec_im[i]],atol=thres)):
+                        #if (ra_sat[j] - thres < ra_im[i] < ra_sat[j] + thres) and (dec_sat[j] - thres < dec_im[i] < dec_sat[j] + thres):
+                            key = True
+                            continue
+                    if key: sat_ind += [False]
                     else: sat_ind += [True]
 
                 refmag = refmag[sat_ind]

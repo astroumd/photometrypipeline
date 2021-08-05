@@ -234,6 +234,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
 
                     # Read in catalog file
                     cvars = np.loadtxt(catfile, unpack=True)
+                    #np.savetxt(pipevar['imworkingdir'] + 'CAT' + targ + '_' + thistargetfilter + '.txt', catfile)
                     refmag = cvars[catdict[thistargetfilter], :]
                     mode = cvars[catdict['mode'], :]
 
@@ -245,6 +246,8 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                 obserr = mage[goodind]
                 xim = xim[goodind]
                 yim = yim[goodind]
+                raim = wrd[:, 0][goodind]
+                decim = wrd[:, 1][goodind]
                 fwhm = fwhm[goodind]
 
                 #Remove Saturated Sources
@@ -279,9 +282,9 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                         if np.all(sq_piece): keep += [True]
                         else:
                             keep += [False]
-                            ra0, dec0 = w.all_pix2world(xim[i], yim[i], 1)
-                            print("RA:{}, DEC:{}".format(ra0,dec0))
-                            if (ra0, dec0) not in sat_coords: sat_coords += [(ra0, dec0)]
+                            #ra0, dec0 = raim[i], decim[i]
+                            #print("RA:{}, DEC:{}".format(ra0,dec0))
+                            if (raim[i], decim[i]) not in sat_coords: sat_coords += [(raim[i], decim[i])]
                     print("# of Bad Sources: {}".format(len(xim)-np.sum(keep)))
                     #keep = (np.array(keep),)
                     refmag = refmag[keep]
@@ -293,11 +296,9 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
 
                 # Store magnitudes and weights (with minimum magnitude error of 0.01)
                 for i in np.arange(len(obsmag)):
-                    obskpm[i] = obsmag[i]
-                    obswts[i] = 1.0 / (max(obserr[i], 0.01) ** 2)
                     #if obserr[i] < 0.1:
-                    #     obskpm[i] = obsmag[i]
-                    #     obswts[i] = 1.0 / (max(obserr[i], 0.01) ** 2)
+                         obskpm[i] = obsmag[i]
+                         obswts[i] = 1.0 / (max(obserr[i], 0.01) ** 2)
 
                 if len(refmag) > 0 and len(obskpm) > 0 and len(obswts) > 0:
                     if pipevar['debug'] != 0:
@@ -321,9 +322,9 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                     it_num += 1 #testing
 
             # Save wcs Coords for saturated sources
-            filename = pipevar['imworkingdir'] + 'SATcoords_' + targ + '_' + thistargetfilter
+            filename = pipevar['imworkingdir'] + 'SATcoords_' + targ + '_' + thistargetfilter + '.txt'
             sat_data = np.vstack(([i[0] for i in sat_coords],[i[1] for i in sat_coords]))
-            np.savetxt(filename, np.transpose(sat_data), fmt='%10.3f', header='Ra\t Dec')
+            np.savetxt(filename, np.transpose(sat_data), fmt='%.4f', header='Ra\t Dec')
 
             # Move files with bad zeropoint calculations to folder 'badzptfit'
             # and do not use those frames

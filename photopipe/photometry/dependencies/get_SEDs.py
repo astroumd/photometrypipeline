@@ -1,7 +1,7 @@
 """
 Library to produce a catalog of fully-populated SEDs and calculating
 zeropoints for any arbitrary location on the sky, using a combination 
-of online catalogs (USNOB1, 2MASS, SDSS) and synthetic photometry.
+of online catalogs (USNOB1, 2MASS, SDSS, PANSTARRS) and synthetic photometry.
 
 TODO:
 - add proper distutils setup
@@ -27,6 +27,9 @@ import pandas as pd
 import os
 
 import multiprocessing as mp
+from astroquery.vizier import Vizier
+from astropy import coordinates as coord
+from astropy import units as u
 
 N_CORES = mp.cpu_count()  # use all the cpus you have
 
@@ -90,21 +93,25 @@ class online_catalog_query:
      
     Standard usage:
      q = online_catalog_query( ra, dec, field_size ) #ra,dec in decimal degrees, field_size in arcsec
-     Mass, SDSS, USNOB1 = q.query_all()
+     Mass, SDSS, PANSTARRS, USNOB1 = q.query_all()
      # OR #
      Mass = q.query_2mass() #same for all catalogs
      
-     If an ignore argument (string or list: ['sdss','apass','usnob']) is included,
+     If an ignore argument (string or list: ['sdss', 'panstarrs','apass','usnob']) is included,
       will not attempt to query that catalog.
     """
 
     def __init__(self, ra, dec, boxsize=10., ignore=None):
         self.coords = (ra, dec)  # decimal degrees
         self.boxsize = boxsize  # arcseconds
-        self.MASS, self.SDSS, self.USNOB, self.APASS = self._query_all(ignore=ignore)
+        self.MASS, self.SDSS, self.PANSTARRS, self.USNOB, self.APASS = self._query_all(ignore=ignore)
+        #self.MASS, self.SDSS, self.USNOB, self.APASS = self._query_all(ignore=ignore)
 
     def query_sdss(self):
         return self.SDSS
+
+    def query_panstarrs(self):
+        return self.PANSTARRS
 
     def query_2mass(self):
         return self.MASS
@@ -116,7 +123,8 @@ class online_catalog_query:
         return self.APASS
 
     def query_all(self):
-        return self.MASS, self.SDSS, self.USNOB, self.APASS
+        return self.MASS, self.SDSS, self.PANSTARRS, self.USNOB, self.APASS
+        #return self.MASS, self.SDSS, self.USNOB, self.APASS
 
     @staticmethod
     def _parse_apass(s):
@@ -184,6 +192,7 @@ class online_catalog_query:
         #o = [oline.decode('utf-8') for oline in o]
 
         apass_objects = self._parse_apass(o)
+
         if len(apass_objects) == 0:
             # no matches
             output = None
@@ -204,6 +213,7 @@ class online_catalog_query:
           [ra, dec, u, u_sigma, g, g_sigma, r, r_sigma, i, i_sigma, z, z_sigma]
         """
         out = []
+
         lines = [lll for lll in s.split('\n') if lll and lll[0] != '#']
         for line in lines:
             try:
@@ -225,6 +235,7 @@ class online_catalog_query:
                 # silently fail on sources that are not formatted properly,
                 #  they are probably anomalous anyways.
                 pass
+
         return np.array(out)
 
     def _query_sdss(self, container=None, cont_index=1, trim_mag=21.):
@@ -254,12 +265,76 @@ class online_catalog_query:
                 raise IOError('findsdss8 problem: ' + e)
         # parse the response
         sdss_objects = self._parse_sdss(o)
+
         if len(sdss_objects) == 0:
             # no matches
             output = None
         else:
             sdss = np.array([obj for obj in sdss_objects if obj[6] < trim_mag])
             output = sdss
+        if container is None:
+            return output
+        else:
+            container[cont_index] = output
+
+    @staticmethod
+    def _parse_panstarrs(s):
+        """
+        Parse Vizier output.
+
+        s: a string as returned by Vizier using Catologue ID 'II/349'
+        returns: a 2-d array, with each row containing the results for one object:
+          [ra, dec, g, g_sig, r, r_sig, i, i_sig, z, z_sig, y, y_sig]
+        """
+
+        print('PANSTARRS')
+        # magnitudes and errors
+        keywords = ['RAJ2000', 'DEJ2000', 'gmag', 'e_gmag', 'rmag', 'e_rmag',
+                    'imag', 'e_imag', 'zmag', 'e_zmag', 'ymag', 'e_ymag']
+        s = s[keywords]
+        # np.savetxt(os.path.join('/opt/project/Data/May_04_New/reduced', 'TestPanstarr.txt'), s)
+        s = np.array(s)
+        numrows = len(s)
+        numcols = len(s[:][0])
+        out = np.zeros((numrows,numcols))
+        for i in range(numrows):
+            for j in range(numcols):
+                out[i][j] = s[i][j]
+        bad = np.isnan(out)
+        out[bad] = 0
+        print(out)
+        return out
+
+
+    def _query_panstarrs(self, container=None, cont_index=4):
+        """
+            Query Vizier server for sources found in a box of width self.boxsize (arcmins)
+            around self.coords.
+            Returns an array (if objects found) or None (if not)
+
+            container: a list into which to put the result; used in multithreaded requests
+            cont_index: index of list into which to put the result
+            trim_mag: do not return sources with r > trim_mag
+        """
+        ra, dec = self.coords
+        boxsize = self.boxsize/60 * u.arcmin
+        # search for PANSTARRS objects around coordinates with
+        #  defined box size, return only basic parameters, and
+        #  sort by distance from coordinates, and return only those
+        #  sources brighter than trim_mag
+        v = Vizier(columns=['all'], row_limit=-1)
+        catID = "II/349"
+        result = v.query_region(coord.SkyCoord(ra, dec, unit=u.deg), radius=boxsize, catalog=catID)
+        o = result[catID + '/ps1']
+
+        # parse the response
+        panstarrs_objects = self._parse_panstarrs(o)
+
+        if len(panstarrs_objects) == 0:
+            # no matches
+            output = None
+        else:
+            output = panstarrs_objects
         if container is None:
             return output
         else:
@@ -325,6 +400,7 @@ class online_catalog_query:
                 raise IOError('find2mass problem: ' + e)
         # parse the response
         mass_objects = self._parse_2mass(o)
+
         if len(mass_objects) == 0:
             # no matches
             output = None
@@ -447,22 +523,25 @@ class online_catalog_query:
          so that the communications happen concurrently, to save
          time.
         
-        returns: [2Mass, SDSS, USNOB1, APASS]
+        returns: [2Mass, SDSS, PANSTARRS, USNOB1, APASS]
         """
         # results is a container into which the threads will put their responses
-        results = [None] * 4
+        results = [None] * 5
         # only query the ones we want
         t0 = Thread(target=self._query_2mass, args=(results,))
         threads = [t0]
         if ignore is None or 'sdss' not in ignore:
             t1 = Thread(target=self._query_sdss, args=(results,))
             threads.append(t1)
-        if ignore is None or 'usnob' not in ignore:
-            t2 = Thread(target=self._query_usnob1, args=(results,))
+        if ignore is None or 'panstarrs' not in ignore:
+            t2 = Thread(target=self._query_panstarrs, args=(results,))
             threads.append(t2)
-        if ignore is None or 'apass' not in ignore:
-            t3 = Thread(target=self._query_apass, args=(results,))
+        if ignore is None or 'usnob' not in ignore:
+            t3 = Thread(target=self._query_usnob1, args=(results,))
             threads.append(t3)
+        if ignore is None or 'apass' not in ignore:
+            t4 = Thread(target=self._query_apass, args=(results,))
+            threads.append(t4)
         for t in threads:
             t.start()
         for t in threads:
@@ -676,23 +755,23 @@ def fit_sources(inn, f_err=None, return_cut=False):
         f_err = ERR_FUNCTIONS
     mode_inn, obs = inn
     if mode_inn == 0:  # sdss+2mass
-        mask = [1, 1, 1, 1, 1,
-                0,
-                0, 0, 0, 0,
-                1, 1, 1]
+        mask = [1, 1, 1, 1, 1, 0,
+                0, 0, 0, 0, 1, 1, 1]
         allow_cut = True
-    elif mode_inn == 1:  # apass+2mass
-        mask = [0, 1, 1, 1, 0,
-                0,
-                1, 1, 0, 0,
-                1, 1, 1]
+    elif mode_inn == 1:  # panstarrs+2mass
+        mask = [0, 1, 1, 1, 1, 1,
+                0, 0, 0, 0, 1, 1, 1]
+        allow_cut = True
+    elif mode_inn == 2:  # apass+2mass
+        mask = [0, 1, 1, 1, 0, 0,
+                1, 1, 0, 0, 1, 1, 1]
         # we allow 3 - 5 APASS observations, so make sure to handle that correctly
         for i, imask in enumerate([1, 2, 3, 6, 7]):
             if obs[2 * i] == 0:
                 mask[imask] = 0
         obs = obs[obs > 0]
         allow_cut = True
-    elif mode_inn == 2:  # usnob+2mass
+    elif mode_inn == 3:  # usnob+2mass
         mask = [0, 0, 0, 0, 0,
                 0,
                 1, 0, 1, 1,
@@ -704,7 +783,7 @@ def fit_sources(inn, f_err=None, return_cut=False):
         obs = obs[obs > 0]
         allow_cut = True
     else:
-        raise ValueError("Mode can only be one of 0, 1, 2")
+        raise ValueError("Mode can only be one of 0, 1, 2, 3")
 
     mask = np.array(mask).astype(bool)
     model, C, index, err, i_cut = choose_model(obs, mask, allow_cut=allow_cut)
@@ -752,7 +831,7 @@ class catalog:
     A class to handle all catalog creation.
     The main function produces, for any requested field,
      a catalog of cross-matched sources from
-     2-MASS and (SDSS or USNOB1), with any missing
+     2-MASS and (SDSS, PanSTARRs, or USNOB1), with any missing
      bands filled in through modeling.
     
     Standard usage:
@@ -763,10 +842,10 @@ class catalog:
     Optional arguments:
      input_coords: if given, will only attempt to produce a catalog for these sources.
      ignore: option to ignore any of the bands but 2mass. Can be list or single item, options
-      are:  ["sdss", "usnob", "apass"]
+      are:  ["sdss", "panstarrs", "usnob", "apass"]
     """
     MAX_SIZE = 7200  # max size of largest single query
-    ERR_CUT = (8., 5., 2.5)  # maximum reduced chi^2 to keep a fit (SDSS, APASS, USNOB)
+    ERR_CUT = (8., 5., 2.5)  # maximum reduced chi^2 to keep a fit (SDSS, PANSTARRS, APASS, USNOB)
 
     def __init__(self, field_center, field_width, input_coords=None, ignore=None):
         self.field_center = field_center
@@ -791,7 +870,7 @@ class catalog:
         self.numcut = 0
         self.bands = ALL_FILTERS
         # this switch controls whether we ignore any catalogs.
-        #  can be list or string in ['usnob','apass','sdss']
+        #  can be list or string in ['usnob','apass','sdss', 'panstarrs']
         self.ignore = ignore
         if field_width > self.MAX_SIZE:
             # simply don't allow queries that are too large
@@ -806,7 +885,8 @@ class catalog:
         """
         ra, dec = self.field_center
         q = online_catalog_query(ra, dec, self.field_width, ignore=self.ignore)
-        mass, sdss, usnob, apass = q.query_all()
+        mass, sdss, panstarrs, usnob, apass = q.query_all()
+        #mass, sdss, usnob, apass = q.query_all()
 
         object_mags = []
         modes = []
@@ -820,7 +900,7 @@ class catalog:
                     raise ValueError('No matches to input objects found!')
                 mass = mass[input_matches >= 0]
 
-            # match sdss, apass, usnob objects to 2mass objects
+            # match sdss, panstarrs, apass, usnob objects to 2mass objects
             if sdss is not None:
                 sdss_matches, tmp = identify_matches(mass[:, :2], sdss[:, :2])
                 if cmode == -1:
@@ -830,11 +910,22 @@ class catalog:
             else:
                 sdss_matches = -9999 * np.ones(len(mass), dtype='int')
 
+            if panstarrs is not None:
+                panstarrs_matches, tmp = identify_matches(mass[:, :2], panstarrs[:, :2])
+                if cmode == -1:
+                    cmask = [1, -1, 2, -1, 3, -1, 4, -1, 5, -1]
+                    #cmode = ?
+                    cmode = 1
+                    ocat = panstarrs
+            else:
+                panstarrs_matches = -9999 * np.ones(len(mass), dtype='int')
+
             if apass is not None:
                 apass_matches, tmp = identify_matches(mass[:, :2], apass[:, :2])
                 if cmode == -1:
                     cmask = [1, -1, 2, -1, 3, -1, 6, -1, 7, -1]
-                    cmode = 1
+                    #cmode = 1
+                    cmode = 2
                     ocat = apass
             else:
                 apass_matches = -9999 * np.ones(len(mass), dtype='int')
@@ -842,7 +933,8 @@ class catalog:
                 usnob_matches, tmp = identify_matches(mass[:, :2], usnob[:, :2])
                 if cmode == -1:
                     cmask = [6, -1, 8, -1]
-                    cmode = 2
+                    #cmode = 2
+                    cmode = 3
                     ocat = usnob
             else:
                 usnob_matches = -9999 * np.ones(len(mass), dtype='int')
@@ -862,21 +954,27 @@ class catalog:
             self.cmodes = np.zeros(len(scat), dtype=int) + cmode
 
             # Go through 2mass objects and assemble a catalog
-            #  of all objects present in 2mass and (sdss or apass or usnob)
-            #  Preference ranking: 2MASS + (SDSS > APASS > USNOB)
+            #  of all objects present in 2mass and (sdss or panstarrs or apass or usnob)
+            #  Preference ranking: 2MASS + (SDSS > PanSTARRs > APASS > USNOB)
             for i, obj in enumerate(mass):
                 if sdss_matches[i] >= 0:
                     i_sdss = sdss_matches[i]
                     obs = np.hstack((sdss[i_sdss][2:], obj[2:]))
                     mode = 0
+                elif panstarrs_matches[i] >= 0:
+                    i_panstarrs = panstarrs_matches[i]
+                    obs = np.hstack((panstarrs[i_panstarrs][2:], obj[2:]))
+                    mode = 1
                 elif apass_matches[i] >= 0:
                     i_apass = apass_matches[i]
                     obs = np.hstack((apass[i_apass][2:], obj[2:]))
-                    mode = 1
+                    #mode = 1
+                    mode = 2
                 elif usnob_matches[i] >= 0:
                     i_usnob = usnob_matches[i]
                     obs = np.hstack((usnob[i_usnob][2:], obj[2:]))
-                    mode = 2
+                    #mode = 2
+                    mode = 3
                 else:
                     continue
                 object_mags.append(obs)
@@ -886,6 +984,10 @@ class catalog:
             raise ValueError("No good sources in this field!")
 
         # send all of these matches to the CPU pool to get modeled
+        print("MODES:")
+        print(modes)
+        print("MAGS:")
+        print(object_mags)
         objects = zip(modes, object_mags)
         pool = mp.Pool(processes=N_CORES)
         results = pool.map(fit_sources, objects)
@@ -952,8 +1054,9 @@ def save_catalog(coordinates, seds, errors, modes, file_name):
     fff.write('# Observed/modeled SEDs produced by get_SEDs.py \n' +
               '# Generated: {}\n'.format(strftime("%H:%M %B %d, %Y")) +
               '#  Mode = 0: -> B,V,R,I,y modeled from SDSS and 2-MASS\n' +
-              '#       = 1: -> u,y,R,I modeled from APASS and 2-MASS\n' +
-              '#       = 2: -> u,g,r,i,z,y,V,I modeled from USNOB-1 and 2-MASS\n' +
+              '#       = 1: -> B,V,R,I,g modeled from PanSTARRs and 2-MASS\n' +
+              '#       = 2: -> u,y,R,I modeled from APASS and 2-MASS\n' +
+              '#       = 3: -> u,g,r,i,z,y,V,I modeled from USNOB-1 and 2-MASS\n' +
               "# " + "RA".ljust(10) + "DEC".ljust(12) + "".join([f.ljust(8) for f in ALL_FILTERS]) +
               "".join([(f + "_err").ljust(8) for f in ALL_FILTERS]) + "Mode\n")
     for i, irow in enumerate(seds):
@@ -1048,7 +1151,8 @@ def zeropoint(input_file, band, output_file=None, usnob_thresh=15, alloptstars=F
 
     band_index = FILTER_PARAMS[band][-1]
     # check to see whether we need to use USNOB sources
-    mask = np.array(c.modes) < 2
+    #mask = np.array(c.modes) < 2
+    mask = np.array(c.modes) < 3
 
     if sum(mask) >= usnob_thresh:
         if quiet:

@@ -309,7 +309,7 @@ def autoproc(
         os.chdir(datadir)
         times = np.zeros(len(t))
         filename = os.path.join(datadir, 'time_analysis.txt')
-        _list = steps.append("total")
+        _list = np.copy(steps.append("total"))
         head = ''
         for step in _list:
             head += step + '\t '
@@ -319,14 +319,14 @@ def autoproc(
         total = sum(times)
         times[len(t) - 1] = total
         percent = [i/total for i in times]
-        np.savetxt(filename, np.vstack((times,percent)), fmt='%10.2f',
-                   header=head)
-        labels = tuple(steps)
+        np.savetxt(filename, np.vstack((times,percent)), fmt='%10.2f', header=head)
         percent = percent.pop()
         percent = np.array(percent)
-        fig1, ax1 = plt.subplots()
-        ax1.pie(percent, labels=labels, autopct='%1.1f%%', shadow=True, startangle=90)
-        ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+        fig = plt.figure()
+        ax = fig.add_axes([0, 0, 1, 1])
+        ax.bar(_list, percent)
+        ax.set_ylabel('Time')
+        ax.set_title('Time by Process')
         plt.tight_layout()
         plt.savefig('time_analysis.png')
         plt.clf()

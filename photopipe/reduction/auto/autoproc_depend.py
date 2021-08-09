@@ -1230,36 +1230,6 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
 
     # constant_fit(diff_2, catmag_2, 1.0, plotter)
 
-    if plotter is not None:
-        plt.plot(catmag_0, diff_0, '*')
-        plt.errorbar(catmag_0, diff_0, yerr=1.0 / np.sqrt(wts_0), fmt='.')
-        plt.title('Before Robust Scatter')
-        plt.ylabel('Difference between Catalog and Observed')
-        plt.xlabel('Catalog magnitude')
-        filename = plotter.replace('zpt', 'zptall')
-        plt.savefig(filename)
-        plt.clf()
-
-        plt.plot(catmag_1, diff_1, '*')
-        plt.errorbar(catmag_1, diff_1, yerr=1.0 / np.sqrt(wts_1), fmt='.')
-        plt.title('Before Robust Scatter with Sigma Clipping')
-        plt.ylabel('Difference between Catalog and Observed')
-        plt.xlabel('Catalog magnitude')
-        filename = plotter.replace('zpt', 'zptall_sigmaclip')
-        plt.savefig(filename)
-        plt.clf()
-
-        plt.plot(catmag_2, diff_2, '*')
-        plt.errorbar(catmag_2, diff_2, yerr=1.0 / np.sqrt(wts_2), fmt='.')
-        plt.title('Before Robust Scatter with sigma clip and Dim Removal')
-        plt.ylabel('Difference between Catalog and Observed')
-        plt.xlabel('Catalog magnitude')
-        filename = plotter.replace('zpt', 'zptall_sigmaclip_dimrmv')
-        plt.savefig(filename)
-        plt.clf()
-
-
-
     # For each observation (i.e. frame) find the weighted difference and store zeropoint
     # and new magnitude with zeropoint correction
     nobs, nstars = np.shape(diff)
@@ -1290,6 +1260,41 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
     scats, rmss = robust_scat(adiff2, wts, nobs, nstars, sigma)
     
     if plotter is not None:
+        plt.plot(catmag_0, diff_0, '*')
+        plt.errorbar(catmag_0, diff_0, yerr=1.0 / np.sqrt(wts_0), fmt='.')
+        plt.title('Before Robust Scatter')
+        plt.ylabel('Difference between Catalog and Observed')
+        plt.xlabel('Catalog magnitude')
+        filename = plotter.replace('zpt', 'zptall')
+        plt.savefig(filename)
+        plt.clf()
+
+        plt.hist(1.0/np.sqrt(wts_0), bins=30)
+        plt.title('Error Hist for All Sources')
+        plt.ylabel('Counts')
+        plt.xlabel('Error in Diff (Obs-Cat)')
+        filename = plotter.replace('zpt', 'zptall_hist')
+        plt.savefig(filename)
+        plt.clf()
+
+        # plt.plot(catmag_1, diff_1, '*')
+        # plt.errorbar(catmag_1, diff_1, yerr=1.0 / np.sqrt(wts_1), fmt='.')
+        # plt.title('Before Robust Scatter with Sigma Clipping')
+        # plt.ylabel('Difference between Catalog and Observed')
+        # plt.xlabel('Catalog magnitude')
+        # filename = plotter.replace('zpt', 'zptall_sigmaclip')
+        # plt.savefig(filename)
+        # plt.clf()
+
+        # plt.plot(catmag_2, diff_2, '*')
+        # plt.errorbar(catmag_2, diff_2, yerr=1.0 / np.sqrt(wts_2), fmt='.')
+        # plt.title('Before Robust Scatter with sigma clip and Dim Removal')
+        # plt.ylabel('Difference between Catalog and Observed')
+        # plt.xlabel('Catalog magnitude')
+        # filename = plotter.replace('zpt', 'zptall_sigmaclip_dimrmv')
+        # plt.savefig(filename)
+        # plt.clf()
+
         keep = np.where(wts != 0)
         print(np.shape(catmag[keep]))
         plt.plot(catmag[keep], adiff2[keep], '*')
@@ -1538,8 +1543,6 @@ def constant_fit(diffdata, catdata, thres, plot):
     filename = plot.replace('zpt', 'median')
     plt.savefig(filename)
     plt.clf()
-
-
 
 
 

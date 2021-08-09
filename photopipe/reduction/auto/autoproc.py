@@ -167,7 +167,7 @@ def autoproc(
         'sexcommand': 'sex', 'swarpcommand': 'swarp', 'rmifiles': 0,
         'prefix': '', 'datadir': '', 'imworkingdir': '', 'overwrite': 0, 'verbose': 1,
         'flatfail': '', 'fullastrofail': '', 'pipeautopath': '', 'refdatapath': '', 'defaultspath': '',
-        'caldir': '.'
+        'caldir': '.', 'debug': False
     }
 
     if imdir is not None:

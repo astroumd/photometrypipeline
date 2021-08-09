@@ -698,7 +698,7 @@ def skypipecombine_new(filelist, outfile, filt, pipevar, removeobjects=None,
             bad = ~good  # Opposite of boolean array good
             indata[bad] = np.nan
             data[f, :, :] = indata
-            if pipevar['debug'] != 0:
+            if pipevar['debug']:
                 good2 = np.isfinite(indata)
                 out = usefiles[f].replace('fp', 'skymask2_fp')
                 pf.writeto(out, good2.astype(np.int), head_m, clobber=True)

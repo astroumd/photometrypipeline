@@ -153,9 +153,9 @@ def autopipemakesky(pipevar=inpipevar):
                 print(filt, '-band sky flats.')
                 print(files[skyflats])
 
-                apd.skypipecombine_new(files[skyflats], outflatname, filt,
-                                       #                apd.skypipecombine(files[skyflats], outflatname, file,
-                                       pipevar, removeobjects=True, type='sky')
+            apd.skypipecombine_new(files[skyflats], outflatname, filt,
+                                   #                apd.skypipecombine(files[skyflats], outflatname, file,
+                                   pipevar, removeobjects=True, type='sky')
         else:
             print('Unable to produce a flat field for this setting: ' + filt)
             print('Will not be able to further process ' + str(len(skyflats)) + \

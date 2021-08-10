@@ -292,6 +292,8 @@ class online_catalog_query:
         keywords = ['RAJ2000', 'DEJ2000', 'gmag', 'e_gmag', 'rmag', 'e_rmag',
                     'imag', 'e_imag', 'zmag', 'e_zmag', 'ymag', 'e_ymag']
         s = s[keywords]
+        print("Before:")
+        print(s[:][0:3])
         # np.savetxt(os.path.join('/opt/project/Data/May_04_New/reduced', 'TestPanstarr.txt'), s)
         s = np.array(s)
         numrows = len(s)
@@ -302,7 +304,8 @@ class online_catalog_query:
                 out[i][j] = s[i][j]
         bad = np.isnan(out)
         out[bad] = 0
-        print(out)
+        print("After:")
+        print(out[:][0:3])
         return out
 
 
@@ -668,6 +671,8 @@ def _error_C(c, model, obs, weights):
     
     returns: weighted sum squared errors
     """
+    if len(obs) != len(weights):
+        print("issue")
     nm = model + c
     return np.sum(weights * (nm - obs) ** 2)
 
@@ -758,11 +763,11 @@ def fit_sources(inn, f_err=None, return_cut=False):
         mask = [1, 1, 1, 1, 1, 0,
                 0, 0, 0, 0, 1, 1, 1]
         allow_cut = True
-    elif mode_inn == 1:  # panstarrs+2mass
-        mask = [0, 1, 1, 1, 1, 1,
-                0, 0, 0, 0, 1, 1, 1]
+    # elif mode_inn == 1:  # panstarrs+2mass
+    #     mask = [0, 1, 1, 1, 1, 1,
+    #             0, 0, 0, 0, 1, 1, 1]
         allow_cut = True
-    elif mode_inn == 2:  # apass+2mass
+    elif mode_inn == 1:  # apass+2mass new -> 2
         mask = [0, 1, 1, 1, 0, 0,
                 1, 1, 0, 0, 1, 1, 1]
         # we allow 3 - 5 APASS observations, so make sure to handle that correctly
@@ -771,7 +776,7 @@ def fit_sources(inn, f_err=None, return_cut=False):
                 mask[imask] = 0
         obs = obs[obs > 0]
         allow_cut = True
-    elif mode_inn == 3:  # usnob+2mass
+    elif mode_inn == 2:  # usnob+2mass #### new -> 3
         mask = [0, 0, 0, 0, 0,
                 0,
                 1, 0, 1, 1,
@@ -924,8 +929,8 @@ class catalog:
                 apass_matches, tmp = identify_matches(mass[:, :2], apass[:, :2])
                 if cmode == -1:
                     cmask = [1, -1, 2, -1, 3, -1, 6, -1, 7, -1]
-                    #cmode = 1
-                    cmode = 2
+                    cmode = 1
+                    #cmode = 2
                     ocat = apass
             else:
                 apass_matches = -9999 * np.ones(len(mass), dtype='int')
@@ -933,8 +938,8 @@ class catalog:
                 usnob_matches, tmp = identify_matches(mass[:, :2], usnob[:, :2])
                 if cmode == -1:
                     cmask = [6, -1, 8, -1]
-                    #cmode = 2
-                    cmode = 3
+                    cmode = 2
+                    #cmode = 3
                     ocat = usnob
             else:
                 usnob_matches = -9999 * np.ones(len(mass), dtype='int')
@@ -961,20 +966,20 @@ class catalog:
                     i_sdss = sdss_matches[i]
                     obs = np.hstack((sdss[i_sdss][2:], obj[2:]))
                     mode = 0
-                elif panstarrs_matches[i] >= 0:
-                    i_panstarrs = panstarrs_matches[i]
-                    obs = np.hstack((panstarrs[i_panstarrs][2:], obj[2:]))
-                    mode = 1
+                # elif panstarrs_matches[i] >= 0:
+                #     i_panstarrs = panstarrs_matches[i]
+                #     obs = np.hstack((panstarrs[i_panstarrs][2:], obj[2:]))
+                #     mode = 1
                 elif apass_matches[i] >= 0:
                     i_apass = apass_matches[i]
                     obs = np.hstack((apass[i_apass][2:], obj[2:]))
-                    #mode = 1
-                    mode = 2
+                    mode = 1
+                    #mode = 2
                 elif usnob_matches[i] >= 0:
                     i_usnob = usnob_matches[i]
                     obs = np.hstack((usnob[i_usnob][2:], obj[2:]))
-                    #mode = 2
-                    mode = 3
+                    mode = 2
+                    #mode = 3
                 else:
                     continue
                 object_mags.append(obs)
@@ -984,10 +989,6 @@ class catalog:
             raise ValueError("No good sources in this field!")
 
         # send all of these matches to the CPU pool to get modeled
-        print("MODES:")
-        print(modes)
-        print("MAGS:")
-        print(object_mags)
         objects = zip(modes, object_mags)
         pool = mp.Pool(processes=N_CORES)
         results = pool.map(fit_sources, objects)
@@ -1147,7 +1148,8 @@ def zeropoint(input_file, band, output_file=None, usnob_thresh=15, alloptstars=F
     input_coords = in_data[:, :2]
     input_mags = in_data[:, 2]
     field_center, field_width = find_field(input_coords)
-    c = catalog(field_center, max(field_width), input_coords=input_coords)
+    #c = catalog(field_center, max(field_width), input_coords=input_coords)
+    c = catalog(field_center, max(field_width), input_coords=input_coords, ignore=['panstarrs'])
 
     band_index = FILTER_PARAMS[band][-1]
     # check to see whether we need to use USNOB sources

@@ -123,8 +123,8 @@ class online_catalog_query:
         return self.APASS
 
     def query_all(self):
-        return self.MASS, self.SDSS, self.PANSTARRS, self.USNOB, self.APASS
-        #return self.MASS, self.SDSS, self.USNOB, self.APASS
+        # return self.MASS, self.SDSS, self.PANSTARRS, self.USNOB, self.APASS
+        return self.MASS, self.SDSS, self.USNOB, self.APASS
 
     @staticmethod
     def _parse_apass(s):
@@ -885,8 +885,8 @@ class catalog:
         """
         ra, dec = self.field_center
         q = online_catalog_query(ra, dec, self.field_width, ignore=self.ignore)
-        mass, sdss, panstarrs, usnob, apass = q.query_all()
-        #mass, sdss, usnob, apass = q.query_all()
+        # mass, sdss, panstarrs, usnob, apass = q.query_all()
+        mass, sdss, usnob, apass = q.query_all()
 
         object_mags = []
         modes = []

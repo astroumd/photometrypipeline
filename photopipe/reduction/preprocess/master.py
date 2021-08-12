@@ -87,6 +87,8 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./'):
             mdark_fn = None
 
         if mtype is not instrum.biasname:
+            print(mbias_fn)
+            print(mdark_fn)
             if mbias_fn is not None:
                 if not os.path.exists(mbias_fn):
                     af.print_err(

@@ -258,19 +258,48 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             refmag = refmag[goodind]
             obsmag = mag[goodind]
             obserr = mage[goodind]
+            ra_im = wrd[:,0][goodind]
+            dec_im = wrd[:,1][goodind]
+            #file = pipevar['imworkingdir'] + 'SATtest2_' + targ + '_' + thistargetfilter
+
+
+
+            #find Sat sources
+            satfile = pipevar['imworkingdir'] + 'SATcoords_' + targ + '_' + thistargetfilter + '.txt'
+            var = np.loadtxt(satfile)
+            if np.shape(var) != (0,):
+                ra_sat = var[:, 0]
+                dec_sat = var[:, 1]
+
+                sat_ind = []
+                thres = 0.001
+                for i in range(len(ra_im)):
+                    key = False
+                    for j in range(len(ra_sat)):
+                        if all(np.isclose([ra_sat[j],dec_sat[j]],[ra_im[i],dec_im[i]],atol=thres)):
+                        #if (ra_sat[j] - thres < ra_im[i] < ra_sat[j] + thres) and (dec_sat[j] - thres < dec_im[i] < dec_sat[j] + thres):
+                            key = True
+                            continue
+                    if key: sat_ind += [False]
+                    else: sat_ind += [True]
+
+                refmag = refmag[sat_ind]
+                obsmag = obsmag[sat_ind]
+                obserr = obserr[sat_ind]
+
             obswts = np.zeros(len(obserr))
             obskpm = np.zeros(len(obsmag))
 
             # Store magnitudes and weights (with minimum magnitude error of 0.01)
             for i in np.arange(len(obsmag)):
-                if obserr[i] < 0.1:
-                    obskpm[i] = obsmag[i]
-                    obswts[i] = 1.0 / (max(obserr[i], 0.01) ** 2)
+                obskpm[i] = obsmag[i]
+                obswts[i] = 1.0 / (max(obserr[i], 0.01) ** 2)
+                # if obserr[i] < 0.1:
+                #     obskpm[i] = obsmag[i]
+                #     obswts[i] = 1.0 / (max(obserr[i], 0.01) ** 2)
 
             czpts, cscats, crmss = apd.calc_zpt(
                 np.array([refmag]), np.array([obskpm]), np.array([obswts]), sigma=1.0,
-                # np.array([obswts]), sigma=1.0,
-                #plotter=pipevar['imworkingdir'] + 'zpt_' + thistargetfilter + '.ps')
                 plotter=pipevar['imworkingdir'] + 'zpt_COADD_' + targ + '_' + thistargetfilter + '.png')
 
             chead = pf.getheader(outfl)

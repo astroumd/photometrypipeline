@@ -131,6 +131,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
             stacklist = files[stacki]
 
             zpts = []
+            sat_coords = []
             it_num = 0 #for testing
 
             # Find stars for each individual frame and try to find matches with coadded
@@ -151,7 +152,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                 mage = svars[4, :]
                 flag = svars[5, :]
                 elon = svars[8, :]
-                fwhm = svars[10, :]
+                fwhm = svars[9, :]
 
                 # astropy does not like SWarp PV keywords or unicode, temporarily delete
                 headcopy = head.copy()
@@ -220,6 +221,8 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                 if nocustomcat:
                     # Create catalog star file
                     # (python get_SEDs.py imfile filter catfile USNOB_THRESH alloptstars)
+                    # sedcmd = 'python ' + '/opt/project/photopipe/photometry/dependencies/get_SEDs_test.py ' + imfile + ' ' + \
+                    #          thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
                     sedcmd = 'python ' + pipevar['getsedcommand'] + ' ' + imfile + ' ' + \
                              thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
 
@@ -233,6 +236,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
 
                     # Read in catalog file
                     cvars = np.loadtxt(catfile, unpack=True)
+                    #np.savetxt(pipevar['imworkingdir'] + 'CAT' + targ + '_' + thistargetfilter + '.txt', catfile)
                     refmag = cvars[catdict[thistargetfilter], :]
                     mode = cvars[catdict['mode'], :]
 
@@ -242,20 +246,81 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                 refmag = refmag[goodind]
                 obsmag = mag[goodind]
                 obserr = mage[goodind]
+                xim = xim[goodind]
+                yim = yim[goodind]
+                raim = wrd[:, 0][goodind]
+                decim = wrd[:, 1][goodind]
+                fwhm = fwhm[goodind]
+                mode = mode[goodind]
+
+                mtest = (mode == 1)
+                print("{}% PanSTARRs".format(100*len(mode[mtest])/(len(mode))))
+                if all(i==1 for i in mode):
+                    print("Full PanSTARRs")
+
+                if len(refmag) == 0:
+                    print("NO SOURCES IN CAT, REFMAG = 0 for {}_{}".format(thistarget,thistargetfilts))
+
+                #Remove Saturated Sources
+                fileroot = os.path.basename(sfile)
+                filedir = os.path.dirname(sfile)
+                satfile = filedir + "/" + fileroot.replace("tazsfp", "SAT_", 1).replace("tasfp", "SAT_", 1)
+                rmv_sat = True
+                try:
+                    f = pf.open(satfile)
+                except:
+                    print("SAT file missing: Cant remove saturated sources. Run PREPARE step to obtain SAT file.")
+                    rmv_sat = False
+
+                if rmv_sat:
+                    data = f[0].data
+                    f.close()
+                    keep = []
+                    xpix, ypix = data.shape
+                    #print("Data Shape ({},{})".format(xpix,ypix))
+                    for i in range(len(xim)):
+                        #print(fwhm[i])
+                        if (int(xim[i] + fwhm[i]) > xpix) or (int(xim[i] - fwhm[i]) < 0) or (int(yim[i] + fwhm[i]) > ypix) or (int(yim[i] - fwhm[i]) < 0):
+                            print("Skipping Edge Source #: {}".format(i))
+                            keep += [False]
+                            continue
+                        # ymin = max(int(yim[i] - fwhm[i]),0)
+                        # ymax = min(int(yim[i] + fwhm[i] + 1),ypix)
+                        # xmin = max(int(xim[i] - fwhm[i]), 0)
+                        # xmax = min(int(xim[i] + fwhm[i] + 1), xpix)
+                        sq_piece = data[int(yim[i] - fwhm[i]):int(yim[i] + fwhm[i] + 1), int(xim[i] - fwhm[i]):int(xim[i] + fwhm[i] + 1)]
+                        #sq_piece = data[ymin:ymax,xmin:xmax]
+                        if np.all(sq_piece): keep += [True]
+                        else:
+                            keep += [False]
+                            #ra0, dec0 = raim[i], decim[i]
+                            #print("RA:{}, DEC:{}".format(ra0,dec0))
+                            if (raim[i], decim[i]) not in sat_coords: sat_coords += [(raim[i], decim[i])]
+                    print("# of Bad Sources: {}".format(len(xim)-np.sum(keep)))
+                    #keep = (np.array(keep),)
+                    refmag = refmag[keep]
+                    obsmag = obsmag[keep]
+                    obserr = obserr[keep]
+
+                if len(refmag) == 0:
+                    print("ALL SOURCES SATURATED, REFMAG = 0 for {}_{}".format(thistarget,thistargetfilts))
+
                 obswts = np.zeros(len(obserr))
                 obskpm = np.zeros(len(obsmag))
 
                 # Store magnitudes and weights (with minimum magnitude error of 0.01)
                 for i in np.arange(len(obsmag)):
-                    if obserr[i] < 0.1:
-                        obskpm[i] = obsmag[i]
-                        obswts[i] = 1.0 / (max(obserr[i], 0.01) ** 2)
+                    #if obserr[i] < 0.1:
+                         obskpm[i] = obsmag[i]
+                         obswts[i] = 1.0 / (max(obserr[i], 0.01) ** 2)
 
                 if len(refmag) > 0 and len(obskpm) > 0 and len(obswts) > 0:
-                    #zpt, scats, rmss = apd.calc_zpt(np.array([refmag]), np.array([obskpm]),np.array([obswts]), sigma=3.0)
-                    zpt, scats, rmss = apd.calc_zpt(np.array([refmag]), np.array([obskpm]),
-                                                    np.array([obswts]), sigma=3.0,
-                                                    plotter=pipevar['imworkingdir'] + 'zpt_' + targ + '_' + thistargetfilter + '_{}.png'.format(it_num))
+                    if pipevar['debug'] != 0:
+                        zpt, scats, rmss = apd.calc_zpt(np.array([refmag]), np.array([obskpm]),np.array([obswts]),
+                                sigma=3.0,plotter=pipevar['imworkingdir'] + 'zpt_' + targ + '_' + thistargetfilter + '_{}.png'.format(it_num))
+                    else:
+                        zpt, scats, rmss = apd.calc_zpt(np.array([refmag]), np.array([obskpm]),np.array([obswts]), sigma=3.0)
+
                     it_num += 1 #testing
                     # Reload because we had to remove distortion parameters before
                     head = pf.getheader(sfile)
@@ -268,7 +333,12 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                     zpts += zpt
                 else:
                     zpts = [np.inf]
-                    it_num += 1 #tesing
+                    it_num += 1 #testing
+
+            # Save wcs Coords for saturated sources
+            filename = pipevar['imworkingdir'] + 'SATcoords_' + targ + '_' + thistargetfilter + '.txt'
+            sat_data = np.vstack(([i[0] for i in sat_coords],[i[1] for i in sat_coords]))
+            np.savetxt(filename, np.transpose(sat_data), fmt='%.4f', header='Ra\t Dec')
 
             # Move files with bad zeropoint calculations to folder 'badzptfit'
             # and do not use those frames

@@ -1194,7 +1194,6 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
     diff = catmag - obsmag
     #print(np.shape(obsmag))
 
-    #### New ####
     keep = np.where(wts != 0)
     diff = diff[keep]
     obsmag = obsmag[keep]
@@ -1204,20 +1203,20 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
     diff_0 = np.copy(diff)
     wts_0 = np.copy(wts)
 
-    # Sigma clip
-    med, sig = medclip(diff, 3.0, 2)
-    #print("Med: {}, Sigma: {}".format(med, sigma))
-    keep = np.where(abs(diff - med) < 3 * sig)
-    diff = diff[keep]
-    obsmag = obsmag[keep]
-    catmag = catmag[keep]
-    wts = wts[keep]
-    catmag_1 = np.copy(catmag)
-    diff_1 = np.copy(diff)
-    wts_1 = np.copy(wts)
-
+    # # Sigma clip
+    # med, sig = medclip(diff, 3.0, 2)
+    # #print("Med: {}, Sigma: {}".format(med, sigma))
+    # keep = np.where(abs(diff - med) < 3 * sig)
+    # diff = diff[keep]
+    # obsmag = obsmag[keep]
+    # catmag = catmag[keep]
+    # wts = wts[keep]
+    # catmag_1 = np.copy(catmag)
+    # diff_1 = np.copy(diff)
+    # wts_1 = np.copy(wts)
+    #
     # Remove dim sources above provided threshold
-    err_thresh = 20
+    err_thresh = 0.1
     wt_thresh = 1 / (err_thresh ** 2)
     keep = np.where(wts > wt_thresh)
     diff = np.array([diff[keep]])
@@ -1227,8 +1226,6 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
     catmag_2 = np.copy(catmag[0])
     diff_2 = np.copy(diff[0])
     wts_2 = np.copy(wts[0])
-
-    # constant_fit(diff_2, catmag_2, 1.0, plotter)
 
     # For each observation (i.e. frame) find the weighted difference and store zeropoint
     # and new magnitude with zeropoint correction
@@ -1512,37 +1509,6 @@ def identify_matches(queried_stars, found_stars, match_radius=3.):
 
     return ind, dist
 
-def constant_fit(diffdata, catdata, thres, plot):
-    fitlist = []
-    length = len(diffdata)
-    for i in range(length):
-        fitlist += [(diffdata[i],catdata[i])]
-    fitlist = np.asarray(sorted(fitlist, key=itemgetter(1)))
-    diff = fitlist[:,0]
-    med = []
-    sig = []
-    cat = []
-    min_num = int(max(length/10, 4))
-    for i in range(2*int(length/min_num)-1):
-        med += [np.median(diff[i*int(min_num/2):min_num + i*int(min_num/2)])]
-        sig += [np.std(diff[i*int(min_num/2):min_num + i*int(min_num/2)])]
-        cat += [fitlist[(i+1)*int(min_num/2),1]]
-    sig = np.asarray(sig)
-    cat = np.asarray(cat)
-    med = np.asarray(med)
-    keep = np.where(sig < thres)
-    lower = min(cat[keep])
-    upper = max(cat[keep])
-    plt.plot(cat, med, '*')
-    plt.plot(catdata, diffdata, 'b*')
-    plt.vlines([lower, upper],[min(diffdata),min(diffdata)],[max(diffdata),max(diffdata)],colors=['k','k'], linestyles='dashed')
-    plt.errorbar(cat, med, yerr=sig, fmt='.')
-    plt.title('Running Median')
-    plt.ylabel('Running Median, Difference')
-    plt.xlabel('Catalog magnitude')
-    filename = plot.replace('zpt', 'median')
-    plt.savefig(filename)
-    plt.clf()
 
 
 

@@ -260,8 +260,8 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             obserr = mage[goodind]
             ra_im = wrd[:,0][goodind]
             dec_im = wrd[:,1][goodind]
-            file = pipevar['imworkingdir'] + 'SATtest2_' + targ + '_' + thistargetfilter
-            apd.plot(ra_im, dec_im, file,'*b')
+            #file = pipevar['imworkingdir'] + 'SATtest2_' + targ + '_' + thistargetfilter
+
 
 
             #find Sat sources

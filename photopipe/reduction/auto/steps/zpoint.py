@@ -221,6 +221,8 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                 if nocustomcat:
                     # Create catalog star file
                     # (python get_SEDs.py imfile filter catfile USNOB_THRESH alloptstars)
+                    # sedcmd = 'python ' + '/opt/project/photopipe/photometry/dependencies/get_SEDs_test.py ' + imfile + ' ' + \
+                    #          thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
                     sedcmd = 'python ' + pipevar['getsedcommand'] + ' ' + imfile + ' ' + \
                              thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
 
@@ -249,6 +251,15 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                 raim = wrd[:, 0][goodind]
                 decim = wrd[:, 1][goodind]
                 fwhm = fwhm[goodind]
+                mode = mode[goodind]
+
+                mtest = (mode == 1)
+                print("{}% PanSTARRs".format(100*len(mode[mtest])/(len(mode))))
+                if all(i==1 for i in mode):
+                    print("Full PanSTARRs")
+
+                if len(refmag) == 0:
+                    print("NO SOURCES IN CAT, REFMAG = 0 for {}_{}".format(thistarget,thistargetfilts))
 
                 #Remove Saturated Sources
                 fileroot = os.path.basename(sfile)
@@ -290,6 +301,9 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                     refmag = refmag[keep]
                     obsmag = obsmag[keep]
                     obserr = obserr[keep]
+
+                if len(refmag) == 0:
+                    print("ALL SOURCES SATURATED, REFMAG = 0 for {}_{}".format(thistarget,thistargetfilts))
 
                 obswts = np.zeros(len(obserr))
                 obskpm = np.zeros(len(obsmag))

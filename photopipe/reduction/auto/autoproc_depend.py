@@ -1203,20 +1203,20 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
     diff_0 = np.copy(diff)
     wts_0 = np.copy(wts)
 
-    # Sigma clip
-    med, sig = medclip(diff, 3.0, 2)
-    #print("Med: {}, Sigma: {}".format(med, sigma))
-    keep = np.where(abs(diff - med) < 3 * sig)
-    diff = diff[keep]
-    obsmag = obsmag[keep]
-    catmag = catmag[keep]
-    wts = wts[keep]
-    catmag_1 = np.copy(catmag)
-    diff_1 = np.copy(diff)
-    wts_1 = np.copy(wts)
-
+    # # Sigma clip
+    # med, sig = medclip(diff, 3.0, 2)
+    # #print("Med: {}, Sigma: {}".format(med, sigma))
+    # keep = np.where(abs(diff - med) < 3 * sig)
+    # diff = diff[keep]
+    # obsmag = obsmag[keep]
+    # catmag = catmag[keep]
+    # wts = wts[keep]
+    # catmag_1 = np.copy(catmag)
+    # diff_1 = np.copy(diff)
+    # wts_1 = np.copy(wts)
+    #
     # Remove dim sources above provided threshold
-    err_thresh = 20
+    err_thresh = 0.1
     wt_thresh = 1 / (err_thresh ** 2)
     keep = np.where(wts > wt_thresh)
     diff = np.array([diff[keep]])

@@ -310,7 +310,8 @@ def autoproc(
         os.chdir(datadir)
         times = np.zeros(len(t))
         filename = os.path.join(datadir, 'time_analysis.txt')
-        _list = np.copy(steps.append("total"))
+        _list = steps.copy()
+        _list.append('total')
         head = ''
         for step in _list:
             head += step + '\t '
@@ -328,7 +329,6 @@ def autoproc(
         ax.bar(_list, percent)
         ax.set_ylabel('Time')
         ax.set_title('Time by Process')
-        plt.tight_layout()
         plt.savefig('time_analysis.png')
         plt.clf()
 

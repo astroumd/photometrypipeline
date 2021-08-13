@@ -2,16 +2,11 @@ import glob
 import os
 import astropy.io.fits as pf
 import numpy as np
-import photopipe.reduction.auto.autoproc_depend as apd
+import photopipe.reduction.auto.steps.autoproc_depend as apd
 from astropy import wcs
 import re
 import matplotlib.pyplot as plt
-import datetime
 from astropy.time import Time
-import sys
-from scipy import interpolate
-from photopipe.photometry.dependencies import get_SEDs
-
 
 inpipevar = {
     'autoastrocommand': 'autoastrometry', 'getsedcommand': 'get_SEDs', 'sexcommand': 'sex', 'swarpcommand': 'swarp',
@@ -221,7 +216,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                 if nocustomcat:
                     # Create catalog star file
                     # (python get_SEDs.py imfile filter catfile USNOB_THRESH alloptstars)
-                    # sedcmd = 'python ' + '/opt/project/photopipe/photometry/dependencies/get_SEDs_test.py ' + imfile + ' ' + \
+                    # sedcmd = 'python ' + '/opt/project/photopipe/SEDs/get_SEDs_test.py ' + imfile + ' ' + \
                     #          thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
                     sedcmd = 'python ' + pipevar['getsedcommand'] + ' ' + imfile + ' ' + \
                              thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
@@ -255,8 +250,6 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
 
                 mtest = (mode == 1)
                 print("{}% PanSTARRs".format(100*len(mode[mtest])/(len(mode))))
-                if all(i==1 for i in mode):
-                    print("Full PanSTARRs")
 
                 if len(refmag) == 0:
                     print("NO SOURCES IN CAT, REFMAG = 0 for {}_{}".format(thistarget,thistargetfilts))
@@ -281,7 +274,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                     for i in range(len(xim)):
                         #print(fwhm[i])
                         if (int(xim[i] + fwhm[i]) > xpix) or (int(xim[i] - fwhm[i]) < 0) or (int(yim[i] + fwhm[i]) > ypix) or (int(yim[i] - fwhm[i]) < 0):
-                            print("Skipping Edge Source #: {}".format(i))
+                            if pipevar['verbose'] > 0: print("Skipping {} Edge Sources".format(i))
                             keep += [False]
                             continue
                         # ymin = max(int(yim[i] - fwhm[i]),0)
@@ -296,8 +289,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                             #ra0, dec0 = raim[i], decim[i]
                             #print("RA:{}, DEC:{}".format(ra0,dec0))
                             if (raim[i], decim[i]) not in sat_coords: sat_coords += [(raim[i], decim[i])]
-                    print("# of Bad Sources: {}".format(len(xim)-np.sum(keep)))
-                    #keep = (np.array(keep),)
+                    if pipevar['verbose'] > 0: print("# of SAT Sources{}".format(len(xim)-np.sum(keep)))
                     refmag = refmag[keep]
                     obsmag = obsmag[keep]
                     obserr = obserr[keep]

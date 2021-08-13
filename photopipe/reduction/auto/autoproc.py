@@ -1,6 +1,7 @@
 import photopipe.reduction.auto.steps.astrometry as ast
 import photopipe.reduction.auto.steps.crclean as crc
 import photopipe.reduction.auto.steps.prepare as pre
+import photopipe.reduction.auto.steps.flatten as flt
 import photopipe.reduction.auto.steps.sky as sky
 import photopipe.reduction.auto.steps.stack as stk
 import photopipe.reduction.auto.steps.zpoint as zpt
@@ -273,7 +274,7 @@ def autoproc(
             pre.autopipeprepare(pipevar=pipevar)
         if step == 'flatten':
             t += [time.perf_counter()]
-            pre.autopipeimflatten(pipevar=pipevar)
+            flt.autopipeimflatten(pipevar=pipevar)
         if step == 'makesky' and not nomastersky and skyflattarg:
             t += [time.perf_counter()]
             sky.autopipemakesky_targets(pipevar=pipevar)
@@ -286,7 +287,7 @@ def autoproc(
         elif step == 'skysub' and not nomastersky:
             t += [time.perf_counter()]
             sky.autopipeskysub(pipevar=pipevar)
-        if step == 'skysub' and nomastersky:
+        elif step == 'skysub' and nomastersky:
             t += [time.perf_counter()]
             sky.autopipeskysubmed(pipevar=pipevar)
         if step == 'crclean' and not nocrclean:

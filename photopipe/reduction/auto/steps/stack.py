@@ -232,8 +232,10 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             if nocustomcat:
                 # Create catalog star file
                 # (python get_SEDs.py imfile filter catfile USNOB_THRESH alloptstars)
-                sedcmd = 'python ' + pipevar['getsedcommand'] + ' ' + imfile + ' ' + \
+                sedcmd = 'python ' + '/opt/project/photopipe/SEDs/get_SEDs_test.py ' + imfile + ' ' + \
                          thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
+                # sedcmd = 'python ' + pipevar['getsedcommand'] + ' ' + imfile + ' ' + \
+                #          thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
 
                 if pipevar['verbose'] > 0:
                     print(sedcmd)
@@ -249,7 +251,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                 mode = cvars[catdict['mode'], :]
 
             # Find catalog filter values and only cutoff values of actual detections
-            goodind = (mode != -1) & (refmag < 90.0) & (flag < 8) & (elon <= 1.3)
+            goodind = (mode != -1) & (refmag < 90.0) & (0 < refmag) & (flag < 8) & (elon <= 1.3)
 
             refmag = refmag[goodind]
             obsmag = mag[goodind]
@@ -273,7 +275,6 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                     key = False
                     for j in range(len(ra_sat)):
                         if all(np.isclose([ra_sat[j],dec_sat[j]],[ra_im[i],dec_im[i]],atol=thres)):
-                        #if (ra_sat[j] - thres < ra_im[i] < ra_sat[j] + thres) and (dec_sat[j] - thres < dec_im[i] < dec_sat[j] + thres):
                             key = True
                             continue
                     if key: sat_ind += [False]

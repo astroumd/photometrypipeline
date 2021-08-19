@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 def autoproc(
         datadir=None, imdir=None, caldir=None, start=None, stop=None, only=None, step=None,
-        nocrclean=False, nomastersky=False, skyflattarg=True, redo=False, quiet=False, rmifiles=False,
+        nocrclean=False, mastersky=True, skyflattarg=True, redo=False, quiet=False, rmifiles=False,
         customcat=None, customcatfilt=None, debug=False
 ):
     """
@@ -33,7 +33,7 @@ def autoproc(
         step          -  (completely identical to only, takes precedence)
         redo          - Repeat step(s), overwriting any existing files
         nocrclean     - Do not zap cosmic rays
-        nomastersky   - Do not create master sky, only subtract median of sky
+        mastersky     - Create master sky, only subtract median of sky
         quiet	      - (mainly) silent output unless errors
         rmifiles      - Removes intermediate files
         customcat     - Custom catalog (txt file) to determine instrumental zeropoint
@@ -275,19 +275,13 @@ def autoproc(
         if step == 'flatten':
             t += [time.perf_counter()]
             flt.autopipeimflatten(pipevar=pipevar)
-        if step == 'makesky' and not nomastersky and skyflattarg:
+        if step == 'makesky' and mastersky:
             t += [time.perf_counter()]
-            sky.autopipemakesky_targets(pipevar=pipevar)
-        elif step == 'makesky' and not nomastersky:
+            sky.autopipemakesky(pipevar=pipevar, by_targ=skyflattarg)
+        if step == 'skysub' and mastersky:
             t += [time.perf_counter()]
-            sky.autopipemakesky(pipevar=pipevar)
-        if step == 'skysub' and not nomastersky and skyflattarg:
-            t += [time.perf_counter()]
-            sky.autopipeskysub_targets(pipevar=pipevar)
-        elif step == 'skysub' and not nomastersky:
-            t += [time.perf_counter()]
-            sky.autopipeskysub(pipevar=pipevar)
-        elif step == 'skysub' and nomastersky:
+            sky.autopipeskysub(pipevar=pipevar, by_targ=skyflattarg)
+        elif step == 'skysub' and not mastersky:
             t += [time.perf_counter()]
             sky.autopipeskysubmed(pipevar=pipevar)
         if step == 'crclean' and not nocrclean:

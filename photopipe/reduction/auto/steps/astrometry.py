@@ -142,10 +142,10 @@ def autopipeastrometry(pipevar=None):
             except:
                 # Run sextractor to find sources, then use those catalogs to run scamp
                 # with loose fitting constraints
-                apd.astrometry(atfimages, scamprun=1, pipevar=pipevar)
+                astrometry(atfimages, scamprun=1, pipevar=pipevar)
 
                 # Do same thing again but with more stringent scamp parameters
-                apd.astrometry(atfimages, scamprun=2, pipevar=pipevar)
+                astrometry(atfimages, scamprun=2, pipevar=pipevar)
 
     # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
     # sky-*.fits, sfp(PREFIX)*.fits, zsfp(PREFIX)*.fits files

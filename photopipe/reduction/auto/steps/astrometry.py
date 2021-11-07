@@ -2,16 +2,7 @@ import glob
 import os
 import astropy.io.fits as pf
 import numpy as np
-import photopipe.reduction.auto.autoproc_depend as apd
-from astropy import wcs
-import re
-import datetime
-from astropy.time import Time
-import sys
-from scipy import interpolate
-from photopipe.reduction.astrom import vlt_autoastrometry as autoastro
-from photopipe.photometry.dependencies import get_SEDs
-
+import photopipe.reduction.auto.steps.autoproc_depend as apd
 
 inpipevar = {
     'autoastrocommand': 'autoastrometry', 'getsedcommand': 'get_SEDs', 'sexcommand': 'sex', 'swarpcommand': 'swarp',
@@ -151,10 +142,10 @@ def autopipeastrometry(pipevar=None):
             except:
                 # Run sextractor to find sources, then use those catalogs to run scamp
                 # with loose fitting constraints
-                apd.astrometry(atfimages, scamprun=1, pipevar=pipevar)
+                astrometry(atfimages, scamprun=1, pipevar=pipevar)
 
                 # Do same thing again but with more stringent scamp parameters
-                apd.astrometry(atfimages, scamprun=2, pipevar=pipevar)
+                astrometry(atfimages, scamprun=2, pipevar=pipevar)
 
     # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
     # sky-*.fits, sfp(PREFIX)*.fits, zsfp(PREFIX)*.fits files
@@ -164,3 +155,102 @@ def autopipeastrometry(pipevar=None):
         os.system('rm -f ' + pipevar['imworkingdir'] + '*sky-*.fits')
         os.system('rm -f ' + pipevar['imworkingdir'] + 'sfp' + pipevar['prefix'] + '*.fits')
         os.system('rm -f ' + pipevar['imworkingdir'] + 'zsfp' + pipevar['prefix'] + '*.fits')
+
+
+def astrometry(atfimages, scamprun=1, pipevar=None):
+    """
+    NAME:
+        astrometry
+    PURPOSE:
+        Run sextractor and scamp to refine astrometric solution
+    INPUTS:
+        atfimages - list of files to run through scamp
+        scamprun  - the first run does a LOOSE run with distortion degree 1, any
+                    other run will look for high distortion parameters, if it
+                    finds it will use distortion degree 7, otherwise 3 (will also cut out
+                    FLXSCALE on runs after 1)
+    EXAMPLE:
+        astrometry(atfimages, scamprun=2, pipevar=pipevar)
+    FUTURE IMPROVEMENTS:
+        Better difference between scamp runs.
+    """
+    acatlist = ''
+    scat = {'sdss': 'SDSS-R7', 'tmpsc': '2MASS', 'tmc': '2MASS', 'ub2': 'USNO-B1'}
+    for cfile in atfimages:
+        head = pf.getheader(cfile)
+        pixscale = head['PIXSCALE']
+        sourcecat = head['ASTR_CAT']
+
+        trunfile = os.path.splitext(cfile)[0]
+
+        if pipevar['verbose'] > 0:
+            sexcom = pipevar['sexcommand'] + ' -CATALOG_NAME ' + trunfile + \
+                     '.cat -CATALOG_TYPE FITS_LDAC -FILTER_NAME astrom.conv ' + \
+                     '-PARAMETERS_NAME astrom.param -DETECT_THRESH 2.0 ' + \
+                     '-ANALYSIS_THRESH 2.0 -PIXEL_SCALE ' + str(pixscale) + \
+                     ' ' + cfile
+            print(sexcom)
+        else:
+            sexcom = pipevar['sexcommand'] + ' -CATALOG_NAME ' + trunfile + \
+                     '.cat -CATALOG_TYPE FITS_LDAC -FILTER_NAME astrom.conv ' + \
+                     '-PARAMETERS_NAME astrom.param -DETECT_THRESH 2.0 ' + \
+                     '-ANALYSIS_THRESH 2.0 -VERBOSE_TYPE QUIET -PIXEL_SCALE ' + \
+                     str(pixscale) + ' ' + cfile
+
+        os.system(sexcom)
+
+        if head['ASTR_NUM'] > 0:
+            acatlist += ' ' + trunfile + '.cat'
+
+        if sourcecat in scat:
+            cat_u = scat[sourcecat]
+        else:
+            print('No valid catalogs available for SCAMP, check that vlt_autoastrometry.py ran correctly')
+            return
+
+    if scamprun == 1:
+        loose = ' -MOSAIC_TYPE LOOSE'
+        distdeg = 1
+    else:
+        loose = ' '
+        try:
+            distort = head['PV1_37']
+            print("head['PV1_37']={}".format(distort))
+            distdeg = 7
+        except:
+            distdeg = 3
+
+    if pipevar['verbose'] > 0:
+        scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + str(distdeg) + \
+                   loose + " -ASTREF_CATALOG " + cat_u + \
+                   " -SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
+                   "-CHECKPLOT_DEV NULL -WRITE_XML N -VERBOSE_TYPE FULL " + \
+                   acatlist
+        print(scampcmd)
+    else:
+        scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + str(distdeg) + \
+                   loose + " -ASTREF_CATALOG " + cat_u + \
+                   " -SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
+                   "-CHECKPLOT_DEV NULL -WRITE_XML N -VERBOSE_TYPE QUIET " + \
+                   acatlist
+
+    os.system(scampcmd)
+    os.system('rm ' + acatlist)
+
+    # Adds header information to file and delete extra files
+    for cfile in atfimages:
+        trunfile = os.path.splitext(cfile)[0]
+
+        if pipevar['verbose'] > 0:
+            os.system('missfits -WRITE_XML N ' + cfile)
+        else:
+            os.system('missfits -WRITE_XML N -VERBOSE_TYPE QUIET' + cfile)
+
+        os.system('rm ' + trunfile + '.head ' + cfile + '.back')
+
+        if scamprun != 1:
+            him = pf.getheader(cfile)
+            data = pf.getdata(cfile)
+            del him['FLXSCALE']
+            apd.write_fits(cfile, data, him)
+

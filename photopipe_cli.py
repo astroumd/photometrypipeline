@@ -231,7 +231,7 @@ def preprocess_cli():
 def autoproc_cli():
     autoproc_kwargs = {
         'datadir': selected_dir, 'imdir': reduced_dir, 'caldir': cal_dir, 'start': args.start, 'stop': args.stop,
-        'only': None, 'step': args.step, 'nomastersky': args.nomastersky, 'skyflattarg': not args.noskyflattarg,
+        'only': None, 'step': args.step, 'mastersky': not args.nomastersky, 'skyflattarg': not args.noskyflattarg,
         'redo': args.redo, 'quiet': args.quiet, 'rmifiles': args.rmifiles,
         'customcat': args.customcat, 'customcatfilt': str_list_to_list(args.customcatfilt),
     }

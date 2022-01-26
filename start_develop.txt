@@ -1,0 +1,12 @@
+# Source this script in the docker to start developing
+
+mkdir develop
+cd develop
+apt-get install git
+git clone https://github.com/igorandreoni/photometrypipeline.git
+
+cd photometrypipeline
+git checkout rimas_py3
+python setup.py build
+chmod a+x photopipe_cli.py
+

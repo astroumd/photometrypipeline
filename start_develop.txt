@@ -5,8 +5,15 @@ cd develop
 apt-get install git
 git clone https://github.com/igorandreoni/photometrypipeline.git
 
+# Go to the right branch
 cd photometrypipeline
 git checkout rimas_py3
 python setup.py build
 chmod a+x photopipe_cli.py
 
+# Install vim
+apt-get install vim -y
+
+# Configure git
+git config --global user.email "igor.andreoni@gmail.com"
+git config --global user.name "Igor Andreoni"

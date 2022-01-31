@@ -1,6 +1,7 @@
 import photopipe.reduction.auto.steps.astrometry as ast
 import photopipe.reduction.auto.steps.crclean as crc
 import photopipe.reduction.auto.steps.prepare as pre
+import photopipe.reduction.auto.steps.flatten as flt
 import photopipe.reduction.auto.steps.sky as sky
 import photopipe.reduction.auto.steps.stack as stk
 import photopipe.reduction.auto.steps.zpoint as zpt
@@ -12,7 +13,7 @@ import matplotlib.pyplot as plt
 
 def autoproc(
         datadir=None, imdir=None, caldir=None, start=None, stop=None, only=None, step=None,
-        nocrclean=False, nomastersky=False, skyflattarg=True, redo=False, quiet=False, rmifiles=False,
+        nocrclean=False, mastersky=True, skyflattarg=True, redo=False, quiet=False, rmifiles=False,
         customcat=None, customcatfilt=None, debug=False
 ):
     """
@@ -32,7 +33,7 @@ def autoproc(
         step          -  (completely identical to only, takes precedence)
         redo          - Repeat step(s), overwriting any existing files
         nocrclean     - Do not zap cosmic rays
-        nomastersky   - Do not create master sky, only subtract median of sky
+        mastersky     - Create master sky, only subtract median of sky
         quiet	      - (mainly) silent output unless errors
         rmifiles      - Removes intermediate files
         customcat     - Custom catalog (txt file) to determine instrumental zeropoint
@@ -167,7 +168,7 @@ def autoproc(
         'sexcommand': 'sex', 'swarpcommand': 'swarp', 'rmifiles': 0,
         'prefix': '', 'datadir': '', 'imworkingdir': '', 'overwrite': 0, 'verbose': 1,
         'flatfail': '', 'fullastrofail': '', 'pipeautopath': '', 'refdatapath': '', 'defaultspath': '',
-        'caldir': '.'
+        'caldir': '.', 'debug': False
     }
 
     if imdir is not None:
@@ -273,20 +274,14 @@ def autoproc(
             pre.autopipeprepare(pipevar=pipevar)
         if step == 'flatten':
             t += [time.perf_counter()]
-            pre.autopipeimflatten(pipevar=pipevar)
-        if step == 'makesky' and not nomastersky and skyflattarg:
+            flt.autopipeimflatten(pipevar=pipevar)
+        if step == 'makesky' and mastersky:
             t += [time.perf_counter()]
-            sky.autopipemakesky_targets(pipevar=pipevar)
-        elif step == 'makesky' and not nomastersky:
+            sky.autopipemakesky(pipevar=pipevar, by_targ=skyflattarg)
+        if step == 'skysub' and mastersky:
             t += [time.perf_counter()]
-            sky.autopipemakesky(pipevar=pipevar)
-        if step == 'skysub' and not nomastersky and skyflattarg:
-            t += [time.perf_counter()]
-            sky.autopipeskysub_targets(pipevar=pipevar)
-        elif step == 'skysub' and not nomastersky:
-            t += [time.perf_counter()]
-            sky.autopipeskysub(pipevar=pipevar)
-        if step == 'skysub' and nomastersky:
+            sky.autopipeskysub(pipevar=pipevar, by_targ=skyflattarg)
+        elif step == 'skysub' and not mastersky:
             t += [time.perf_counter()]
             sky.autopipeskysubmed(pipevar=pipevar)
         if step == 'crclean' and not nocrclean:
@@ -309,7 +304,8 @@ def autoproc(
         os.chdir(datadir)
         times = np.zeros(len(t))
         filename = os.path.join(datadir, 'time_analysis.txt')
-        _list = np.copy(steps.append("total"))
+        _list = steps.copy()
+        _list.append('total')
         head = ''
         for step in _list:
             head += step + '\t '
@@ -327,7 +323,6 @@ def autoproc(
         ax.bar(_list, percent)
         ax.set_ylabel('Time')
         ax.set_title('Time by Process')
-        plt.tight_layout()
         plt.savefig('time_analysis.png')
         plt.clf()
 

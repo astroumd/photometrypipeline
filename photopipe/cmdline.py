@@ -24,7 +24,7 @@ def _parse_parameters_file(filename):
 		try:
 			validate(params, schema)
 		except ValidationError as e:
-			print e
+			print(e)
 			sys.exit(1)
 
 		_execute_pipeline(params)

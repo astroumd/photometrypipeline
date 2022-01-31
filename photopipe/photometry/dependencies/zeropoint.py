@@ -7,7 +7,7 @@ Usage:
  python zeropoint.py <input_filename> <passband> <output_filename>
 '''
 
-from get_SEDs import *
+from get_SEDs import zeropoint
 from sys import argv
 
 if __name__ == '__main__':
@@ -19,4 +19,4 @@ if __name__ == '__main__':
         out_file = None
     
     zp, mad = zeropoint( in_file, passband, output_file=out_file )
-    print zp, mad
+    print(zp, mad)

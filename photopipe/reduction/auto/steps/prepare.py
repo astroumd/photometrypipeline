@@ -2,30 +2,15 @@ import glob
 import os
 import astropy.io.fits as pf
 import numpy as np
-import photopipe.reduction.auto.autoproc_depend as apd
-from astropy import wcs
-import re
-import datetime
-from astropy.time import Time
-import sys
-from scipy import interpolate
+import photopipe.reduction.auto.steps.autoproc_depend as apd
 from photopipe.reduction.astrom import vlt_autoastrometry as autoastro
-from photopipe.photometry.dependencies import get_SEDs
+from photopipe.SEDs import get_SEDs
 
 inpipevar = {
     'autoastrocommand': 'autoastrometry', 'getsedcommand': 'get_SEDs', 'sexcommand': 'sex', 'swarpcommand': 'swarp',
     'rmifiles': 0, 'prefix': '', 'datadir': '', 'imworkingdir': '', 'overwrite': 0, 'verbose': 1, 'flatfail': '',
     'fullastrofail': '', 'pipeautopath': '', 'refdatapath': '', 'defaultspath': ''
 }
-
-
-def findcals(pipevar, file_format_str):
-    calfiles = glob.glob(os.path.join(pipevar['caldir'], file_format_str))
-    if len(calfiles) == 0:
-        calfiles = glob.glob(os.path.join(pipevar['datadir'], file_format_str))
-    if len(calfiles) == 0:
-        calfiles = glob.glob(os.path.join(pipevar['imworkingdir'], file_format_str))
-    return calfiles
 
 
 def autopipedefaults(pipevar=None):
@@ -106,7 +91,7 @@ def autopipeprepare(pipevar=None):
 
     # Finds any master bias files and filter name from header keyword
     # Assumes camera name is in header under CAMERA
-    biasfiles = findcals(pipevar, 'bias*.fits')
+    biasfiles = apd.findcals(pipevar, 'bias*.fits')
 
     biascamera = []
     if len(biasfiles) > 0:
@@ -120,7 +105,7 @@ def autopipeprepare(pipevar=None):
 
     # Finds any master dark files and filter name from header keyword
     # Assumes camera name is in header under CAMERA
-    darkfiles = findcals(pipevar, 'dark*.fits')
+    darkfiles = apd.findcals(pipevar, 'dark*.fits')
 
     darkcamera = []
     if len(darkfiles) > 0:
@@ -132,7 +117,7 @@ def autopipeprepare(pipevar=None):
         print('Did not find any DARK files! Check your data directory path!')
 
     # Flat files are already bias/dark subtracted
-    flatfiles = findcals(pipevar, 'flat*.fits')
+    flatfiles = apd.findcals(pipevar, 'flat*.fits')
 
     # For each file (that doesn't have an existing p file or can be overwritten),
     # run pipeprepare on it with output file being saved into the imworkingdir,
@@ -167,84 +152,140 @@ def autopipeprepare(pipevar=None):
             darkfile = None
 
         if (outnameim not in pfiles) or (pipevar['overwrite'] != 0):
-            apd.pipeprepare(
-                f, outname=outnameim, biasfile=biasfile, darkfile=darkfile, verbose=pipevar['verbose']
-            )
+            pipeprepare(f, outname=outnameim, biasfile=biasfile, darkfile=darkfile, verbose=pipevar['verbose'])
         else:
             print('Skipping prepare. File already exists')
 
+def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1):
 
-def autopipeimflatten(pipevar=None):
     """
     NAME:
-        autopipeflatten
+        pipeprepare
     PURPOSE:
-        Flatten data using flat with matching filter name
+        Adds additional header keywords needed later on in the pipeline and removes
+        unnecessary header keywords by looking through a list of mandatory keywords.
+        Also runs bias and dark subtraction for filters with an existing master bias/dark
+        (CCDs).  The prepared images are written to disk with outname
+    INPUTS:
+        filename - name of FITS file, or array of filenames, or file w/list of filenames
     OPTIONAL KEYWORDS:
-        pipevar  - input pipeline parameters (typically set in ratautoproc.pro,
-                   but can be set to default)
+        outname  - specify output file to write to disk
+        biasfile - full name (including path) of master bias
+        darkfile - full name (including path) of master dark
+        verbose  - print out comments
     EXAMPLE:
-        autopipeflatten(pipevar=inpipevar)
+        pipeprepare(filename, outname=outname, biasfile=biasfile, darkfile=darkfile, verbose=1)
     DEPENDENCIES:
-        autoproc_depend.flatpipeproc()
+        autoproc_depend.pipeprepare()
     """
 
-    print('FLATTEN')
-    if pipevar is None:
-        pipevar = inpipevar
-    # Finds prepared files and checks to see if there are any existing flattened files
-    # Find flats in imworkingdir with name flat somewhere in a fits file name
-    print(pipevar['imworkingdir'])
-    files = glob.glob(pipevar['imworkingdir'] + 'p' + pipevar['prefix'] + '*.fits')
-    ffiles = glob.glob(pipevar['imworkingdir'] + 'fp' + pipevar['prefix'] + '*.fits')
-    flats = findcals(pipevar, 'flat*.fits')
+    # ------ Process input filenames(s) ------
 
-    if len(files) == 0:
-        print('Did not find any files! Check your data directory path!')
+    # Check for empty filename
+    if len(filename) == 0:
+        print('No filename specified')
         return
 
-    # If there are flats, then grab the filter from each of them,
-    # otherwise end program
-    flatfilts = []
-    if len(flats) > 0:
-        for flat in flats:
-            head = pf.getheader(flat)
-            head_filter = head['FILTER']
-            flatfilts += [head_filter]
+    # If string, check if a file of items or wildcards
+    # otherwise store all files
+    if isinstance(filename, str):
+        fileext = os.path.splitext(filename)[1][1:]
+
+        files = [filename]
+
+        if fileext in ['cat', 'lis', 'list', 'txt']:
+            f = open(filename, 'r')
+            files = f.read().splitlines()
+            f.close()
+
+        if '?' in filename or '*' in filename:
+            files = glob.glob(filename)
+            if len(files) == 0:
+                print('Cannot find any files matching ', filename)
+                return
     else:
-        print('No flats found for any filter!')
-        return
+        files = [filename]
 
-    # Create outfile name and check to see if outfile already exists.  If it doesn't or
-    # overwrite enabled then take filter from file and find where the flat filter matches
-    # If no flats match filter, store in pipevar.flatfail, otherwise run flatproc on file
-    for f in files:
-        print(f)
-        fileroot = os.path.basename(f)
+    # ------ Read data and process header information ------
+    for pipe_file in files:
+        f = pf.open(pipe_file)
+        head = f[0].header
+        data = f[0].data
+        f.close()
 
-        outnameim = pipevar['imworkingdir'] + 'f' + fileroot
+        # If these keys exist keep, otherwise delete all extraneous keywords
+        mandatorykey = [
+            'SIMPLE', 'BITPIX', 'NAXIS', 'NAXIS1', 'NAXIS2',
+            'HISTORY', 'DATE-OBS', 'EXPTIME', 'INSTRUME',
+            'LATITUDE', 'LONGITUD', 'BINNING', 'BINY', 'BINX',
+            'CAMERA', 'TARGNAME', 'UTC', 'OBJECT', 'OBJNAME', 'AIRMASS',
+            'GAIN', 'SATURATE', 'PIXSCALE', 'FILTER', 'WAVELENG',
+            'CD1_1', 'CD1_2', 'CD2_1', 'CD2_2',
+            'CRPIX1', 'CRPIX2', 'CRVAL1', 'CRVAL2', 'CTYPE1', 'CTYPE2',
+            'PV1_1', 'PV2_1', 'PV1_17', 'PV2_17', 'PV1_19', 'PV2_19', 'PV1_21', 'PV2_21',
+            'PV1_31', 'PV2_31', 'PV1_33', 'PV2_33', 'PV1_35', 'PV2_35', 'PV1_37', 'PV2_37', 'OBSRA', 'OBSDEC'
+        ]
 
-        if (outnameim not in ffiles) or (pipevar['overwrite'] != 0):
-            head = pf.getheader(f)
-            head_filter = head['FILTER']
+        # Finds list of unnecessary keywords, then deletes extraneous
+        newhead = head.copy()
+        for oldkey in head.keys():
+            if oldkey not in mandatorykey:
+                try:
+                    del newhead[oldkey]
+                except KeyError:
+                    pass
 
-            try:
-                flatfileno = flatfilts.index(head_filter)
-            except:
-                print('Flat field not found for ' + f + ' (filter=' + head_filter + ')')
-                pipevar['flatfail'] += ' ' + f
-                continue
+        # Create binary array of saturated pixels, save for later use
+        find_sats(outname, data, newhead)
 
-            flatfile = flats[flatfileno]
+        # If biasfile keyword set subtract master bias from current file with given master bias file
+        # If they are not the same size, quit program without saving with preparation prefix (will not move
+        # on in following processing steps)
+        if biasfile is not None:
+            bias = pf.getdata(biasfile)
 
-            if pipevar['verbose']:
-                print('Flattening', f, 'using', flatfile)
+            if np.shape(data) != np.shape(bias):
+                print(pipe_file + ' could not be bias subtracted because it is not the same' +
+                      ' size as the master bias, remove file to avoid confusion')
+                return
 
-            apd.flatpipeproc(f, flatfile, flatminval=0.3)
+            if verbose > 0:
+                print('    bias subtracting')
 
+            newdata = data - bias
+
+            # If darkfile keyword set subtract master dark from current file with given master dark file
+            # If they are not the same size, quit program without saving with preparation prefix (will not move
+            # on in following processing steps)
+            if darkfile is not None:
+                dark = pf.getdata(darkfile) * newhead['EXPTIME']
+
+                if np.shape(data) != np.shape(dark):
+                    print(' ')
+                    print(pipe_file + ' could not be dark subtracted because it is not the same' +
+                          ' size as the master dark, remove file to avoid confusion')
+                    return
+
+                if verbose > 0:
+                    print('    dark subtracting')
+
+                newdata = newdata - dark
+            else:
+                print(pipe_file, 'could not be dark subtracted because the master dark file was not provided')
         else:
-            print('Skipping flatten. File already exists')
+            newdata = data
 
-    # If remove intermediate files keyword set, delete p(PREFIX)*.fits files
-    if pipevar['rmifiles'] != 0:
-        os.system('rm -f ' + pipevar['imworkingdir'] + 'p' + pipevar['prefix'] + '*.fits')
+        # Write changes to disk
+        apd.write_fits(outname, newdata, newhead)
+
+        if verbose > 0:
+            print(pipe_file, '-> ', outname)
+
+def find_sats(fname, data, header):
+    sat = header['SATURATE']
+    saturated = np.where(data > sat, 0, 1)
+    print("# of Saturated Pixels: {}".format(np.sum(saturated)))
+    fileroot = os.path.basename(fname)
+    filedir = os.path.dirname(fname)
+    outname = filedir + "/" + fileroot.replace("p", "SAT_", 1)
+    apd.write_fits(outname, saturated, header)

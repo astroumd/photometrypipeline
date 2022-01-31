@@ -1,0 +1,369 @@
+import os
+import shutil
+import glob
+import astropy.io.fits as pf
+import numpy as np
+import scipy
+import matplotlib.pyplot as plt
+# Disable interactive mode
+plt.ioff()
+
+def findcals(pipevar, file_format_str):
+    calfiles = glob.glob(os.path.join(pipevar['caldir'], file_format_str))
+    if len(calfiles) == 0:
+        calfiles = glob.glob(os.path.join(pipevar['datadir'], file_format_str))
+    if len(calfiles) == 0:
+        calfiles = glob.glob(os.path.join(pipevar['imworkingdir'], file_format_str))
+    return calfiles
+
+
+def write_fits(filename, data, header):
+    try:
+        pf.writeto(filename, data, header, overwrite=True)
+        # print "write_fits.pf.writeto(filename, data, header, overwrite=True) worked!"
+    except:
+        temp_filename = filename + '.tmp'
+        print("saving to temporary file: {}".format(temp_filename))
+        pf.writeto(temp_filename, data, header, overwrite=True)
+        try:
+            os.remove(filename)
+            print("deleted {}".format(filename))
+        except:
+            print("couldn't delete {}".format(filename))
+            os.listdir(os.path.dirname(filename))
+            pass
+        print('attempting to overwrite {} --> {}'.format(temp_filename, filename))
+        shutil.move(temp_filename, filename)
+        print("write_fits.shutil.move(temp_filename, filename) worked!")
+
+def findsexobj(filename, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP_WEIGHT',
+               wtimage=None, fwhm=1.5, pix=0.3787, aperture=5.0, elong_cut=1.5, 
+               quiet=0):
+    """
+    NAME:
+        findsexobj
+    PURPOSE:
+        Finds sextractor objects with optional inputs. Estimates seeing from stars found. 
+    INPUTS:
+        file    - fits file to run sextractor on
+        sigma   - detection threshold and analysis threshold for sextractor
+        pipevar - pipeline parameters (typically set in autopipedefaults or autoproc)
+
+    OPTIONAL KEYWORDS:
+        masksfx   - text string identifier for sextractor CHECKIMAGE_NAME
+        zeropt    - input value for sextractor MAG_ZEROPOINT
+        wtimage   - file for input for sextractor WEIGHT_IMAGE
+        fwhm      - input value for sextractor SEEING_FWHM
+        pix       - input value for sextractor PIXEL_SCALE
+        aperture  - input value for sextractor PHOT_APERTURES
+        elong_cut - cutoff limit for FWHM calculation of elongation to eliminate non-stars
+        quiet     - no output from sextractor if set
+    EXAMPLE:
+        findsexobj(file, 3.0, pipevar, aperture=20.0)
+    DEPENDENCIES:
+        sextractor
+    FUTURE IMPROVEMENTS:
+        More keywords to sextractor?
+    """
+    
+    # Move necessary sextractor configuration files if they are not in current directory
+    if not os.path.isfile('coadd.param'): 
+        os.system('cp ' + pipevar['defaultspath'] + '/coadd.param .')
+    if not os.path.isfile('coadd.conv'): 
+        os.system('cp ' + pipevar['defaultspath'] + '/coadd.conv .') 
+    if not os.path.isfile('coadd.config'): 
+        os.system('cp ' + pipevar['defaultspath'] + '/coadd.config .') 
+    if not os.path.isfile('default.nnw'): 
+        os.system('cp ' + pipevar['defaultspath'] + '/default.nnw .')  
+
+    if quiet > 0: 
+        verbosetype = 'QUIET'
+    else:
+        verbosetype = 'NORMAL'
+        
+    # Run sextractor with given input parameters. Saves temp.cat as 
+    # starfile, saves starmask, and calculates seeing from starlike objects. Saves 
+    # necessary parameters to header
+    if filename == '':
+        return
+    
+    if not os.path.isfile(filename):
+        return
+    starfile = filename + '.stars'
+        
+    trunfile = os.path.splitext(filename)[0]
+        
+    sexcmd = pipevar['sexcommand'] + ' -c coadd.config -DETECT_THRESH ' +\
+        str(sigma) + ' -ANALYSIS_THRESH ' + str(sigma) + ' -PHOT_APERTURES ' +\
+        str(aperture) + ' -MAG_ZEROPOINT ' + str(zeropt) + ' -PIXEL_SCALE ' +\
+        str(pix) + ' -SEEING_FWHM ' + str(fwhm) + ' -VERBOSE_TYPE ' + verbosetype
+    
+    if masksfx is not None:
+        mskimg = trunfile + '_' + masksfx
+        sexcmd += ' -CHECKIMAGE_TYPE OBJECTS' + ' -CHECKIMAGE_NAME ' + mskimg
+    else:
+        mskimg = "NOT USED"
+        
+    if wtimage is not None:
+        sexcmd += ' -WEIGHT_TYPE '+maptype+' -WEIGHT_IMAGE ' + wtimage + ' '
+        
+    sexcmd += ' ' + filename
+    print(sexcmd)
+    if quiet == 0:
+        print(sexcmd)
+    os.system(sexcmd)
+        
+    if quiet == 0:
+        print('mv -f test.cat ' + starfile)
+    os.system('mv -f test.cat ' + starfile)
+    
+    num = 0    
+    # Calculates seeing with starlike objects
+    print(str(starfile))
+    if os.path.isfile(starfile):
+        variables = np.loadtxt(starfile, unpack=True)
+        num = variables[0, :]
+        flag = variables[5, :]
+        elon = variables[8, :]
+        fwhmim = variables[9, :]
+        keep = (flag == 0) & (elon < elong_cut) & (fwhmim > fwhm) & (fwhmim < 20.0)
+
+        if sum(keep) <= 1: 
+            seepix = None
+        else:
+            seepix = np.median(fwhmim[keep])        
+    else:
+        print('Failed to find Sextractor output file!')
+        seepix = None
+    head = pf.getheader(filename)
+    
+    if masksfx is not None:
+        head['MASKNAME'] = (mskimg, "Object mask image from Sextractor")
+    
+    head['STARFILE'] = (starfile, "Objects file from Sextractor")
+    head['ZEROPT'] = (zeropt, "Photometric zero-point used for Sextractor")
+    if seepix is not None:
+        head['SEEPIX'] = (seepix, "Estimated seeing from Sextractor objects (pix)")
+    head['NSTARS'] = (len(num), "Estimated number of objects from Sextractor")
+    
+    data = pf.getdata(filename)
+    write_fits(filename, data, head)
+    
+    # Removes config files after done
+    os.system('rm -f coadd.param')
+    os.system('rm -f coadd.conv')
+    os.system('rm -f coadd.config')
+    os.system('rm -f default.nnw')
+
+
+def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
+    """
+    NAME:
+        calc_zpt
+    PURPOSE:
+        Find zeropoint using robust scatter
+    INPUTS:
+        catmag  - 2d array with catalog magnitudes catmag[nobs,nstar]
+        obsmag  - 2d array with observed magnitudes obsmag[nobs,nstar]
+        wts     - 2d array with weights wts[nobs,nstar]
+    OPTIONAL KEYWORDS:
+        sigma   - sigma value for how far values can be from robust scatter value
+        plotter - filename to save zeropoint plot
+    OUTPUTS:
+        z2     - zeropoint correction
+        scats  - robust scatter of each observation
+        rmss   - standard deviation (without bad weight points) of each observation
+    EXAMPLE:
+        zpt,scats,rmss = calc_zpt(catmag,obsmag,wts, sigma=3.0)     
+    """
+  
+    # Find difference between catalog and observed magnitudes
+    diff = catmag - obsmag
+    #print(np.shape(obsmag))
+
+    keep = np.where(wts != 0)
+    diff = diff[keep]
+    obsmag = obsmag[keep]
+    catmag = catmag[keep]
+    wts = wts[keep]
+    catmag_0 = np.copy(catmag)
+    diff_0 = np.copy(diff)
+    wts_0 = np.copy(wts)
+
+    # # Sigma clip
+    # med, sig = medclip(diff, 3.0, 2)
+    # #print("Med: {}, Sigma: {}".format(med, sigma))
+    # keep = np.where(abs(diff - med) < 3 * sig)
+    # diff = diff[keep]
+    # obsmag = obsmag[keep]
+    # catmag = catmag[keep]
+    # wts = wts[keep]
+    # catmag_1 = np.copy(catmag)
+    # diff_1 = np.copy(diff)
+    # wts_1 = np.copy(wts)
+
+    # Remove dim sources above provided threshold
+    err_thresh = 0.1
+    wt_thresh = 1 / (err_thresh ** 2)
+    keep = np.where(wts > wt_thresh)
+    diff = np.array([diff[keep]])
+    obsmag = np.array([obsmag[keep]])
+    catmag = np.array([catmag[keep]])
+    wts = np.array([wts[keep]])
+    catmag_2 = np.copy(catmag[0])
+    diff_2 = np.copy(diff[0])
+    wts_2 = np.copy(wts[0])
+
+    # For each observation (i.e. frame) find the weighted difference and store zeropoint
+    # and new magnitude with zeropoint correction
+    nobs, nstars = np.shape(diff)
+    z = []
+    modmag = np.copy(obsmag)
+    for i in np.arange(nobs):
+        indz = sum(diff[i, :]*wts[i, :])/sum(wts[i, :])
+        z += [indz]
+        modmag[i, :] = obsmag[i, :] + indz
+
+    
+    # Find difference of catalog and zeropoint corrected values. Remove any values with 
+    # weights set to 0 or lower.  Calculate robust scatter on these values.  If difference 
+    # with these weights is not within sigma*robust scatter then set weight to 0
+    adiff1 = catmag - modmag
+    scats, rmss = robust_scat(adiff1, wts, nobs, nstars, sigma)
+
+    z2 = []
+    # Recalculate zeropoint using corrected weights (difference still same)        
+    modmag2 = np.copy(obsmag)
+    for i in np.arange(nobs):
+        indz = sum(diff[i, :]*wts[i, :])/sum(wts[i, :])
+        z2 += [indz]
+        modmag2[i, :] = obsmag[i, :] + indz
+    
+    adiff2 = catmag - modmag2
+    # Recalculate robust scatter and rms scatter value on twice zeropoint corrected mags
+    scats, rmss = robust_scat(adiff2, wts, nobs, nstars, sigma)
+    
+    if plotter is not None:
+        plt.plot(catmag_0, diff_0, '*')
+        plt.errorbar(catmag_0, diff_0, yerr=1.0 / np.sqrt(wts_0), fmt='.')
+        plt.title('Before Robust Scatter')
+        plt.ylabel('Difference between Catalog and Observed')
+        plt.xlabel('Catalog magnitude')
+        filename = plotter.replace('zpt', 'zptall')
+        plt.savefig(filename)
+        plt.clf()
+
+        plt.hist(1.0/np.sqrt(wts_0), bins=30)
+        plt.title('Error Hist for All Sources')
+        plt.ylabel('Counts')
+        plt.xlabel('Error in Diff (Obs-Cat)')
+        filename = plotter.replace('zpt', 'zptall_hist')
+        plt.savefig(filename)
+        plt.clf()
+
+        # plt.plot(catmag_1, diff_1, '*')
+        # plt.errorbar(catmag_1, diff_1, yerr=1.0 / np.sqrt(wts_1), fmt='.')
+        # plt.title('Before Robust Scatter with Sigma Clipping')
+        # plt.ylabel('Difference between Catalog and Observed')
+        # plt.xlabel('Catalog magnitude')
+        # filename = plotter.replace('zpt', 'zptall_sigmaclip')
+        # plt.savefig(filename)
+        # plt.clf()
+
+        # plt.plot(catmag_2, diff_2, '*')
+        # plt.errorbar(catmag_2, diff_2, yerr=1.0 / np.sqrt(wts_2), fmt='.')
+        # plt.title('Before Robust Scatter with sigma clip and Dim Removal')
+        # plt.ylabel('Difference between Catalog and Observed')
+        # plt.xlabel('Catalog magnitude')
+        # filename = plotter.replace('zpt', 'zptall_sigmaclip_dimrmv')
+        # plt.savefig(filename)
+        # plt.clf()
+
+        keep = np.where(wts != 0)
+        print(np.shape(catmag[keep]))
+        plt.plot(catmag[keep], adiff2[keep], '*')
+        plt.errorbar(catmag[keep], adiff2[keep], yerr=1.0/np.sqrt(wts[keep]), fmt='.')
+        plt.title('Post Robust Scatter')
+        plt.ylabel('Difference between Catalog and Observed')
+        plt.xlabel('Catalog magnitude')
+        plt.savefig(plotter)
+        plt.clf()
+
+    return z2, scats, rmss
+
+
+def robust_scat(diff, wts, nobs, nstars, sigma):
+    """
+    NAME:
+        robust_scat
+    PURPOSE:
+        Calculate robust scatter and set the weight of those above this limit to 0
+    INPUTS:
+        diff   - values to calculate robust scatter over
+        wts    - weighting (0 is bad)
+        nobs   - number of observations to iterate over
+        nstars - number of stars to iterate over
+        sigma  - sigma*robust scatter that is acceptable
+    OUTPUTS:
+        scats  - robust scatter of each observation
+        rmss   - standard deviation (without bad weight points) of each observation
+    EXAMPLE:
+        robust_scat(diff, wts, 1, 12, 3)
+    """
+    
+    scats = np.zeros(nobs)
+    rmss = np.zeros(nobs)
+    for i in np.arange(nobs):
+        goodwts = np.where(wts[i, :] > 0)
+        if len(goodwts[0]) == 0:
+            continue
+        gooddiff = diff[i, goodwts]
+        
+        # Median absolute deviation
+        scat = 1.48 * np.median(abs(gooddiff-np.median(gooddiff)))
+        for j in np.arange(nstars):
+            if abs(diff[i, j] - np.median(gooddiff)) > (sigma*scat):
+                wts[i, j] = 0
+        scats[i] = scat
+        rmss[i] = np.std(gooddiff)
+    return scats, rmss
+
+
+def identify_matches(queried_stars, found_stars, match_radius=3.):
+    '''
+    Use a kd-tree (3d) to match two lists of stars, using full spherical coordinate distances.
+
+    queried_stars, found_stars: numpy arrays of [ [ra,dec],[ra,dec], ... ] (all in decimal degrees)
+    match_radius: max distance (in arcseconds) allowed to identify a match between two stars.
+
+    Returns two arrays corresponding to queried stars:
+    indices - an array of the indices (in found_stars) of the best match. Invalid (negative) index if no matches found.
+    distances - an array of the distances to the closest match. NaN if no match found.
+    '''
+    # make sure inputs are arrays
+    queried_stars = np.array(queried_stars)
+    found_stars = np.array(found_stars)
+
+    ra1, dec1 = queried_stars[:, 0], queried_stars[:, 1]
+    ra2, dec2 = found_stars[:, 0], found_stars[:, 1]
+    dist = 2.778e-4 * match_radius  # convert arcseconds into degrees
+
+    cosd = lambda x: np.cos(np.deg2rad(x))
+    sind = lambda x: np.sin(np.deg2rad(x))
+    mindist = 2 * sind(dist / 2)
+    getxyz = lambda r, d: [cosd(r) * cosd(d), sind(r) * cosd(d), sind(d)]
+    xyz1 = np.array(getxyz(ra1, dec1))
+    xyz2 = np.array(getxyz(ra2, dec2))
+
+    tree2 = scipy.spatial.KDTree(xyz2.transpose())
+    ret = tree2.query(xyz1.transpose(), 1, 0, 2, mindist)
+    dist, ind = ret
+    dist = np.rad2deg(2 * np.arcsin(dist / 2))
+    ind[np.isnan(dist)] = -9999
+
+    return ind, dist
+
+
+
+
+

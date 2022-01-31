@@ -2,14 +2,8 @@ import glob
 import os
 import astropy.io.fits as pf
 import numpy as np
-import photopipe.reduction.auto.autoproc_depend as apd
-from astropy import wcs
-import re
 import datetime
-from astropy.time import Time
-import sys
-from scipy import interpolate
-from photopipe.photometry.dependencies import get_SEDs
+from photopipe.reduction.auto import cosmics
 
 
 inpipevar = {
@@ -78,7 +72,7 @@ def autopipecrcleanim(pipevar=None):
             print('Cleaning cosmic rays from', f)
 
         # Runs cosmics.py
-        apd.cosmiczap(f, outfile, sigclip=6.0, maxiter=1, verbose=pipevar['verbose'])
+        cosmiczap(f, outfile, sigclip=6.0, maxiter=1, verbose=pipevar['verbose'])
 
     # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
     # sky-*.fits, sfp(PREFIX)*.fits files
@@ -87,3 +81,42 @@ def autopipecrcleanim(pipevar=None):
         os.system('rm -f ' + pipevar['imworkingdir'] + 'fp' + pipevar['prefix'] + '*.fits')
         os.system('rm -f ' + pipevar['imworkingdir'] + '*sky-*.fits')
         os.system('rm -f ' + pipevar['imworkingdir'] + 'sfp' + pipevar['prefix'] + '*.fits')
+
+
+def cosmiczap(filename, outname, sigclip=6.0, maxiter=3, verbose=True):
+    """
+    NAME:
+        cosmiczap
+    PURPOSE:
+        Removes cosmic rays using Laplacian cosmic ray identification written in cosmics.py
+    INPUTS:
+        filename - file or list of files to be cosmic ray zapped
+        outfile  - name of output file
+    OPTIONAL KEYWORDS:
+        sigclip  - sigma to clip
+        maxiter  - maximum number of times to iterate loop
+        verbose  - quiet?
+    EXAMPLE:
+        cosmiczap(filename, outname)
+    DEPENDENCIES:
+        crclean.py (described in http://arxiv.org/pdf/1506.07791v3.pdf)
+    FUTURE IMPROVEMENTS:
+        Read readnoise from header?
+    """
+
+    data, head = cosmics.fromfits(filename, verbose=False)
+
+    gain = head['GAIN']
+    c = cosmics.cosmicsimage(
+        data, gain=gain, readnoise=18, sigclip=sigclip, sigfrac=0.5, objlim=5.0, verbose=False)
+
+    tot = c.run(maxiter=maxiter, verbose=False)
+
+    head['NPZAP'] = (tot, "Num. of pixels zapped by cosmiczap")
+    date = datetime.datetime.now().isoformat()
+    head.add_history('Processed by cosmiczap ' + date)
+
+    if verbose:
+        print('  Zapped %d total affected pixels (%.3f%% of total)' % (tot, tot * 100.0 / np.size(data)))
+
+    cosmics.tofits(outname, c.cleanarray, head, verbose=False)

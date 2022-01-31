@@ -128,4 +128,4 @@ print('reduced_path', reduced_path)
 #          redo=1, start='makesky', nomastersky=False)
 autoproc(datadir=selected_path+os.path.sep,
          imdir=reduced_path+os.path.sep,
-         redo=1, start='zpoint', debug=True, nocrclean=False, nomastersky=False, skyflattarg=True)
+         redo=1, start='stack', debug=True, nocrclean=False, mastersky=True, skyflattarg=True)

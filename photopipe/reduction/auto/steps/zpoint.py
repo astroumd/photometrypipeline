@@ -1,12 +1,15 @@
 import glob
 import os
-import astropy.io.fits as pf
+
 import numpy as np
-import photopipe.reduction.auto.steps.autoproc_depend as apd
+import astropy.io.fits as pf
 from astropy import wcs
+from astropy.time import Time
 import re
 import matplotlib.pyplot as plt
-from astropy.time import Time
+
+import photopipe.reduction.auto.steps.autoproc_depend as apd
+from photopipe.SEDs import get_SEDs as seds
 
 inpipevar = {
     'autoastrocommand': 'autoastrometry', 'getsedcommand': 'get_SEDs', 'sexcommand': 'sex', 'swarpcommand': 'swarp',
@@ -216,14 +219,15 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                 if nocustomcat:
                     # Create catalog star file
                     # (python get_SEDs.py imfile filter catfile USNOB_THRESH alloptstars)
-                    sedcmd = 'python ' + '/opt/project/photopipe/SEDs/get_SEDs_test.py ' + imfile + ' ' + \
-                             thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
+                    # sedcmd = 'python ' + '/opt/project/photopipe/SEDs/get_SEDs_test.py ' + imfile + ' ' + \
+                    #          thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
                     # sedcmd = 'python ' + pipevar['getsedcommand'] + ' ' + imfile + ' ' + \
                     #          thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
 
-                    if pipevar['verbose'] > 0:
-                        print(sedcmd)
-                    os.system(sedcmd)
+                    # if pipevar['verbose'] > 0:
+                    #     print(sedcmd)
+                    # os.system(sedcmd)
+                    seds.zeropoint(imfile, thistargetfilter, catfile, 15, True, qtcmd)
 
                     if not os.path.isfile(catfile):
                         zpts += [float('NaN')]

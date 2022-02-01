@@ -3,6 +3,7 @@ import os
 import astropy.io.fits as pf
 import numpy as np
 import photopipe.reduction.auto.steps.autoproc_depend as apd
+from photopipe.reduction.astrom import vlt_autoastrometry as autoastro
 
 inpipevar = {
     'autoastrocommand': 'autoastrometry', 'getsedcommand': 'get_SEDs', 'sexcommand': 'sex', 'swarpcommand': 'swarp',
@@ -68,17 +69,18 @@ def autopipeastrometry(pipevar=None):
 
         if 'flat' in targ:
             continue
-
-        cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat) + ' -r ' + str(ascen) + ' -d ' + str(decl)
+        # filename, pixelscale=-1, pa=-999, inv=0, uncpa=-1, userra=-999, userdec=-999, minfwhm=1.5, maxfwhm=20,
+        # maxellip=0.5, boxsize=-1, maxrad=-1, tolerance=0.010, catalog='', nosolve=0, overwrite=False, outfile='',
+        # saturation=-1, quiet=False
+        # cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat) + ' -r ' + str(ascen) + ' -d ' + str(decl)
         # cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat)
-
         # Run direct astrometry
-        if pipevar['verbose'] > 0:
-            os.system(cmd)
-            print(cmd)
-        else:
-            os.system(cmd + ' -q')
-
+        autoastro.autoastrometry(f, saturation=sat, userdec=decl, userra=ascen, quiet=(not pipevar['verbose']))
+        # if pipevar['verbose'] > 0:
+        #     os.system(cmd)
+        #     print(cmd)
+        # else:
+        #     os.system(cmd + ' -q')
         if not os.path.isfile(outfile):
             pipevar['fullastrofail'] += ' ' + f
 

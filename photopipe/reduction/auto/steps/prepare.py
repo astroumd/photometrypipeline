@@ -102,7 +102,6 @@ def autopipeprepare(pipevar=None):
     else:
         print('Did not find any BIAS files! Check your data directory path!')
 
-
     # Finds any master dark files and filter name from header keyword
     # Assumes camera name is in header under CAMERA
     darkfiles = apd.findcals(pipevar, 'dark*.fits')
@@ -280,6 +279,7 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
 
         if verbose > 0:
             print(pipe_file, '-> ', outname)
+
 
 def find_sats(fname, data, header):
     sat = header['SATURATE']

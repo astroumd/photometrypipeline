@@ -4,6 +4,8 @@ import astropy.io.fits as pf
 import numpy as np
 import photopipe.reduction.auto.steps.autoproc_depend as apd
 from photopipe.reduction.astrom import vlt_autoastrometry as autoastro
+from photopipe.reduction.dependencies import ldac
+from photopipe.reduction.astrom.astrometrysources import GaiaAstrometry
 
 inpipevar = {
     'autoastrocommand': 'autoastrometry', 'getsedcommand': 'get_SEDs', 'sexcommand': 'sex', 'swarpcommand': 'swarp',
@@ -159,7 +161,8 @@ def autopipeastrometry(pipevar=None):
         os.system('rm -f ' + pipevar['imworkingdir'] + 'zsfp' + pipevar['prefix'] + '*.fits')
 
 
-def astrometry(atfimages, scamprun=1, pipevar=None):
+# FIXME nogaia should go in pipevar
+def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False):
     """
     NAME:
         astrometry
@@ -204,11 +207,23 @@ def astrometry(atfimages, scamprun=1, pipevar=None):
         if head['ASTR_NUM'] > 0:
             acatlist += ' ' + trunfile + '.cat'
 
-        if sourcecat in scat:
-            cat_u = scat[sourcecat]
+        if nogaia is True:
+            # Catalog to use, if not Gaia
+            if sourcecat in scat:
+                cat_u = scat[sourcecat]
+            else:
+                print('No valid catalogs available for SCAMP, check that \
+vlt_autoastrometry.py ran correctly')
+                return
         else:
-            print('No valid catalogs available for SCAMP, check that vlt_autoastrometry.py ran correctly')
-            return
+            # Prepare the Gaia catalog
+            ra_center = head["CRVAL1"]
+            dec_center = head["CRVAL2"]
+            box = np.max([head["NAXIS1"], head["NAXIS2"]]) * head["PIXSCALE"]
+            # Add 10% to the box size for the catalog search
+            box += box * 0.1
+            gaiacat = cfile.replace(".fits", "_gaia.ldac")
+            prepare_gaia_catalog(ra_center, dec_center, box, gaiacat)
 
     if scamprun == 1:
         loose = ' -MOSAIC_TYPE LOOSE'
@@ -222,19 +237,26 @@ def astrometry(atfimages, scamprun=1, pipevar=None):
         except:
             distdeg = 3
 
+    # Build up the scamp command depending on a number of conditions
+    scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + str(distdeg) + \
+                   loose + " -SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
+                   "-CHECKPLOT_DEV NULL -WRITE_XML N"
     if pipevar['verbose'] > 0:
-        scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + str(distdeg) + \
-                   loose + " -ASTREF_CATALOG " + cat_u + \
-                   " -SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
-                   "-CHECKPLOT_DEV NULL -WRITE_XML N -VERBOSE_TYPE FULL " + \
-                   acatlist
-        print(scampcmd)
+        scampcmd += " -VERBOSE_TYPE FULL "
     else:
-        scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + str(distdeg) + \
-                   loose + " -ASTREF_CATALOG " + cat_u + \
-                   " -SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
-                   "-CHECKPLOT_DEV NULL -WRITE_XML N -VERBOSE_TYPE QUIET " + \
-                   acatlist
+        scampcmd += " -VERBOSE_TYPE QUIET "
+    if nogaia is True:
+        # Use scamp internal catalogs
+        scampcmd += " -ASTREF_CATALOG " + cat_u + " "
+    else:
+        # Use gaia downloaded catalog
+        scampcmd += " -ASTREF_CATALOG FILE -ASTREFCAT_NAME " + gaiacat + \
+                " -ASTREFCENT_KEYS RA_ICRS,DE_ICRS " + \
+                " -ASTREFERR_KEYS e_RA_ICRS,e_DE_ICRS -ASTREFMAG_KEY Gmag "
+    scampcmd += " " + acatlist
+
+    if pipevar['verbose'] > 0:
+        print(scampcmd)
 
     os.system(scampcmd)
     os.system('rm ' + acatlist)
@@ -256,3 +278,26 @@ def astrometry(atfimages, scamprun=1, pipevar=None):
             del him['FLXSCALE']
             apd.write_fits(cfile, data, him)
 
+
+def prepare_gaia_catalog(ra, dec, field_size, out_filename):
+    """Query Gaia DR2 and save a table to do the astrometric calibration
+
+    Parameters
+    ----------
+    ra float
+        Right Ascension of the center of the field in degrees
+    dec float
+        Declination of the center of the field in degrees
+    field_size float
+        side of the field, in arcsec
+    out_filename str
+        file name for the FITS LDAC table to be saved
+
+    The table resulting from the query is saved in FITS LDAC format
+    """
+    # Create a GaiaAstrometry object
+    gaia = GaiaAstrometry((ra, dec), field_size)
+    # Gaia sources table for astrometry
+    t_gaia = gaia.query_gaia_astrom()
+    # Save the table in FITS LDAC format
+    ldac.save_table_as_ldac(t_gaia, out_filename)

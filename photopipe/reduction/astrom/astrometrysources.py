@@ -386,3 +386,48 @@ def getcatalog(catalog, ra, dec, boxsize, rawidth, decwidth, minmag=8.0, maxmag=
     # Sort by magnitude
     # catlist.sort(astrometrystats.magcomp)
     return catlist
+
+
+class GaiaAstrometry:
+    """
+    A class to provide a Gaia catalog for astrometric calibration.
+    The main function produces, for any requested field,
+    a catalog of sources from Gaia DR2
+
+    Standard usage:
+     gaia = GaiaAstrometry( (ra, dec), field_size )  # with ra, dec 
+                in degrees and field_size is the side of the field in arcsec
+     t_gaia = gaia.query_gaia_astrom()
+    """
+
+    def __init__(self, field_center, field_size):
+        self.field_ra = field_center[0]
+        self.field_dec = field_center[1]
+        self.boxsize = field_size/60. * u.arcmin
+        # Catalog: Gaia DR2
+        self.catID = "I/345/gaia2"
+
+    def query_gaia_astrom(self):
+        """
+        Query Vizier server for Gaia sources found in a box with center
+        self.field_ra, self.field_dec (in deg) and width
+        self.field_width (in arcsec).
+        Returns a table (if objects found) or None (if not)
+        """
+        # Create a SkyCoord object
+        coords = coord.SkyCoord(ra=self.field_ra*u.deg,
+                                dec=self.field_dec*u.deg)
+        # Select only those columns with relevant info for Scamp
+        columns_select = ['RA_ICRS', 'e_RA_ICRS', 'DE_ICRS', 'e_DE_ICRS',
+                          'Source', 'Gmag', 'e_Gmag']
+        # Vizier object
+        v = Vizier(columns=columns_select, row_limit=-1)
+        # Query Vizier
+        t_result = v.query_region(coords, width=self.boxsize,
+                                height=self.boxsize,
+                                catalog=self.catID)
+        # Check if the sources were found
+        if len(t_result[self.catID]) == 0:
+            return None
+        else:
+            return t_result[self.catID]

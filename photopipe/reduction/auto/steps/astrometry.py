@@ -75,9 +75,12 @@ def autopipeastrometry(pipevar=None):
         # maxellip=0.5, boxsize=-1, maxrad=-1, tolerance=0.010, catalog='', nosolve=0, overwrite=False, outfile='',
         # saturation=-1, quiet=False
         # cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat) + ' -r ' + str(ascen) + ' -d ' + str(decl)
-        # cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat)
+        #cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat)
         # Run direct astrometry
-        autoastro.autoastrometry(f, saturation=sat, userdec=decl, userra=ascen, quiet=(not pipevar['verbose']))
+
+        # FIXME bring it back?
+        ##autoastro.autoastrometry(f, saturation=sat, userdec=decl, userra=ascen, quiet=(not pipevar['verbose']))
+
         # if pipevar['verbose'] > 0:
         #     os.system(cmd)
         #     print(cmd)
@@ -107,6 +110,13 @@ def autopipeastrometry(pipevar=None):
     if len(afiles) == 0:
         afiles = glob.glob(pipevar['imworkingdir'] + 'asfp' + pipevar['prefix'] + '*.fits')
 
+    # FIXME let's use those without 'a' in front
+    if len(afiles) == 0:
+        afiles = glob.glob(pipevar['imworkingdir'] + 'zsfp' + pipevar['prefix'] + '*.fits')
+        # FIXME create a copy to avoid re-zapping all the time
+        for af in afiles:
+            os.system("cp " + af + " " + af.replace("zsfp", "azsfp"))
+        afiles = glob.glob(pipevar['imworkingdir'] + 'azsfp' + pipevar['prefix'] + '*.fits')
     if len(afiles) == 0:
         print('Did not find any files! Check your data directory path!')
         return
@@ -138,8 +148,9 @@ def autopipeastrometry(pipevar=None):
                 continue
 
             # If scamp has already been run, skip
+            #FIXME bring back the ASTIRMS1 key
             try:
-                test = head['ASTIRMS1']
+                test = head['ASTIRMSXXX']
                 print('Skipping scamp astrometry for: ', atarg, afilt, ' Files already exist')
                 print('head["ASTIRMS1"]: {}'.format(test))
                 continue
@@ -184,7 +195,10 @@ def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False):
     for cfile in atfimages:
         head = pf.getheader(cfile)
         pixscale = head['PIXSCALE']
-        sourcecat = head['ASTR_CAT']
+        try:
+            sourcecat = head['ASTR_CAT']
+        except KeyError:
+            sourcecat = ''
 
         trunfile = os.path.splitext(cfile)[0]
 
@@ -204,8 +218,9 @@ def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False):
 
         os.system(sexcom)
 
-        if head['ASTR_NUM'] > 0:
-            acatlist += ' ' + trunfile + '.cat'
+        # FIXME what is this ASTR_NUM??
+        ##if head['ASTR_NUM'] > 0:
+        acatlist += ' ' + trunfile + '.cat'
 
         if nogaia is True:
             # Catalog to use, if not Gaia
@@ -238,9 +253,11 @@ vlt_autoastrometry.py ran correctly')
             distdeg = 3
 
     # Build up the scamp command depending on a number of conditions
-    scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + str(distdeg) + \
-                   loose + " -SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
-                   "-CHECKPLOT_DEV NULL -WRITE_XML N"
+    # FIXME
+    scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + \
+                str(distdeg) + loose + \
+                "-SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
+                "-CHECKPLOT_DEV NULL -WRITE_XML N"
     if pipevar['verbose'] > 0:
         scampcmd += " -VERBOSE_TYPE FULL "
     else:
@@ -254,7 +271,6 @@ vlt_autoastrometry.py ran correctly')
                 " -ASTREFCENT_KEYS RA_ICRS,DE_ICRS " + \
                 " -ASTREFERR_KEYS e_RA_ICRS,e_DE_ICRS -ASTREFMAG_KEY Gmag "
     scampcmd += " " + acatlist
-
     if pipevar['verbose'] > 0:
         print(scampcmd)
 
@@ -275,7 +291,8 @@ vlt_autoastrometry.py ran correctly')
         if scamprun != 1:
             him = pf.getheader(cfile)
             data = pf.getdata(cfile)
-            del him['FLXSCALE']
+            # FIXME
+            #del him['FLXSCALE']
             apd.write_fits(cfile, data, him)
 
 
@@ -300,4 +317,16 @@ def prepare_gaia_catalog(ra, dec, field_size, out_filename):
     # Gaia sources table for astrometry
     t_gaia = gaia.query_gaia_astrom()
     # Save the table in FITS LDAC format
-    ldac.save_table_as_ldac(t_gaia, out_filename)
+    ldac.save_table_as_ldac(t_gaia, out_filename, overwrite=True)
+    # FIXME remove: region file
+    from photopipe.reduction.astrom.vlt_autoastrometry import writeregionfile
+    filename = out_filename.replace(".ldac", ".reg")
+    objlist = []
+    for l in t_gaia:
+        objlist.append(sourceob(l['RA_ICRS'], l['DE_ICRS']))
+    writeregionfile(filename, objlist)
+
+class sourceob:
+    def __init__(self, ra, dec):
+        self.ra = ra
+        self.dec = dec 

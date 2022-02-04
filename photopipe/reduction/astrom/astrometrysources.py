@@ -12,6 +12,9 @@ except ModuleNotFoundError:
     sys.path.insert(0, file_path)
     import astrometrystats
 
+from astropy.coordinates import SkyCoord
+import astropy.units as u
+from astroquery.vizier import Vizier
 
 ########################################
 class Obj:
@@ -415,8 +418,8 @@ class GaiaAstrometry:
         Returns a table (if objects found) or None (if not)
         """
         # Create a SkyCoord object
-        coords = coord.SkyCoord(ra=self.field_ra*u.deg,
-                                dec=self.field_dec*u.deg)
+        coords = SkyCoord(ra=self.field_ra*u.deg,
+                          dec=self.field_dec*u.deg)
         # Select only those columns with relevant info for Scamp
         columns_select = ['RA_ICRS', 'e_RA_ICRS', 'DE_ICRS', 'e_DE_ICRS',
                           'Source', 'Gmag', 'e_Gmag']

@@ -6,6 +6,7 @@ import photopipe.reduction.auto.steps.autoproc_depend as apd
 from photopipe.reduction.astrom import vlt_autoastrometry as autoastro
 from photopipe.reduction.dependencies import ldac
 from photopipe.reduction.astrom.astrometrysources import GaiaAstrometry
+from photopipe.reduction.astrom.vlt_autoastrometry import writeregionfile
 
 inpipevar = {
     'autoastrocommand': 'autoastrometry', 'getsedcommand': 'get_SEDs', 'sexcommand': 'sex', 'swarpcommand': 'swarp',
@@ -78,8 +79,12 @@ def autopipeastrometry(pipevar=None):
         #cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat)
         # Run direct astrometry
 
-        # FIXME bring it back?
-        ##autoastro.autoastrometry(f, saturation=sat, userdec=decl, userra=ascen, quiet=(not pipevar['verbose']))
+        if pipevar['nogaia'] is True:
+            # FIXME Joe: this breaks, as it is, you may want to look into it
+            # Note that we bypass this step when using Gaia
+            autoastro.autoastrometry(f, saturation=sat, userdec=decl,
+                                     userra=ascen,
+                                     quiet=(not pipevar['verbose']))
 
         # if pipevar['verbose'] > 0:
         #     os.system(cmd)
@@ -104,19 +109,27 @@ def autopipeastrometry(pipevar=None):
     # then Scamp will solve by comparing reference catalog (currently set by default to
     # SDSS) to sources found by sextractor. Adds WCS corrections and second astrometry
     # parameters to header
-    afiles = glob.glob(pipevar['imworkingdir'] + 'azsfp' + pipevar['prefix'] + '*.fits')
-
+    afiles = glob.glob(pipevar['imworkingdir'] + 'azsfp' + pipevar['prefix'] +\
+                       '*.fits')
     # If no files, look for those that were not cosmic ray zapped
     if len(afiles) == 0:
-        afiles = glob.glob(pipevar['imworkingdir'] + 'asfp' + pipevar['prefix'] + '*.fits')
+        afiles = glob.glob(pipevar['imworkingdir'] + 'asfp' + \
+                           pipevar['prefix'] + '*.fits')
 
-    # FIXME let's use those without 'a' in front
-    if len(afiles) == 0:
-        afiles = glob.glob(pipevar['imworkingdir'] + 'zsfp' + pipevar['prefix'] + '*.fits')
-        # FIXME create a copy to avoid re-zapping all the time
-        for af in afiles:
-            os.system("cp " + af + " " + af.replace("zsfp", "azsfp"))
-        afiles = glob.glob(pipevar['imworkingdir'] + 'azsfp' + pipevar['prefix'] + '*.fits')
+    if len(afiles) == 0 and pipevar['nogaia'] is False:
+        # Create a copy of the files if using Gaia
+        afiles = glob.glob(pipevar['imworkingdir'] + 'zsfp' + \
+                           pipevar['prefix'] + '*.fits')
+        if len(afiles) > 0:
+            for af in afiles:
+                os.system("cp " + af + " " + af.replace("zsfp", "azsfp"))
+        else:
+            afiles = glob.glob(pipevar['imworkingdir'] + 'sfp' + \
+                               pipevar['prefix'] + '*.fits')
+            if len(afiles) > 0:
+                for af in afiles:
+                    os.system("cp " + af + " " + af.replace("sfp", "asfp"))
+
     if len(afiles) == 0:
         print('Did not find any files! Check your data directory path!')
         return
@@ -148,19 +161,20 @@ def autopipeastrometry(pipevar=None):
                 continue
 
             # If scamp has already been run, skip
-            #FIXME bring back the ASTIRMS1 key
             try:
-                test = head['ASTIRMSXXX']
+                test = head['ASTIRMS1']
                 print('Skipping scamp astrometry for: ', atarg, afilt, ' Files already exist')
                 print('head["ASTIRMS1"]: {}'.format(test))
                 continue
-            except:
+            except KeyError:
                 # Run sextractor to find sources, then use those catalogs to run scamp
                 # with loose fitting constraints
-                astrometry(atfimages, scamprun=1, pipevar=pipevar)
+                astrometry(atfimages, scamprun=1, pipevar=pipevar,
+                           nogaia=pipevar['nogaia'])
 
                 # Do same thing again but with more stringent scamp parameters
-                astrometry(atfimages, scamprun=2, pipevar=pipevar)
+                astrometry(atfimages, scamprun=2, pipevar=pipevar,
+                           nogaia=pipevar['nogaia'])
 
     # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
     # sky-*.fits, sfp(PREFIX)*.fits, zsfp(PREFIX)*.fits files
@@ -172,7 +186,6 @@ def autopipeastrometry(pipevar=None):
         os.system('rm -f ' + pipevar['imworkingdir'] + 'zsfp' + pipevar['prefix'] + '*.fits')
 
 
-# FIXME nogaia should go in pipevar
 def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False):
     """
     NAME:
@@ -185,12 +198,16 @@ def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False):
                     other run will look for high distortion parameters, if it
                     finds it will use distortion degree 7, otherwise 3 (will also cut out
                     FLXSCALE on runs after 1)
+        nogaia    - if False, the Gaia catalog will be downloaded and used for
+                    the astrometric calibration. If True, the default scamp internal
+                    catalogs will be used instead
     EXAMPLE:
         astrometry(atfimages, scamprun=2, pipevar=pipevar)
     FUTURE IMPROVEMENTS:
         Better difference between scamp runs.
     """
-    acatlist = ''
+    acatlist = []
+    gaiacatlist = []
     scat = {'sdss': 'SDSS-R7', 'tmpsc': '2MASS', 'tmc': '2MASS', 'ub2': 'USNO-B1'}
     for cfile in atfimages:
         head = pf.getheader(cfile)
@@ -218,9 +235,9 @@ def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False):
 
         os.system(sexcom)
 
-        # FIXME what is this ASTR_NUM??
+        # FIXME what is this ASTR_NUM? Are we sure we want this condition?
         ##if head['ASTR_NUM'] > 0:
-        acatlist += ' ' + trunfile + '.cat'
+        acatlist.append(trunfile + '.cat')
 
         if nogaia is True:
             # Catalog to use, if not Gaia
@@ -238,7 +255,12 @@ vlt_autoastrometry.py ran correctly')
             # Add 10% to the box size for the catalog search
             box += box * 0.1
             gaiacat = cfile.replace(".fits", "_gaia.ldac")
+            gaiacatlist.append(gaiacat)
+            if pipevar['verbose'] > 0:
+                print("Preparing the Gaia catalog for " + cfile)
             prepare_gaia_catalog(ra_center, dec_center, box, gaiacat)
+            if pipevar['verbose'] > 0:
+                print("Done, Gaia catalog prepared.")
 
     if scamprun == 1:
         loose = ' -MOSAIC_TYPE LOOSE'
@@ -253,7 +275,6 @@ vlt_autoastrometry.py ran correctly')
             distdeg = 3
 
     # Build up the scamp command depending on a number of conditions
-    # FIXME
     scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + \
                 str(distdeg) + loose + \
                 "-SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
@@ -265,17 +286,28 @@ vlt_autoastrometry.py ran correctly')
     if nogaia is True:
         # Use scamp internal catalogs
         scampcmd += " -ASTREF_CATALOG " + cat_u + " "
+        scampcmd += " " + " ".join(acatlist)
+        if pipevar['verbose'] > 0:
+            print(scampcmd)
+
+        os.system(scampcmd)
+        os.system('rm ' + " ".join(acatlist))
     else:
         # Use gaia downloaded catalog
-        scampcmd += " -ASTREF_CATALOG FILE -ASTREFCAT_NAME " + gaiacat + \
-                " -ASTREFCENT_KEYS RA_ICRS,DE_ICRS " + \
-                " -ASTREFERR_KEYS e_RA_ICRS,e_DE_ICRS -ASTREFMAG_KEY Gmag "
-    scampcmd += " " + acatlist
-    if pipevar['verbose'] > 0:
-        print(scampcmd)
-
-    os.system(scampcmd)
-    os.system('rm ' + acatlist)
+        scampcmd_base = scampcmd
+        # Better results if we iterate over the images
+        for gaiacat, acat in zip(gaiacatlist, acatlist):
+            scampcmd = scampcmd_base + " -ASTREF_CATALOG FILE " + \
+                    "-ASTREFCAT_NAME " + gaiacat + \
+                    " -ASTREFCENT_KEYS RA_ICRS,DE_ICRS " + \
+                    " -ASTREFERR_KEYS e_RA_ICRS,e_DE_ICRS -ASTREFMAG_KEY Gmag "
+            scampcmd += " " + acat
+            if pipevar['verbose'] > 0:
+                print("Scamp run #" + str(scamprun) + " for image " + cfile)
+                print(scampcmd)
+            os.system(scampcmd)
+        # Remove temporary catalogs
+        os.system('rm ' + " ".join(acatlist))
 
     # Adds header information to file and delete extra files
     for cfile in atfimages:
@@ -285,18 +317,19 @@ vlt_autoastrometry.py ran correctly')
             os.system('missfits -WRITE_XML N ' + cfile)
         else:
             os.system('missfits -WRITE_XML N -VERBOSE_TYPE QUIET' + cfile)
-
         os.system('rm ' + trunfile + '.head ' + cfile + '.back')
 
         if scamprun != 1:
             him = pf.getheader(cfile)
             data = pf.getdata(cfile)
-            # FIXME
-            #del him['FLXSCALE']
+            try:
+                del him['FLXSCALE']
+            except KeyError:
+                pass
             apd.write_fits(cfile, data, him)
 
 
-def prepare_gaia_catalog(ra, dec, field_size, out_filename):
+def prepare_gaia_catalog(ra, dec, field_size, out_file, write_region=True):
     """Query Gaia DR2 and save a table to do the astrometric calibration
 
     Parameters
@@ -307,7 +340,7 @@ def prepare_gaia_catalog(ra, dec, field_size, out_filename):
         Declination of the center of the field in degrees
     field_size float
         side of the field, in arcsec
-    out_filename str
+    out_file str
         file name for the FITS LDAC table to be saved
 
     The table resulting from the query is saved in FITS LDAC format
@@ -317,16 +350,17 @@ def prepare_gaia_catalog(ra, dec, field_size, out_filename):
     # Gaia sources table for astrometry
     t_gaia = gaia.query_gaia_astrom()
     # Save the table in FITS LDAC format
-    ldac.save_table_as_ldac(t_gaia, out_filename, overwrite=True)
-    # FIXME remove: region file
-    from photopipe.reduction.astrom.vlt_autoastrometry import writeregionfile
-    filename = out_filename.replace(".ldac", ".reg")
-    objlist = []
-    for l in t_gaia:
-        objlist.append(sourceob(l['RA_ICRS'], l['DE_ICRS']))
-    writeregionfile(filename, objlist)
+    ldac.save_table_as_ldac(t_gaia, out_file, overwrite=True)
+    # Write a region file
+    if write_region is True:
+        filename = out_file.replace(".ldac", ".reg")
+        objlist = []
+        for l in t_gaia:
+            objlist.append(SourceCoords(l['RA_ICRS'], l['DE_ICRS']))
+        writeregionfile(filename, objlist)
 
-class sourceob:
+class SourceCoords:
+    # Simple class for the source coordinates
     def __init__(self, ra, dec):
         self.ra = ra
         self.dec = dec 

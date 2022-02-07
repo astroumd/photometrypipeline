@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 def autoproc(
         datadir=None, imdir=None, caldir=None, start=None, stop=None, only=None, step=None,
         nocrclean=False, mastersky=True, skyflattarg=True, redo=False, quiet=False, rmifiles=False,
-        customcat=None, customcatfilt=None, debug=False
+        customcat=None, customcatfilt=None, nogaia=False, debug=False
 ):
     """
     NAME:
@@ -48,6 +48,8 @@ def autoproc(
         customcatfilt - Filters relevant to custom catalog file (all other filters will
                         use get_SEDs.py to calculate catalog from 2MASS + (SDSS or APASS
                         or USNOB1) in that order
+        nogaia        - Do not use the Gaia catalog for astrometric calibration; use
+                        vlt_autoastrometry code and scamp internal catalogs instead
 
     ADDITIONAL OPTIONS:
         If any of the following files are found in the directory where autoproc
@@ -168,7 +170,7 @@ def autoproc(
         'sexcommand': 'sex', 'swarpcommand': 'swarp', 'rmifiles': 0,
         'prefix': '', 'datadir': '', 'imworkingdir': '', 'overwrite': 0, 'verbose': 1,
         'flatfail': '', 'fullastrofail': '', 'pipeautopath': '', 'refdatapath': '', 'defaultspath': '',
-        'caldir': '.', 'debug': False
+        'caldir': '.', 'nogaia': nogaia, 'debug': False
     }
 
     if imdir is not None:

@@ -4,6 +4,7 @@ WORKDIR /work
 
 RUN pip install astride
 RUN conda install -c conda-forge astroquery
+RUN pip install astroscrappy
 
 #RUN apt-get install -y vim nano emacs gedit
 

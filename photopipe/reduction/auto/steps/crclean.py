@@ -4,6 +4,7 @@ import astropy.io.fits as pf
 import numpy as np
 import datetime
 from photopipe.reduction.auto import cosmics
+import astroscrappy
 
 
 inpipevar = {
@@ -52,7 +53,7 @@ def autopipecrcleanim(pipevar=None):
 
         try:
             target = head['TARGNAME']
-        except:
+        except KeyError:
             print('Requires header keywords: TARGNAME. Check file.')
             continue
 
@@ -72,7 +73,7 @@ def autopipecrcleanim(pipevar=None):
             print('Cleaning cosmic rays from', f)
 
         # Runs cosmics.py
-        cosmiczap(f, outfile, sigclip=6.0, maxiter=1, verbose=pipevar['verbose'])
+        cosmiczap(f, outfile, sigclip=6.0, maxiter=3, verbose=pipevar['verbose'])
 
     # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
     # sky-*.fits, sfp(PREFIX)*.fits files
@@ -83,10 +84,10 @@ def autopipecrcleanim(pipevar=None):
         os.system('rm -f ' + pipevar['imworkingdir'] + 'sfp' + pipevar['prefix'] + '*.fits')
 
 
-def cosmiczap(filename, outname, sigclip=6.0, maxiter=3, verbose=True):
+def cosmiczap_slow(filename, outname, sigclip=6.0, maxiter=3, verbose=True):
     """
     NAME:
-        cosmiczap
+        cosmiczap_slow
     PURPOSE:
         Removes cosmic rays using Laplacian cosmic ray identification written in cosmics.py
     INPUTS:
@@ -120,3 +121,51 @@ def cosmiczap(filename, outname, sigclip=6.0, maxiter=3, verbose=True):
         print('  Zapped %d total affected pixels (%.3f%% of total)' % (tot, tot * 100.0 / np.size(data)))
 
     cosmics.tofits(outname, c.cleanarray, head, verbose=False)
+
+
+def cosmiczap(filename, outname, sigclip=6.0, maxiter=4, verbose=True):
+    """
+    NAME:
+        cosmiczap
+    PURPOSE:
+        Removes cosmic rays using Laplacian cosmic ray identification using the
+        astroscrappy package https://github.com/astropy/astroscrappy
+        cite https://zenodo.org/record/1482019
+        cite http://adsabs.harvard.edu/abs/2001PASP..113.1420V
+    INPUTS:
+        filename - file or list of files to be cosmic ray zapped
+        outfile  - name of output file
+    OPTIONAL KEYWORDS:
+        sigclip  - sigma to clip
+        maxiter  - maximum number of times to iterate loop
+        verbose  - higher verbosity
+    EXAMPLE:
+        cosmiczap(filename, outname)
+    DEPENDENCIES:
+        crclean.py (described in http://arxiv.org/pdf/1506.07791v3.pdf)
+    FUTURE IMPROVEMENTS:
+        Read readnoise from header? Not present.
+        It would be useful to have the median FWHM in the header too
+    """
+    data, head = cosmics.fromfits(filename, verbose=False)
+
+    # Gain, saturation level from the header
+    gain = head['GAIN']
+    satlevel = head['SATURATE']
+
+    # Run astroscrappy
+    mask, data_clean = astroscrappy.detect_cosmics(data, inmask=None, inbkg=None, invar=None, sigclip=sigclip, sigfrac=0.3, objlim=5.0, gain=gain, readnoise=18, satlevel=satlevel, niter=maxiter, sepmed=True, cleantype='meanmask', fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=verbose)
+
+    # Total number of zapped pixels
+    tot = np.count_nonzero(mask)
+    head['NPZAP'] = (tot, "Num. of pixels zapped by cosmiczap")
+
+    # Time stamp
+    date = datetime.datetime.now().isoformat()
+    head.add_history('Processed by cosmiczap_astroscrappy ' + date)
+
+    if verbose:
+        print('  Zapped %d total affected pixels (%.4f%% of total)' % (tot, tot * 100.0 / np.size(data)))
+
+    # Write to disk
+    cosmics.tofits(outname, data_clean, head, verbose=False)

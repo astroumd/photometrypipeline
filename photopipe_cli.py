@@ -154,6 +154,10 @@ parser.add_argument(
     '''
 
 )
+parser.add_argument(
+    '--nogaia', action="store_true", default=False,
+    help="Do not use Gaia catalog for astrometric calibration"
+)
 parser.add_argument('--debug', help='turn on debug outputs', default=False, action='store_true')
 args = parser.parse_args()
 data_dir = args.datadir + '/'
@@ -234,6 +238,7 @@ def autoproc_cli():
         'only': None, 'step': args.step, 'mastersky': not args.nomastersky, 'skyflattarg': not args.noskyflattarg,
         'redo': args.redo, 'quiet': args.quiet, 'rmifiles': args.rmifiles,
         'customcat': args.customcat, 'customcatfilt': str_list_to_list(args.customcatfilt),
+        'nogaia': args.nogaia,
     }
     autoproc(**autoproc_kwargs)
 

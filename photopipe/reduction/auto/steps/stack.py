@@ -86,11 +86,11 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
 
         thistargetfilts = set(filefilts[thistarget])
 
-        # Find files that have the same target and same filter and store information
+        # Find files that have the same target and same band_filter and store information
         # on the exposure times and airmass. Only use good Scamp astrometric fit files
         for thistargetfilter in thistargetfilts:
             stacki = (filetargs == targ) & (filefilts == thistargetfilter)
-            # stacki = (filetargs == targ) & (filefilts == filter) &\
+            # stacki = (filetargs == targ) & (filefilts == band_filter) &\
             #          (filearms1 < 2.0e-4) & (filearms1 > 5.0e-6) &\
             #          (filearms2 < 2.0e-4) & (filearms2 > 5.0e-6)
 
@@ -226,12 +226,12 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             else:
                 nocustomcat = True
 
-            # If custom catalog not provided, catalog doesn't include filter, or
+            # If custom catalog not provided, catalog doesn't include band_filter, or
             # no objects from catalog found in image then
             # use get_SEDs.py to make catalog using 2MASS + (SDSS or APASS or USNOB1)
             if nocustomcat:
                 # Create catalog star file
-                # (python get_SEDs.py imfile filter catfile USNOB_THRESH alloptstars)
+                # (python get_SEDs.py imfile band_filter catfile USNOB_THRESH alloptstars)
                 sedcmd = 'python ' + '/opt/project/photopipe/SEDs/get_SEDs_test.py ' + imfile + ' ' + \
                          thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
                 # sedcmd = 'python ' + pipevar['getsedcommand'] + ' ' + imfile + ' ' + \
@@ -250,7 +250,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                 refmag = cvars[catdict[thistargetfilter], :]
                 mode = cvars[catdict['mode'], :]
 
-            # Find catalog filter values and only cutoff values of actual detections
+            # Find catalog band_filter values and only cutoff values of actual detections
             goodind = (mode != -1) & (refmag < 90.0) & (0 < refmag) & (flag < 8) & (elon <= 1.3)
 
             refmag = refmag[goodind]

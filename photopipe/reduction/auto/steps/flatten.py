@@ -17,7 +17,7 @@ def autopipeimflatten(pipevar=None):
     NAME:
         autopipeflatten
     PURPOSE:
-        Flatten data using flat with matching filter name
+        Flatten data using flat with matching band_filter name
     OPTIONAL KEYWORDS:
         pipevar  - input pipeline parameters (typically set in ratautoproc.pro,
                    but can be set to default)
@@ -41,7 +41,7 @@ def autopipeimflatten(pipevar=None):
         print('Did not find any files! Check your data directory path!')
         return
 
-    # If there are flats, then grab the filter from each of them,
+    # If there are flats, then grab the band_filter from each of them,
     # otherwise end program
     flatfilts = []
     if len(flats) > 0:
@@ -50,12 +50,12 @@ def autopipeimflatten(pipevar=None):
             head_filter = head['FILTER']
             flatfilts += [head_filter]
     else:
-        print('No flats found for any filter!')
+        print('No flats found for any band_filter!')
         return
 
     # Create outfile name and check to see if outfile already exists.  If it doesn't or
-    # overwrite enabled then take filter from file and find where the flat filter matches
-    # If no flats match filter, store in pipevar.flatfail, otherwise run flatproc on file
+    # overwrite enabled then take band_filter from file and find where the flat band_filter matches
+    # If no flats match band_filter, store in pipevar.flatfail, otherwise run flatproc on file
     for f in files:
         print(f)
         fileroot = os.path.basename(f)
@@ -69,7 +69,7 @@ def autopipeimflatten(pipevar=None):
             try:
                 flatfileno = flatfilts.index(head_filter)
             except:
-                print('Flat field not found for ' + f + ' (filter=' + head_filter + ')')
+                print('Flat field not found for ' + f + ' (band_filter=' + head_filter + ')')
                 pipevar['flatfail'] += ' ' + f
                 continue
 
@@ -93,7 +93,7 @@ def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
     NAME:
         flatpipeproc
     PURPOSE:
-        Checks if flat is same size as data, then divides for correct filter
+        Checks if flat is same size as data, then divides for correct band_filter
     INPUTS:
         filename - name of FITS file, or array of filenames, or file w/list of filenames
         flatname - name of FITS master flat file

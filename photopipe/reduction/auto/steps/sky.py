@@ -1,13 +1,14 @@
 import glob
 import os
-import astropy.io.fits as pf
-import numpy as np
-import photopipe.reduction.auto.steps.autoproc_depend as apd
 import re
 import datetime
 import time
+
+import astropy.io.fits as pf
+import numpy as np
 import scipy
 
+import photopipe.reduction.auto.steps.autoproc_depend as apd
 
 
 inpipevar = {
@@ -43,7 +44,7 @@ def autopipeskysubmed(pipevar=None):
         return
 
     # For each file if output files don't exist or override set check if we have master
-    # skyflat for filter, sky subtract if it exists using skypipeproc
+    # skyflat for band_filter, sky subtract if it exists using skypipeproc
     for f in files:
         print(f)
         fileroot = os.path.basename(f)
@@ -93,7 +94,7 @@ def autopipemakesky(pipevar=inpipevar, by_targ=False):
     NAME:
         autopipemakesky
     PURPOSE:
-        Combine sky flats based on filter type (sigma clipping for sources)
+        Combine sky flats based on band_filter type (sigma clipping for sources)
     OPTIONAL KEYWORDS:
         pipevar  - input pipeline parameters (typically set in ratautoproc.pro,
                    but can be set to default)
@@ -128,9 +129,9 @@ def autopipemakesky(pipevar=inpipevar, by_targ=False):
     targets = []
     for file in files:
         head = pf.getheader(file)
-        filter = head['FILTER']
+        band_filter = head['FILTER']
         target = re.sub(r'\s+', '', head['TARGNAME'])
-        filters += [filter]
+        filters += [band_filter]
         targets += [target]
     filters = np.array(filters)
     targets = np.array(targets)
@@ -139,7 +140,7 @@ def autopipemakesky(pipevar=inpipevar, by_targ=False):
     filterlist = set(filters)
     files = np.array(files)
 
-    # For each unique target and filter combination, combine sky files using skycombine if more than 2 files
+    # For each unique target and band_filter combination, combine sky files using skycombine if more than 2 files
     # Otherwise return list of unprocessed files
     for filt in filterlist:
 
@@ -149,7 +150,7 @@ def autopipemakesky(pipevar=inpipevar, by_targ=False):
 
         thisfiltertargs = set(targets[thisfilter])
 
-        if by_targ == False:
+        if not by_targ:
             skyflats = np.where(filters == filt)
             outflatname = pipevar['imworkingdir'] + 'sky-' + filt + '.fits'
             call_skycombine(files, skyflats, outflatname, filt, pipevar)
@@ -158,10 +159,11 @@ def autopipemakesky(pipevar=inpipevar, by_targ=False):
             for targ in thisfiltertargs:
                 skyflats = np.where(np.logical_and(filters == filt, targets == targ))
                 outflatname = pipevar['imworkingdir'] + 'sky-' + filt + '_' + targ + '.fits'
-                call_skycombine(files,skyflats,outflatname,filt, pipevar)
+                call_skycombine(files, skyflats, outflatname, filt, pipevar)
 
     if pipevar['rmifiles'] != 0:
         os.system('rm -f ' + pipevar['imworkingdir'] + 'p' + pipevar['prefix'] + '*.fits')
+
 
 def call_skycombine(files, skyflats, outflatname, filt, pipevar):
     if len(skyflats[0]) >= 2:
@@ -176,8 +178,10 @@ def call_skycombine(files, skyflats, outflatname, filt, pipevar):
             skypipecombine(files[skyflats], outflatname, filt, pipevar, removeobjects=True, type='sky')
     else:
         print('Unable to produce a flat field for this setting: ' + filt)
-        print('Will not be able to further process ' + str(len(skyflats)) + \
-              ' image(s) without a flat from another source:')
+        print(
+            'Will not be able to further process ' + str(len(skyflats)) +
+            ' image(s) without a flat from another source:'
+        )
 
 
 def autopipeskysub(pipevar=inpipevar, by_targ=False):
@@ -210,19 +214,18 @@ def autopipeskysub(pipevar=inpipevar, by_targ=False):
         print('No master sky files found, cannot sky subtract')
         return
 
-    # Find the associated filter of each master skyflat
+    # Find the associated band_filter of each master skyflat
     skyset = []
     skyfilts = []
     for sky in skys:
         head = pf.getheader(sky)
-        filter = head['FILTER']
+        band_filter = head['FILTER']
         target = [re.sub(r'\s+', '', head['TARGNAME'])]
-        skyfilts += [filter]
-        skyset += [(filter,target)]
-
+        skyfilts += [band_filter]
+        skyset += [(band_filter, target)]
 
     # For each file if output files don't exist or override set check if we have master
-    # skyflat for filter, sky subtract if it exists using skypipeproc
+    # skyflat for band_filter, sky subtract if it exists using skypipeproc
     for file in files:
 
         fileroot = os.path.basename(file)
@@ -233,13 +236,15 @@ def autopipeskysub(pipevar=inpipevar, by_targ=False):
             continue
 
         head = pf.getheader(file)
-        filter = head['FILTER']
+        band_filter = head['FILTER']
         target = [re.sub(r'\s+', '', head['TARGNAME'])]
 
         # Find corresponding master skyflat
         try:
-            if by_targ: skyloc = skyset.index((filter,target))
-            else: skyloc = skyfilts.index(filter)
+            if by_targ:
+                skyloc = skyset.index((band_filter, target))
+            else:
+                skyloc = skyfilts.index(band_filter)
             skyfile = skys[skyloc]
         except:
             print('Sky field not found for ', file)
@@ -257,9 +262,12 @@ def autopipeskysub(pipevar=inpipevar, by_targ=False):
         os.system('rm -f ' + pipevar['imworkingdir'] + 'fp' + pipevar['prefix'] + '*.fits')
         os.system('rm -f ' + pipevar['imworkingdir'] + '*sky-*.fits')
 
-def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
-                       objthresh=2.0, objthresh2=2.0, algorithm='median', trimlo=None, trimhi=None,
-                       mincounts=1, maxcounts=55000, satlevel=30000, type=None):
+
+def skypipecombine(
+        filelist, outfile, filt, pipevar, removeobjects=None,
+        objthresh=2.0, objthresh2=2.0, algorithm='median', trimlo=None, trimhi=None,
+        mincounts=1, maxcounts=55000, satlevel=30000, type=None
+):
     """
     NAME:
         skypipeindividual
@@ -274,7 +282,7 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
 
     INPUTS:
         filelist - files to be processed
-        filt	 - filter of files
+        filt	 - band_filter of files
         pipevar  - pipeline parameters in dictionary
     OPTIONAL KEYWORDS:
         removeobjects 	- specifies if you want objects removed
@@ -303,8 +311,10 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
     half_src_pixels = 20
 
     # Sets defaults for trimming (25% of list)
-    if trimlo != None: (len(filelist) + 1) / 4
-    if trimhi != None: trimlo
+    if trimlo is not None:
+        (len(filelist) + 1) / 4
+    if trimhi is not None:
+        trimlo
 
     # If given list, then grab all filenames, saved to files
     # if len(filelist) == 1:
@@ -346,20 +356,20 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
 
         good = np.isfinite(data_i)
         bad = ~good  # Opposite of boolean array good
-        #print("Bad pix: {}".format(np.sum(bad)))
+        # print("Bad pix: {}".format(np.sum(bad)))
 
         inx = head_i['NAXIS1']
         iny = head_i['NAXIS2']
 
         if (inx != nx) or (iny != ny):
-            print('File ' + file + ' has wrong dimensions (' + str(inx) + \
+            print('File ' + file + ' has wrong dimensions (' + str(inx) +
                   ' x ' + str(iny) + '; should have ' + str(nx) + ' x ' + str(ny) + ')')
 
         # Perform 3 sigma clipped median and save to inmeds
         inmed, instd = medclip(data_i, clipsig=5, maxiter=3)
 
         # If median is within limits save data, otherwise exclude files
-        if inmed >= mincounts and inmed <= maxcounts:
+        if mincounts <= inmed <= maxcounts:
             if pipevar['verbose'] > 0:
                 print(file + ' (' + str(inmed) + ' counts/pix)')
 
@@ -388,14 +398,16 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
         data[f, :, :] = data[f, :, :] * factor
 
     # Removes extraneous indexes in data for skipped files
-    if z != nfiles: data = data[0:z, :, :]
+    if z != nfiles:
+        data = data[0:z, :, :]
 
     # Removes objects from field by calculating iterative median sigma clipping
     # (5 sigma, 5 iter) and using the calculated stddev to remove 2sigma (or non-default
     # object threshold) data from the median along with values above the saturation limit.
 
-    if removeobjects != None:
-        if pipevar['verbose'] > 0: print('  Identifying objects...')
+    if removeobjects is not None:
+        if pipevar['verbose'] > 0:
+            print('  Identifying objects...')
 
         for f in np.arange(z):
             # for f in np.arange(z-1):
@@ -415,13 +427,14 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
                                 posx - half_src_pixels - 1:posx + half_src_pixels - 1])
             meddata_src[:, :] = datamed
             stddata_src[:, :] = datastd
-            stddata_src[posy - half_src_pixels - 1:posy + half_src_pixels - 1,
-            posx - half_src_pixels - 1:posx + half_src_pixels - 1] = 0.001  # take out of the image everything above the median sky level around the source position
+            stddata_src[
+                posy - half_src_pixels - 1:posy + half_src_pixels - 1,
+                posx - half_src_pixels - 1:posx + half_src_pixels - 1
+            ] = 0.001  # take out of the image everything above the median sky level around the source position
 
             sourcepixels = np.where((indata - meddata_src) >= objthresh * stddata_src)
             # sourcepixels = np.where(abs(indata-datamed)>= objthresh*datastd)
             satpixels = np.where(indata >= satlevel)
-
 
             if len(sourcepixels[0]) > 0:
                 indata[sourcepixels] = float('NaN')
@@ -442,8 +455,16 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
             mi, mj = oridata.shape
             for mii in ((np.arange(mi / (nsq_piece * 2)) + 1) * 2 * nsq_piece) - nsq_piece:
                 for mji in ((np.arange(mj / (nsq_piece * 2)) + 1) * 2 * nsq_piece) - nsq_piece:
-                    # sq_piece=np.copy(indata[max(0,mii-nsq_piece):min(mii+nsq_piece+1,mi-1), max(0,mji-nsq_piece):min(mji+nsq_piece+1,mj-1)])
-                    sq_piece = np.copy(indata[int(mii - nsq_piece):int(mii + nsq_piece + 1), int(mji - nsq_piece):int(mji + nsq_piece + 1)])
+                    # sq_piece = np.copy(
+                    #     indata[
+                    #         max(0, mii-nsq_piece):min(mii+nsq_piece+1, mi-1),
+                    #         max(0, mji-nsq_piece):min(mji+nsq_piece + 1, mj-1)]
+                    # )
+                    sq_piece = np.copy(
+                        indata[
+                            int(mii - nsq_piece):int(mii + nsq_piece + 1), int(mji - nsq_piece):int(mji + nsq_piece + 1)
+                        ]
+                    )
                     datamedi, datastdi = medclip(sq_piece, clipsig=5, maxiter=5)
                     meddata[int(mii - nsq_piece):int(mii + nsq_piece + 1), int(mji - nsq_piece):int(mji + nsq_piece + 1)] = datamedi
                     stddata[int(mii - nsq_piece):int(mii + nsq_piece + 1), int(mji - nsq_piece):int(mji + nsq_piece + 1)] = datastdi
@@ -451,7 +472,7 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
             # remove the sources above objthresh2 limitv in the squares
 
             sourcepixels_sq = np.where((indata - meddata) >= objthresh2 * stddata)
-            #print("Length of bad pix: {}".format(len(sourcepixels_sq[0])))
+            # print("Length of bad pix: {}".format(len(sourcepixels_sq[0])))
 
             if len(sourcepixels_sq[0]) > 0:
                 indata[sourcepixels_sq] = float('NaN')
@@ -487,14 +508,15 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
     # trim 25% off top and bottom, if not enough good data, set trimming to 0
     if algorithm == 'mean':
 
-        if pipevar['verbose'] > 0: print('  Combining via trimmed mean...')
+        if pipevar['verbose'] > 0:
+            print('  Combining via trimmed mean...')
 
         for y in np.arange(ny):
             for x in np.arange(nx):
-                slice = data[:, y, x]
-                good = np.isfinite(slice)
+                _slice = data[:, y, x]
+                good = np.isfinite(_slice)
 
-                cslice = slice[good]
+                cslice = _slice[good]
                 ctgood = len(cslice)
 
                 if ctgood == 0:
@@ -512,7 +534,7 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
                 reflat[y, x] = np.mean(cslice)
 
     # Interpolates sky flat to remove NaN Values in case of source overlap
-    if pipevar['verbose'] >0:
+    if pipevar['verbose']:
         good = np.isfinite(reflat)
         bad = ~good  # Opposite of boolean array good
         bad_count = np.sum(bad)
@@ -532,19 +554,18 @@ def skypipecombine(filelist, outfile, filt, pipevar, removeobjects=None,
     if pipevar['debug'] != 0:
         print("Interpolation Time: {:0.2f} s".format(t2-t1))
 
-
     # Adds header information to signify what files we used
     for f in np.arange(z - 1):
         head_m['SKY' + str(f)] = usefiles[f]
 
-
-    if type != None:
+    if type is not None:
         head_m['SKYTYPE'] = type
 
     date = datetime.datetime.now().isoformat()
     head_m.add_history('Processed by skypipecombine ' + date)
 
-    if pipevar['verbose'] > 0: print('  Written to ' + outfile)
+    if pipevar['verbose'] > 0:
+        print('  Written to ' + outfile)
 
     pf.writeto(outfile, skyflat, head_m, overwrite=True)
 
@@ -710,6 +731,8 @@ def medclip(indata, clipsig=3.0, maxiter=5, verbose=0):
         print('Mean = %.6f, sigma = %.6f' % (med, sigma))
 
     return med, sigma
+
+
 def medclip2d(indata, clipsig=3.0, maxiter=5, verbose=0, overaxis=0):
     """
     NAME:
@@ -750,11 +773,12 @@ def medclip2d(indata, clipsig=3.0, maxiter=5, verbose=0, overaxis=0):
     sigma = np.nanstd(skpix, axis=overaxis)
 
     if verbose:
-        print('%.1f-sigma clipped median' % (clipsig))
-        print('Mean computed in %i iterations' % (iter))
+        print('%.1f-sigma clipped median' % clipsig)
+        print('Mean computed in %i iterations' % iter)
         print('Mean = %.6f, sigma = %.6f' % (med, sigma))
 
     return med, sigma
+
 
 def masked_interpolation(image, method='nearest'):
     """
@@ -769,7 +793,7 @@ def masked_interpolation(image, method='nearest'):
     -------
     """
     bad_pixel_mask = ~np.isfinite(image)
-    #print("Bad Pixel count {}".format(np.sum(bad_pixel_mask)))
+    # print("Bad Pixel count {}".format(np.sum(bad_pixel_mask)))
     x = np.arange(0, image.shape[1])
     y = np.arange(0, image.shape[0])
     # interpolated_image = np.copy(image)

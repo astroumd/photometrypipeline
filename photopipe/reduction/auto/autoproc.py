@@ -114,7 +114,7 @@ def autoproc(
 
         7. Stack exposures.  A weighted, masked median is performed for each field.
         Requires swarp to be installed and properly linked.
-        Output: coadd[object].[filter].fits
+        Output: coadd[object].[band_filter].fits
 
         EXAMPLES:
             1.  In a directory containing a full night worth of RATIR data, enter

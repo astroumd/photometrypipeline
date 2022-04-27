@@ -276,12 +276,12 @@ apd.findsexobj(outfl, 3.0, pipevar, pix=pixscl, aperture=cpsfdi, wtimage=outwt, 
 See autoproc_steps.py at [line 805](https://github.com/astroumd/photometrypipeline/blob/master/photopipe/reduction/auto/autoproc_steps.py#L805).
 
 ```python
-# If custom catalog not provided, catalog doesn't include filter, or 
+# If custom catalog not provided, catalog doesn't include band_filter, or 
 # no objects from catalog found in image then
 # use get_SEDs.py to make catalog using 2MASS + (SDSS or APASS or USNOB1)
 if nocustomcat:
   # Create catalog star file 
-  # (python get_SEDs.py imfile filter catfile USNOB_THRESH alloptstars)
+  # (python get_SEDs.py imfile band_filter catfile USNOB_THRESH alloptstars)
   sedcmd = 'python ' + pipevar['getsedcommand'] + ' ' + imfile + ' ' +\
                          filter + ' ' + catfile + " 15 True "+ qtcmd
 ```

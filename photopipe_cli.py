@@ -158,6 +158,12 @@ parser.add_argument(
     '--nogaia', action="store_true", default=False,
     help="Do not use Gaia catalog for astrometric calibration"
 )
+
+parser.add_argument(
+    '-y', '--yes', action="store_true", default=False,
+    help="Automatically respond 'y' to user input requests"
+)
+
 parser.add_argument('--debug', help='turn on debug outputs', default=False, action='store_true')
 args = parser.parse_args()
 data_dir = args.datadir + '/'
@@ -204,7 +210,7 @@ def preprocess_cli():
     preprocess_kwargs = {
         'instrument': args.instrument, 'workdir': data_dir, 'cams': cams,
         'auto': not args.noautoselect, 'reject_sat': not args.norejectsat, 'amin': args.amin, 'amax': args.amax,
-        'save_select': not args.nosaveselect, 'noplot': args.noplot,
+        'save_select': not args.nosaveselect, 'noplot': args.noplot, 'yes': args.yes
     }
 
     if not args.nobias:

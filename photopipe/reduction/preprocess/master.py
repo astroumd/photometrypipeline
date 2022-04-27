@@ -18,7 +18,7 @@ FITS_IN_KEY = lambda n: 'IMCMB{:03}'.format(int(n))
 # function to make FITS keywords to store file names of combined frames
 
 
-def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./'):
+def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./', yes=False):
     """
     PURPOSE:
         Make master calibration frames (bias, dark, flat)
@@ -29,6 +29,7 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./'):
                       fits file names.  can also provide file name of pickled dictionary.
         mtype       - type of master frame. should be either 'flat', 'dark' or 'bias'
         fmin        - minimum number of files needed to make a master frame
+        yes         - automatic response to user inputs if True
     EXAMPLE:
         mkmaster('ratir', fn_dict=output from choose_calib(), mtype = bias, dark or flat name)
     FUTURE IMPROVEMENTS:
@@ -108,17 +109,20 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./'):
                     'Error: no frames available to make master {} for {} {}.'.format(mtype, band, sorttype.lower()))
                 continue
             else:
-                temp = input(
-                    af.bcolors.WARNING +
-                    "Only {} frames available to make master {} for {} {}.  Continue? (y/n): ".format(
-                        len(fns), mtype, band, sorttype.lower()) + af.bcolors.ENDC)
+                if not yes:
+                    temp = input(
+                        af.bcolors.WARNING +
+                        "Only {} frames available to make master {} for {} {}.  Continue? (y/n): ".format(
+                            len(fns), mtype, band, sorttype.lower()) + af.bcolors.ENDC)
+                else:
+                    temp = 'y'
                 if temp.lower() != 'y' and temp.lower() != 'yes':
                     af.print_warn("Skipping {}...".format(band))
                     continue
 
         # load calibration data
         hdu = pf.PrimaryHDU()
-        filter_arr = []  # to check that all frames used the same filter
+        filter_arr = []  # to check that all frames used the same band_filter
         exptime_arr = []  # to check that all frames have the same exposure time (where relevant)
         data_arr = []
         i = 0
@@ -144,7 +148,7 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./'):
                         band, sorttype.lower()))
                 continue
         if instrum.flatname:
-            hdu.header['FILTER'] = filter_arr[0]  # add filter keyword to master frame
+            hdu.header['FILTER'] = filter_arr[0]  # add band_filter keyword to master frame
         if instrum.darkname:
             hdu.header['EXPTIME'] = exptime_arr[0]  # add exposure time keyword to master frame
 

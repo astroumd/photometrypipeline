@@ -89,7 +89,7 @@ def autopipeprepare(pipevar=None):
     if pipevar['verbose']:
         print('Found', len(files), 'files')
 
-    # Finds any master bias files and filter name from header keyword
+    # Finds any master bias files and band_filter name from header keyword
     # Assumes camera name is in header under CAMERA
     biasfiles = apd.findcals(pipevar, 'bias*.fits')
 
@@ -102,7 +102,7 @@ def autopipeprepare(pipevar=None):
     else:
         print('Did not find any BIAS files! Check your data directory path!')
 
-    # Finds any master dark files and filter name from header keyword
+    # Finds any master dark files and band_filter name from header keyword
     # Assumes camera name is in header under CAMERA
     darkfiles = apd.findcals(pipevar, 'dark*.fits')
 

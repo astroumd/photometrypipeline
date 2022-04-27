@@ -401,7 +401,7 @@ class cosmicsimage:
         This way you can run it several times in a row to to L.A.Cosmic "iterations".
         See function lacosmic, that mimics the full iterative L.A.Cosmic algorithm.
 
-        Returns a dict containing
+        Returns a dictionary containing
             - niter : the number of cosmic pixels detected in this iteration
             - nnew : among these, how many were not yet in the mask
             - itermask : the mask of pixels detected in this iteration

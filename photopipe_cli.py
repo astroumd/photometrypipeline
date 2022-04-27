@@ -213,20 +213,31 @@ def preprocess_cli():
         'save_select': not args.nosaveselect, 'noplot': args.noplot, 'yes': args.yes
     }
 
+    mkmaster_kwargs = {
+        'instrument': args.instrument, 'fn_dict': {}, 'mtype': '', 'fmin': args.fmin, 'master_dir': cal_dir,
+        'yes': args.yes
+    }
+
     if not args.nobias:
         preprocess_kwargs['ftype'] = 'bias'
         preprocess_dict = choose.choose_calib(**preprocess_kwargs)
-        master.mkmaster(args.instrument, preprocess_dict, preprocess_kwargs['ftype'], args.fmin, master_dir=cal_dir)
+        mkmaster_kwargs['fn_dict'] = preprocess_dict
+        mkmaster_kwargs['mtype'] = preprocess_kwargs['ftype']
+        master.mkmaster(**mkmaster_kwargs)
 
     if not args.noflat:
         preprocess_kwargs['ftype'] = 'flat'
         preprocess_dict = choose.choose_calib(**preprocess_kwargs)
-        master.mkmaster(args.instrument, preprocess_dict, preprocess_kwargs['ftype'], args.fmin, master_dir=cal_dir)
+        mkmaster_kwargs['fn_dict'] = preprocess_dict
+        mkmaster_kwargs['mtype'] = preprocess_kwargs['ftype']
+        master.mkmaster(**mkmaster_kwargs)
 
     if not args.nodark:
         preprocess_kwargs['ftype'] = 'dark'
         preprocess_dict = choose.choose_calib(**preprocess_kwargs)
-        master.mkmaster(args.instrument, preprocess_dict, preprocess_kwargs['ftype'], args.fmin, master_dir=cal_dir)
+        mkmaster_kwargs['fn_dict'] = preprocess_dict
+        mkmaster_kwargs['mtype'] = preprocess_kwargs['ftype']
+        master.mkmaster(**mkmaster_kwargs)
 
     if not args.noscienceselect:
         science_kwargs = preprocess_kwargs.copy()

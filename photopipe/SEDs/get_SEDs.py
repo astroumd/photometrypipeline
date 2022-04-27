@@ -23,7 +23,8 @@ import csv
 from six.moves import urllib
 import sys
 import warnings
-import pandas as pd
+# import pandas as pd
+import json
 import os
 
 import multiprocessing as mp
@@ -38,6 +39,14 @@ N_CORES = mp.cpu_count()  # use all the cpus you have
 #  so the static files below MUST be in the same folder.
 base_path = os.path.dirname(os.path.abspath(__file__))
 print(base_path)
+
+
+def json_dict_from_file(json_file):
+    with open(json_file, 'r') as f:
+        json_dict = json.load(f)
+    return json_dict
+
+
 try:
     model_path = os.path.join(base_path, 'all_models.npy')
     #print(model_path)
@@ -51,9 +60,8 @@ except IOError as error:
 except:
     raise IOError('cannot find models file')
 try:
-    pickle_path = os.path.join(base_path, 'err_dict.p')
-    #print(pickle_path)
-    err_dict =pd.read_pickle(pickle_path)
+    json_path = os.path.join(base_path, 'err_dict.json')
+    err_dict = json_dict_from_file(json_path)
     ERR_FUNCTIONS = {}
     for mode in [0, 1, 2]:
         ERR_FUNCTIONS[mode] = {}

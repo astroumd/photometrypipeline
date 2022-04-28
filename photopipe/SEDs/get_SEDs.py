@@ -18,8 +18,8 @@ from scipy.interpolate import interp1d
 import scipy.spatial.kdtree
 from threading import Thread
 from time import strftime
-#import urllib.request
-import csv
+# import urllib.request
+# import csv
 from six.moves import urllib
 import sys
 import warnings
@@ -49,27 +49,27 @@ def json_dict_from_file(json_file):
 
 try:
     model_path = os.path.join(base_path, 'all_models.npy')
-    #print(model_path)
+    # print(model_path)
     MODELS = np.load(model_path)
     # rezero so that K=0 for all models
-    for row in MODELS[1:]:
-        row[1:] = row[1:] - row[-1]
-except IOError as error:
-    print(error)
-    print('cannot find models file')
+    for _row in MODELS[1:]:
+        _row[1:] = _row[1:] - _row[-1]
+# except IOError as error:
+#     print(error)
+#     print('cannot find models file')
 except:
     raise IOError('cannot find models file')
 try:
     json_path = os.path.join(base_path, 'err_dict.json')
     err_dict = json_dict_from_file(json_path)
     ERR_FUNCTIONS = {}
-    for mode in [0, 1, 2]:
-        ERR_FUNCTIONS[mode] = {}
-        ERR_FUNCTIONS[mode]['range'] = (err_dict[mode]['x'][0], err_dict[mode]['x'][-1])
-        for band in err_dict[mode].keys():
-            if band == 'x':
+    for _mode in [0, 1, 2]:
+        ERR_FUNCTIONS[_mode] = {}
+        ERR_FUNCTIONS[_mode]['range'] = (err_dict[_mode]['x'][0], err_dict[_mode]['x'][-1])
+        for _band in err_dict[_mode].keys():
+            if _band == 'x':
                 continue
-            ERR_FUNCTIONS[mode][band] = interp1d(err_dict[mode]['x'], err_dict[mode][band])
+            ERR_FUNCTIONS[_mode][_band] = interp1d(err_dict[_mode]['x'], err_dict[_mode][_band])
 
 except IOError as error:
     print(error)
@@ -112,7 +112,7 @@ class online_catalog_query:
     def __init__(self, ra, dec, boxsize=10., ignore=None):
         self.coords = (ra, dec)  # decimal degrees
         self.boxsize = boxsize  # arcseconds
-        #self.MASS, self.SDSS, self.PANSTARRS, self.USNOB, self.APASS = self._query_all(ignore=ignore)
+        # self.MASS, self.SDSS, self.PANSTARRS, self.USNOB, self.APASS = self._query_all(ignore=ignore)
         self.MASS, self.SDSS, self.USNOB, self.APASS = self._query_all(ignore=ignore)
 
     def query_sdss(self):
@@ -131,23 +131,23 @@ class online_catalog_query:
         return self.APASS
 
     def query_all(self):
-        #return self.MASS, self.SDSS, self.PANSTARRS, self.USNOB, self.APASS
+        # return self.MASS, self.SDSS, self.PANSTARRS, self.USNOB, self.APASS
         return self.MASS, self.SDSS, self.USNOB, self.APASS
 
     @staticmethod
     def _parse_apass(s):
-        '''
+        """
         Parse an APASS web request string.
 
         s: a string of the CSV returned by a query to the APASS page.
           Example:
-          s = urllib2.urlopen('http://www.aavso.org/cgi-bin/apass_download.pl?ra=0.5&dec=85.&radius=.25&outtype=1').read()
+          s=urllib2.urlopen('http://www.aavso.org/cgi-bin/apass_download.pl?ra=0.5&dec=85.&radius=.25&outtype=1').read()
 
         Note: it is common for APASS to report -0 as the error for an observation; from their website,
          this merely means that the star was observed only once, and so their error determination
          code does not predict the error correctly.  Currently, this function adopts an error of 0.15mag
          for all of these observations. Missing observations are filled in with a zero.
-        '''
+        """
         out = []
         for line in s.split('\n')[1:]:
             # discard any sources that have more than one two observations
@@ -158,7 +158,8 @@ class online_catalog_query:
                 ra = float(row[0])
                 dec = float(row[2])
                 # magnitudes and errors
-                #  in order: V, Verr, Vnobs, B, Berr, Bnobs, u, Uerr, SUnobs, g, SGerr, SGnobs, r, SRerr, SRnobs,i, SIerr, SInobs, z, SZerr, SZnobs, PanSTARRS_Y, Yerr, Ynobs
+                #  in order: V, Verr, Vnobs, B, Berr, Bnobs, u, Uerr, SUnobs, g, SGerr, SGnobs, r, SRerr, SRnobs,i,
+                #      SIerr, SInobs, z, SZerr, SZnobs, PanSTARRS_Y, Yerr, Ynobs
                 tmp = [ra, dec]
                 for obs in row[4:]:
                     if (obs == '-0') or (obs == '0'):
@@ -193,11 +194,11 @@ class online_catalog_query:
         request = 'http://www.aavso.org/cgi-bin/apass_dr10_download.pl?ra={}&dec={}&radius={}&outtype=1'.format(
             ra, dec, boxsize)
         print(request)
-        #o = urlopen(request).read()
+        # o = urlopen(request).read()
         o = urllib.request.urlopen(request).read().decode()
         # o = csv.reader(o0.read().decode('utf-8'))
-        #o = o0.read()
-        #o = [oline.decode('utf-8') for oline in o]
+        # o = o0.read()
+        # o = [oline.decode('utf-8') for oline in o]
 
         apass_objects = self._parse_apass(o)
 
@@ -306,7 +307,7 @@ class online_catalog_query:
         s = np.array(s)
         numrows = len(s)
         numcols = len(s[:][0])
-        out = np.zeros((numrows,numcols))
+        out = np.zeros((numrows, numcols))
         for i in range(numrows):
             for j in range(numcols):
                 out[i][j] = s[i][j]
@@ -315,7 +316,6 @@ class online_catalog_query:
         print("After:")
         print(out[:][0:3])
         return out
-
 
     def _query_panstarrs(self, container=None, cont_index=4):
         """
@@ -898,7 +898,7 @@ class catalog:
         """
         ra, dec = self.field_center
         q = online_catalog_query(ra, dec, self.field_width, ignore=self.ignore)
-        #mass, sdss, panstarrs, usnob, apass = q.query_all()
+        # mass, sdss, panstarrs, usnob, apass = q.query_all()
         mass, sdss, usnob, apass = q.query_all()
 
         object_mags = []
@@ -938,7 +938,7 @@ class catalog:
                 if cmode == -1:
                     cmask = [1, -1, 2, -1, 3, -1, 6, -1, 7, -1]
                     cmode = 1
-                    #cmode = 2
+                    # cmode = 2
                     ocat = apass
             else:
                 apass_matches = -9999 * np.ones(len(mass), dtype='int')
@@ -947,7 +947,7 @@ class catalog:
                 if cmode == -1:
                     cmask = [6, -1, 8, -1]
                     cmode = 2
-                    #cmode = 3
+                    # cmode = 3
                     ocat = usnob
             else:
                 usnob_matches = -9999 * np.ones(len(mass), dtype='int')
@@ -982,12 +982,12 @@ class catalog:
                     i_apass = apass_matches[i]
                     obs = np.hstack((apass[i_apass][2:], obj[2:]))
                     mode = 1
-                    #mode = 2
+                    # mode = 2
                 elif usnob_matches[i] >= 0:
                     i_usnob = usnob_matches[i]
                     obs = np.hstack((usnob[i_usnob][2:], obj[2:]))
                     mode = 2
-                    #mode = 3
+                    # mode = 3
                 else:
                     continue
                 object_mags.append(obs)
@@ -1157,11 +1157,11 @@ def zeropoint(input_file, band, output_file=None, usnob_thresh=15, alloptstars=F
     input_mags = in_data[:, 2]
     field_center, field_width = find_field(input_coords)
     c = catalog(field_center, max(field_width), input_coords=input_coords)
-    #c = catalog(field_center, max(field_width), input_coords=input_coords, ignore=['panstarrs'])
+    # c = catalog(field_center, max(field_width), input_coords=input_coords, ignore=['panstarrs'])
 
     band_index = FILTER_PARAMS[band][-1]
     # check to see whether we need to use USNOB sources
-    #mask = np.array(c.modes) < 2
+    # mask = np.array(c.modes) < 2
     mask = np.array(c.modes) < 3
 
     if sum(mask) >= usnob_thresh:
@@ -1190,18 +1190,18 @@ def zeropoint(input_file, band, output_file=None, usnob_thresh=15, alloptstars=F
 
     # save matched catalog to file
     if output_file:
-        oc, os, oe, om = [], [], [], []
+        oc, _os, oe, om = [], [], [], []
         for i, match in enumerate(matches):
             oc.append(input_coords[i])
             if match >= 0:
-                os.append(catmag[match])
+                _os.append(catmag[match])
                 oe.append(errors[match])
                 om.append(modes[match])
             else:
-                os.append([99] * len(ALL_FILTERS))
+                _os.append([99] * len(ALL_FILTERS))
                 oe.append([9] * len(ALL_FILTERS))
                 om.append(-1)
-        save_catalog(oc, os, oe, om, output_file)
+        save_catalog(oc, _os, oe, om, output_file)
     return zp, mad
 
 

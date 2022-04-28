@@ -2,7 +2,6 @@
 Purpose:    Creates master frames for each mtype (bias, dark, flat)
 """
 import os
-import pickle
 import sys
 
 # installed modules
@@ -12,6 +11,7 @@ import numpy as np
 # custom modules/functions
 from photopipe.reduction.dependencies import astro_functs as af
 from photopipe.instruments.specific_instruments import instrument_dict
+from photopipe.reduction.preprocess import json_helper
 
 # Preprocessing constants
 FITS_IN_KEY = lambda n: 'IMCMB{:03}'.format(int(n))
@@ -39,11 +39,11 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./', yes=False):
 
     # check if input is a file name
     if type(fn_dict) is str:
-        if fn_dict.split('.')[-1] == 'p':
+        if fn_dict.split('.')[-1] == 'json':
             af.print_bold("Loading pickled dictionary from file.")
-            fn_dict = pickle.load(open(fn_dict, 'rb'))
+            fn_dict = json_helper.json_dict_from_file(fn_dict)
         else:
-            af.print_err("Invalid pickle file extension detected. Exiting...")
+            af.print_err("Invalid json file extension detected. Exiting...")
             return
 
     # check for valid mtype

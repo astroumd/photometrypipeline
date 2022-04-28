@@ -87,7 +87,7 @@ parser.add_argument(
 )
 parser.add_argument(
     '--nosaveselect', default=False, action="store_true",
-    help="don't save dictionary of selected frames to python pickle file during preprocessing"
+    help="don't save dictionary of selected frames to python json file during preprocessing"
 )
 parser.add_argument(
     '--fmin', default=5, type=int, help='Minimum number of files needed to make a master frame, default: 5'
@@ -195,6 +195,24 @@ def str_list_to_int_list(str_list, delimiter=','):
     return [int(i) for i in str_list_to_list(str_list, delimiter=delimiter)]
 
 
+def preprocess_type(ftype, choose_kwargs, fmin=args.fmin, master_dir=cal_dir):
+    _choose_kwargs = choose_kwargs.copy()
+    _choose_kwargs['ftype'] = ftype
+    preprocess_dict = choose.choose_calib(**_choose_kwargs)
+    if not preprocess_dict:
+        master_kwargs = {
+            'fn_dict': preprocess_dict,
+            'mtype': ftype,
+            'instrument': _choose_kwargs['instrument'],
+            'fmin': fmin,
+            'master_dir': master_dir,
+            'yes': _choose_kwargs['yes']
+        }
+        master.mkmaster(**master_kwargs)
+    else:
+        print("No files of type {} found, skipping...".format(ftype))
+
+
 def preprocess_cli():
     if args.cams is None:
         if args.instrument == 'lmi':
@@ -213,38 +231,42 @@ def preprocess_cli():
         'save_select': not args.nosaveselect, 'noplot': args.noplot, 'yes': args.yes
     }
 
-    mkmaster_kwargs = {
-        'instrument': args.instrument, 'fn_dict': {}, 'mtype': '', 'fmin': args.fmin, 'master_dir': cal_dir,
-        'yes': args.yes
-    }
+    # mkmaster_kwargs = {
+    #     'instrument': args.instrument, 'fn_dict': {}, 'mtype': '', 'fmin': args.fmin, 'master_dir': cal_dir,
+    #     'yes': args.yes
+    # }
 
     if not args.nobias:
-        preprocess_kwargs['ftype'] = 'bias'
-        preprocess_dict = choose.choose_calib(**preprocess_kwargs)
-        mkmaster_kwargs['fn_dict'] = preprocess_dict
-        mkmaster_kwargs['mtype'] = preprocess_kwargs['ftype']
-        master.mkmaster(**mkmaster_kwargs)
+        preprocess_type('bias', preprocess_kwargs)
+        # preprocess_kwargs['ftype'] = 'bias'
+        # preprocess_dict = choose.choose_calib(**preprocess_kwargs)
+        # mkmaster_kwargs['fn_dict'] = preprocess_dict
+        # mkmaster_kwargs['mtype'] = preprocess_kwargs['ftype']
+        # master.mkmaster(**mkmaster_kwargs)
 
     if not args.noflat:
-        preprocess_kwargs['ftype'] = 'flat'
-        preprocess_dict = choose.choose_calib(**preprocess_kwargs)
-        mkmaster_kwargs['fn_dict'] = preprocess_dict
-        mkmaster_kwargs['mtype'] = preprocess_kwargs['ftype']
-        master.mkmaster(**mkmaster_kwargs)
+        preprocess_type('flat', preprocess_kwargs)
+        # preprocess_kwargs['ftype'] = 'flat'
+        # preprocess_dict = choose.choose_calib(**preprocess_kwargs)
+        # mkmaster_kwargs['fn_dict'] = preprocess_dict
+        # mkmaster_kwargs['mtype'] = preprocess_kwargs['ftype']
+        # master.mkmaster(**mkmaster_kwargs)
 
     if not args.nodark:
-        preprocess_kwargs['ftype'] = 'dark'
-        preprocess_dict = choose.choose_calib(**preprocess_kwargs)
-        mkmaster_kwargs['fn_dict'] = preprocess_dict
-        mkmaster_kwargs['mtype'] = preprocess_kwargs['ftype']
-        master.mkmaster(**mkmaster_kwargs)
+        preprocess_type('dark', preprocess_kwargs)
+        # preprocess_kwargs['ftype'] = 'dark'
+        # preprocess_dict = choose.choose_calib(**preprocess_kwargs)
+        # if not preprocess_dict:
+        #     mkmaster_kwargs['fn_dict'] = preprocess_dict
+        #     mkmaster_kwargs['mtype'] = preprocess_kwargs['ftype']
+        #     master.mkmaster(**mkmaster_kwargs)
 
     if not args.noscienceselect:
         science_kwargs = preprocess_kwargs.copy()
         del science_kwargs['reject_sat']
         del science_kwargs['amin']
         del science_kwargs['amax']
-        del science_kwargs['ftype']
+        # del science_kwargs['ftype']
         science_kwargs['targetdir'] = selected_dir
         choose.choose_science(**science_kwargs)
 

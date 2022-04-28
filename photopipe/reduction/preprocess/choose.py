@@ -6,7 +6,6 @@ from matplotlib.patches import Rectangle
 import shutil
 from glob import glob
 import datetime
-import pickle
 from six.moves.collections_abc import Iterable
 
 # installed modules
@@ -18,6 +17,7 @@ import numpy as np
 # from photopipe.reduction.dependencies.zscale import zscale
 from photopipe.reduction.dependencies import astro_functs as af
 from photopipe.instruments.specific_instruments import instrument_dict
+from photopipe.reduction.preprocess import json_helper
 
 # Preprocessing constants
 FITS_IN_KEY = lambda n: 'IMCMB{:03}'.format(int(n))
@@ -41,11 +41,11 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
         reject_sat  - reject frames with saturated pixels
         amin        - minimum fraction of saturation value for median (automated)
         amax        - maximum fraction of saturation value for median (automated)
-        save_select - save dictionary of selected frames to python pickle file
+        save_select - save dictionary of selected frames to python json file
     EXAMPLE:
         file_dict = choose_calib('ratir', ftype = bias, dark or flat name,
             workdir = 'path/to/data/', cams = [#,#,...])
-        *** call mkmaster using dictionary or pickle file ***
+        *** call mkmaster using dictionary or json file ***
     """
     instrum = instrument_dict[instrument]
 
@@ -339,10 +339,10 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
 
     if save_select:
         dt = datetime.datetime.now()
-        fnout = '{}_'.format(ftype) + dt.isoformat().split('.')[0].replace('-', '').replace(':', '') + '.p'
-        # python pickle extension
+        fnout = '{}_'.format(ftype) + dt.isoformat().split('.')[0].replace('-', '').replace(':', '') + '.json'
+        # python json extension
         af.print_head("\nSaving selection dictionary to {}".format(fnout))
-        pickle.dump(fits_list_dict, open(fnout, 'wb'))  # save dictionary to pickle
+        json_helper.save_dict_to_json(fits_list_dict, fnout)  # save dictionary to json
 
     os.chdir(start_dir)  # move back to starting directory
 
@@ -521,7 +521,7 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=(0, 1, 2, 3), au
         targetdir   - directory where selected frames and lists are output
         cams        - camera numbers to process data, all by default
         auto        - select all science frames
-        save_select - save dictionary of selected frames to python pickle file
+        save_select - save dictionary of selected frames to python json file
         figsize     - dimensions of figure used to display frames for selection
         window_zoom - zoom level for closer look
     EXAMPLE:
@@ -864,9 +864,9 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=(0, 1, 2, 3), au
     if save_select:
         dt = datetime.datetime.now()
         fnout = 'object_' + dt.isoformat().split('.')[0].replace('-', '').replace(':',
-                                                                                  '') + '.p'  # python pickle extension
+                                                                                  '') + '.json'  # python json extension
         af.print_head("\nSaving selection dictionary to {}".format(fnout))
-        pickle.dump(fits_list_dict, open(fnout, 'wb'))  # save dictionary to pickle
+        json_helper.save_dict_to_json(fits_list_dict, fnout)  # save dictionary to json
 
     os.chdir(start_dir)  # move back to starting directory
 

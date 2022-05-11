@@ -54,10 +54,11 @@ try:
     # rezero so that K=0 for all models
     for _row in MODELS[1:]:
         _row[1:] = _row[1:] - _row[-1]
-# except IOError as error:
-#     print(error)
-#     print('cannot find models file')
-except:
+        # TODO: Does this do anything? Maybe should be:
+        #  for i, _row in enumerate(MODELS[1:]):
+        #      MODELS[1:][i] = _row[1:] - _row[-1]
+
+except IOError:
     raise IOError('cannot find models file')
 try:
     json_path = os.path.join(base_path, 'err_dict.json')
@@ -93,14 +94,14 @@ FILTER_PARAMS = {
 # ONLINE CATALOG MANAGEMENT
 ############################################
 
-class online_catalog_query:
+class OnlineCatalogQuery:
     """
     A class to handle all queries of remote catalogs.
     The main function, query_all(), queries all catalogs in a
      multithreaded manner, to minimize lag from I/O communications.
      
     Standard usage:
-     q = online_catalog_query( ra, dec, field_size ) #ra,dec in decimal degrees, field_size in arcsec
+     q = OnlineCatalogQuery( ra, dec, field_size ) #ra,dec in decimal degrees, field_size in arcsec
      Mass, SDSS, PANSTARRS, USNOB1 = q.query_all()
      # OR #
      Mass = q.query_2mass() #same for all catalogs
@@ -112,7 +113,7 @@ class online_catalog_query:
     def __init__(self, ra, dec, boxsize=10., ignore=None):
         self.coords = (ra, dec)  # decimal degrees
         self.boxsize = boxsize  # arcseconds
-        # self.MASS, self.SDSS, self.PANSTARRS, self.USNOB, self.APASS = self._query_all(ignore=ignore)
+        # self.MASS, self.SDSS, self.USNOB, self.APASS, self.PANSTARRS = self._query_all(ignore=ignore)
         self.MASS, self.SDSS, self.USNOB, self.APASS = self._query_all(ignore=ignore)
 
     def query_sdss(self):
@@ -897,7 +898,7 @@ class catalog:
         Requires records in 2MASS + (SDSS and/or USNOB1).
         """
         ra, dec = self.field_center
-        q = online_catalog_query(ra, dec, self.field_width, ignore=self.ignore)
+        q = OnlineCatalogQuery(ra, dec, self.field_width, ignore=self.ignore)
         # mass, sdss, panstarrs, usnob, apass = q.query_all()
         mass, sdss, usnob, apass = q.query_all()
 
@@ -912,6 +913,7 @@ class catalog:
                 if not np.sum(np.isfinite(tmp)):
                     raise ValueError('No matches to input objects found!')
                 mass = mass[input_matches >= 0]
+                print('2mass shape: {}'.format(mass.shape))
 
             # match sdss, panstarrs, apass, usnob objects to 2mass objects
             if sdss is not None:
@@ -1162,15 +1164,16 @@ def zeropoint(input_file, band, output_file=None, usnob_thresh=15, alloptstars=F
     band_index = FILTER_PARAMS[band][-1]
     # check to see whether we need to use USNOB sources
     # mask = np.array(c.modes) < 2
-    mask = np.array(c.modes) < 3
+    mask = np.logical_and(0 <= np.array(c.modes), np.array(c.modes) < 2)  # testing
+    # mask = np.array(c.modes) < 3  # panstarrs
 
     if sum(mask) >= usnob_thresh:
-        if quiet:
+        if not quiet:
             print('Using', sum(mask), 'APASS and/or SDSS sources.')
         cat_mags = c.SEDs[:, band_index][mask]
         cat_coords = c.coords[mask]
     else:
-        if quiet:
+        if not quiet:
             print('Using', sum(mask), 'USNOB, APASS, and/or SDSS sources.')
         cat_mags = c.SEDs[:, band_index]
         cat_coords = c.coords

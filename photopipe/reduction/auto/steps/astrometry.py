@@ -75,22 +75,23 @@ def autopipeastrometry(pipevar=None):
         # filename, pixelscale=-1, pa=-999, inv=0, uncpa=-1, userra=-999, userdec=-999, minfwhm=1.5, maxfwhm=20,
         # maxellip=0.5, boxsize=-1, maxrad=-1, tolerance=0.010, catalog='', nosolve=0, overwrite=False, outfile='',
         # saturation=-1, quiet=False
-        # cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat) + ' -r ' + str(ascen) + ' -d ' + str(decl)
-        #cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat)
+        cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat) + ' -r ' + str(ascen) + \
+            ' -d ' + str(decl)
+        # cmd = 'python ' + pipevar['autoastrocommand'] + ' ' + f + ' -l ' + str(sat)
         # Run direct astrometry
 
         if pipevar['nogaia'] is True:
             # FIXME Joe: this breaks, as it is, you may want to look into it
             # Note that we bypass this step when using Gaia
-            autoastro.autoastrometry(f, saturation=sat, userdec=decl,
-                                     userra=ascen,
-                                     quiet=(not pipevar['verbose']))
+            # autoastro.autoastrometry(f, saturation=sat, userdec=decl,
+            #                          userra=ascen,
+            #                          quiet=(not pipevar['verbose']))
 
-        # if pipevar['verbose'] > 0:
-        #     os.system(cmd)
-        #     print(cmd)
-        # else:
-        #     os.system(cmd + ' -q')
+            if pipevar['verbose'] > 0:
+                os.system(cmd)
+                print(cmd)
+            else:
+                os.system(cmd + ' -q')
         if not os.path.isfile(outfile):
             pipevar['fullastrofail'] += ' ' + f
 
@@ -358,6 +359,7 @@ def prepare_gaia_catalog(ra, dec, field_size, out_file, write_region=True):
         for l in t_gaia:
             objlist.append(SourceCoords(l['RA_ICRS'], l['DE_ICRS']))
         writeregionfile(filename, objlist)
+
 
 class SourceCoords:
     # Simple class for the source coordinates

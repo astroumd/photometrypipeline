@@ -5,6 +5,7 @@ import glob
 import os
 import shutil
 from zipfile import ZipFile
+import warnings
 
 from photopipe.reduction.preprocess import choose, master
 from photopipe.reduction.auto.autoproc import autoproc
@@ -165,7 +166,14 @@ parser.add_argument(
 )
 
 parser.add_argument('--debug', help='turn on debug outputs', default=False, action='store_true')
+
+parser.add_argument('--warn', help='turn on warning outputs', default=False, action='store_true')
+
 args = parser.parse_args()
+
+if not args.warn:
+    warnings.filterwarnings('ignore')
+
 data_dir = args.datadir + '/'
 cal_dir = os.path.join(args.datadir, 'calibration') + os.path.sep
 selected_dir = os.path.join(args.datadir, 'selected') + os.path.sep
@@ -199,7 +207,7 @@ def preprocess_type(ftype, choose_kwargs, fmin=args.fmin, master_dir=cal_dir):
     _choose_kwargs = choose_kwargs.copy()
     _choose_kwargs['ftype'] = ftype
     preprocess_dict = choose.choose_calib(**_choose_kwargs)
-    if not preprocess_dict:
+    if preprocess_dict:
         master_kwargs = {
             'fn_dict': preprocess_dict,
             'mtype': ftype,
@@ -231,35 +239,14 @@ def preprocess_cli():
         'save_select': not args.nosaveselect, 'noplot': args.noplot, 'yes': args.yes
     }
 
-    # mkmaster_kwargs = {
-    #     'instrument': args.instrument, 'fn_dict': {}, 'mtype': '', 'fmin': args.fmin, 'master_dir': cal_dir,
-    #     'yes': args.yes
-    # }
-
     if not args.nobias:
         preprocess_type('bias', preprocess_kwargs)
-        # preprocess_kwargs['ftype'] = 'bias'
-        # preprocess_dict = choose.choose_calib(**preprocess_kwargs)
-        # mkmaster_kwargs['fn_dict'] = preprocess_dict
-        # mkmaster_kwargs['mtype'] = preprocess_kwargs['ftype']
-        # master.mkmaster(**mkmaster_kwargs)
 
     if not args.noflat:
         preprocess_type('flat', preprocess_kwargs)
-        # preprocess_kwargs['ftype'] = 'flat'
-        # preprocess_dict = choose.choose_calib(**preprocess_kwargs)
-        # mkmaster_kwargs['fn_dict'] = preprocess_dict
-        # mkmaster_kwargs['mtype'] = preprocess_kwargs['ftype']
-        # master.mkmaster(**mkmaster_kwargs)
 
     if not args.nodark:
         preprocess_type('dark', preprocess_kwargs)
-        # preprocess_kwargs['ftype'] = 'dark'
-        # preprocess_dict = choose.choose_calib(**preprocess_kwargs)
-        # if not preprocess_dict:
-        #     mkmaster_kwargs['fn_dict'] = preprocess_dict
-        #     mkmaster_kwargs['mtype'] = preprocess_kwargs['ftype']
-        #     master.mkmaster(**mkmaster_kwargs)
 
     if not args.noscienceselect:
         science_kwargs = preprocess_kwargs.copy()
@@ -277,7 +264,7 @@ def autoproc_cli():
         'only': None, 'step': args.step, 'mastersky': not args.nomastersky, 'skyflattarg': not args.noskyflattarg,
         'redo': args.redo, 'quiet': args.quiet, 'rmifiles': args.rmifiles,
         'customcat': args.customcat, 'customcatfilt': str_list_to_list(args.customcatfilt),
-        'nogaia': args.nogaia,
+        'nogaia': args.nogaia, 'debug': args.debug
     }
     autoproc(**autoproc_kwargs)
 

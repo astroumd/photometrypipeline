@@ -1,12 +1,15 @@
 import glob
 import os
+import re
+import sys
+
+from astropy import wcs
+from astropy.time import Time
 import astropy.io.fits as pf
 import numpy as np
+
+from photopipe.SEDs.get_SEDs import identify_matches
 import photopipe.reduction.auto.steps.autoproc_depend as apd
-from astropy import wcs
-import re
-from astropy.time import Time
-import sys
 
 inpipevar = {
     'autoastrocommand': 'autoastrometry', 'getsedcommand': 'get_SEDs', 'sexcommand': 'sex', 'swarpcommand': 'swarp',
@@ -210,7 +213,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                 cat_data = np.loadtxt(customcat, skiprows=1)
                 cat_coords = cat_data[:, :2]
 
-                cat_matches, tmp = apd.identify_matches(input_coords, cat_coords)
+                cat_matches, tmp = identify_matches(input_coords, cat_coords)
 
                 refmag = np.zeros(len(mag)) + 99
                 mode = np.zeros(len(mag)) + -1

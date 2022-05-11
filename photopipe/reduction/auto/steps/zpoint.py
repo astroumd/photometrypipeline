@@ -18,6 +18,178 @@ inpipevar = {
 }
 
 
+def robust_scat(diff, wts, nobs, nstars, sigma):
+    """
+    NAME:
+        robust_scat
+    PURPOSE:
+        Calculate robust scatter and set the weight of those above this limit to 0
+    INPUTS:
+        diff   - values to calculate robust scatter over
+        wts    - weighting (0 is bad)
+        nobs   - number of observations to iterate over
+        nstars - number of stars to iterate over
+        sigma  - sigma*robust scatter that is acceptable
+    OUTPUTS:
+        scats  - robust scatter of each observation
+        rmss   - standard deviation (without bad weight points) of each observation
+    EXAMPLE:
+        robust_scat(diff, wts, 1, 12, 3)
+    """
+
+    scats = np.zeros(nobs)
+    rmss = np.zeros(nobs)
+    for i in np.arange(nobs):
+        goodwts = np.where(wts[i, :] > 0)
+        if len(goodwts[0]) == 0:
+            continue
+        gooddiff = diff[i, goodwts]
+
+        # Median absolute deviation
+        scat = 1.48 * np.median(abs(gooddiff - np.median(gooddiff)))
+        for j in np.arange(nstars):
+            if abs(diff[i, j] - np.median(gooddiff)) > (sigma * scat):
+                wts[i, j] = 0
+        scats[i] = scat
+        rmss[i] = np.std(gooddiff)
+    return scats, rmss
+
+
+def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
+    """
+    NAME:
+        calc_zpt
+    PURPOSE:
+        Find zeropoint using robust scatter
+    INPUTS:
+        catmag  - 2d array with catalog magnitudes catmag[nobs,nstar]
+        obsmag  - 2d array with observed magnitudes obsmag[nobs,nstar]
+        wts     - 2d array with weights wts[nobs,nstar]
+    OPTIONAL KEYWORDS:
+        sigma   - sigma value for how far values can be from robust scatter value
+        plotter - filename to save zeropoint plot
+    OUTPUTS:
+        z2     - zeropoint correction
+        scats  - robust scatter of each observation
+        rmss   - standard deviation (without bad weight points) of each observation
+    EXAMPLE:
+        zpt,scats,rmss = calc_zpt(catmag,obsmag,wts, sigma=3.0)
+    """
+
+    # Find difference between catalog and observed magnitudes
+    diff = catmag - obsmag
+    # print(np.shape(obsmag))
+
+    keep = np.where(wts != 0)
+    diff = diff[keep]
+    obsmag = obsmag[keep]
+    catmag = catmag[keep]
+    wts = wts[keep]
+    catmag_0 = np.copy(catmag)
+    diff_0 = np.copy(diff)
+    wts_0 = np.copy(wts)
+
+    # # Sigma clip
+    # med, sig = medclip(diff, 3.0, 2)
+    # #print("Med: {}, Sigma: {}".format(med, sigma))
+    # keep = np.where(abs(diff - med) < 3 * sig)
+    # diff = diff[keep]
+    # obsmag = obsmag[keep]
+    # catmag = catmag[keep]
+    # wts = wts[keep]
+    # catmag_1 = np.copy(catmag)
+    # diff_1 = np.copy(diff)
+    # wts_1 = np.copy(wts)
+
+    # Remove dim sources above provided threshold
+    err_thresh = 0.1
+    wt_thresh = 1 / (err_thresh ** 2)
+    keep = np.where(wts > wt_thresh)
+    diff = np.array([diff[keep]])
+    obsmag = np.array([obsmag[keep]])
+    catmag = np.array([catmag[keep]])
+    wts = np.array([wts[keep]])
+    catmag_2 = np.copy(catmag[0])
+    diff_2 = np.copy(diff[0])
+    wts_2 = np.copy(wts[0])
+
+    # For each observation (i.e. frame) find the weighted difference and store zeropoint
+    # and new magnitude with zeropoint correction
+    nobs, nstars = np.shape(diff)
+    z = []
+    modmag = np.copy(obsmag)
+    for i in np.arange(nobs):
+        indz = sum(diff[i, :] * wts[i, :]) / sum(wts[i, :])
+        z += [indz]
+        modmag[i, :] = obsmag[i, :] + indz
+
+    # Find difference of catalog and zeropoint corrected values. Remove any values with
+    # weights set to 0 or lower.  Calculate robust scatter on these values.  If difference
+    # with these weights is not within sigma*robust scatter then set weight to 0
+    adiff1 = catmag - modmag
+    scats, rmss = robust_scat(adiff1, wts, nobs, nstars, sigma)
+
+    z2 = []
+    # Recalculate zeropoint using corrected weights (difference still same)
+    modmag2 = np.copy(obsmag)
+    for i in np.arange(nobs):
+        indz = sum(diff[i, :] * wts[i, :]) / sum(wts[i, :])
+        z2 += [indz]
+        modmag2[i, :] = obsmag[i, :] + indz
+
+    adiff2 = catmag - modmag2
+    # Recalculate robust scatter and rms scatter value on twice zeropoint corrected mags
+    scats, rmss = robust_scat(adiff2, wts, nobs, nstars, sigma)
+
+    if plotter is not None:
+        plt.plot(catmag_0, diff_0, '*')
+        plt.errorbar(catmag_0, diff_0, yerr=1.0 / np.sqrt(wts_0), fmt='.')
+        plt.title('Before Robust Scatter')
+        plt.ylabel('Difference between Catalog and Observed')
+        plt.xlabel('Catalog magnitude')
+        filename = plotter.replace('zpt', 'zptall')
+        plt.savefig(filename)
+        plt.clf()
+
+        plt.hist(1.0 / np.sqrt(wts_0), bins=30)
+        plt.title('Error Hist for All Sources')
+        plt.ylabel('Counts')
+        plt.xlabel('Error in Diff (Obs-Cat)')
+        filename = plotter.replace('zpt', 'zptall_hist')
+        plt.savefig(filename)
+        plt.clf()
+
+        # plt.plot(catmag_1, diff_1, '*')
+        # plt.errorbar(catmag_1, diff_1, yerr=1.0 / np.sqrt(wts_1), fmt='.')
+        # plt.title('Before Robust Scatter with Sigma Clipping')
+        # plt.ylabel('Difference between Catalog and Observed')
+        # plt.xlabel('Catalog magnitude')
+        # filename = plotter.replace('zpt', 'zptall_sigmaclip')
+        # plt.savefig(filename)
+        # plt.clf()
+
+        # plt.plot(catmag_2, diff_2, '*')
+        # plt.errorbar(catmag_2, diff_2, yerr=1.0 / np.sqrt(wts_2), fmt='.')
+        # plt.title('Before Robust Scatter with sigma clip and Dim Removal')
+        # plt.ylabel('Difference between Catalog and Observed')
+        # plt.xlabel('Catalog magnitude')
+        # filename = plotter.replace('zpt', 'zptall_sigmaclip_dimrmv')
+        # plt.savefig(filename)
+        # plt.clf()
+
+        keep = np.where(wts != 0)
+        print(np.shape(catmag[keep]))
+        plt.plot(catmag[keep], adiff2[keep], '*')
+        plt.errorbar(catmag[keep], adiff2[keep], yerr=1.0 / np.sqrt(wts[keep]), fmt='.')
+        plt.title('Post Robust Scatter')
+        plt.ylabel('Difference between Catalog and Observed')
+        plt.xlabel('Catalog magnitude')
+        plt.savefig(plotter)
+        plt.clf()
+
+    return z2, scats, rmss
+
+
 def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
     """
     NAME:
@@ -197,7 +369,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                     cat_data = np.loadtxt(customcat, skiprows=1)
                     cat_coords = cat_data[:, :2]
 
-                    cat_matches, tmp = apd.identify_matches(input_coords, cat_coords)
+                    cat_matches, tmp = seds.identify_matches(input_coords, cat_coords)
 
                     refmag = np.zeros(len(mag)) + 99
                     mode = np.zeros(len(mag)) + -1
@@ -235,8 +407,11 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                         continue
 
                     # Read in catalog file
+                    if pipevar['debug']:
+                        print('LOADING getSEDs CATFILE: {}'.format(catfile))
                     cvars = np.loadtxt(catfile, unpack=True)
-                    # np.savetxt(pipevar['imworkingdir'] + 'CAT' + targ + '_' + thistargetfilter + '.txt', catfile)
+                    if pipevar['debug']:
+                        np.savetxt(pipevar['imworkingdir'] + 'CAT' + targ + '_' + thistargetfilter + '.txt', cvars)
                     refmag = cvars[catdict[thistargetfilter], :]
                     mode = cvars[catdict['mode'], :]
 
@@ -263,7 +438,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                 fileroot = os.path.basename(sfile)
                 filedir = os.path.dirname(sfile)
                 satfile = filedir + "/" + fileroot.replace("tazsfp", "SAT_", 1).replace("tasfp", "SAT_", 1)
-                rmv_sat = True
+                rmv_sat = False  # TODO: Fix rmv_sat
                 try:
                     f = pf.open(satfile)
                 except:
@@ -276,8 +451,11 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                     keep = []
                     xpix, ypix = data.shape
                     for i in range(len(xim)):
-                        if (int(xim[i]+fwhm[i]) > xpix) or (int(xim[i]-fwhm[i]) < 0) or (int(yim[i]+fwhm[i]) > ypix) or (int(yim[i]-fwhm[i]) < 0):
-                            if pipevar['verbose'] > 0:
+                        if (int(xim[i]+fwhm[i]) > xpix)\
+                                or (int(xim[i]-fwhm[i]) < 0)\
+                                or (int(yim[i]+fwhm[i]) > ypix)\
+                                or (int(yim[i]-fwhm[i]) < 0):
+                            if pipevar['verbose']:
                                 print("Skipping {} Edge Sources".format(i))
                             keep += [False]
                             continue
@@ -312,16 +490,15 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                     obswts[i] = 1.0 / (max(obserr[i], 0.01) ** 2)
 
                 if len(refmag) > 0 and len(obskpm) > 0 and len(obswts) > 0:
-                    if pipevar['debug'] != 0:
-                        zpt, scats, rmss = apd.calc_zpt(
-                            np.array([refmag]), np.array([obskpm]), np.array([obswts]), sigma=3.0,
-                            plotter=pipevar['imworkingdir'] + 'zpt_' + targ + '_' + thistargetfilter + '_{}.png'.format(
-                                it_num)
-                        )
+                    if pipevar['debug']:
+                        plotter = pipevar['imworkingdir'] + 'zpt_' + targ + '_' + thistargetfilter + '_{}.png'.format(
+                            it_num)
                     else:
-                        zpt, scats, rmss = apd.calc_zpt(
-                            np.array([refmag]), np.array([obskpm]), np.array([obswts]), sigma=3.0
-                        )
+                        plotter = None
+                    zpt, scats, rmss = calc_zpt(
+                        np.array([refmag]), np.array([obskpm]), np.array([obswts]), sigma=3.0,
+                        plotter=plotter
+                    )
 
                     it_num += 1  # testing
                     # Reload because we had to remove distortion parameters before
@@ -380,7 +557,8 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                     os.makedirs(pipevar['imworkingdir'] + '/badflxsc')
 
                 for ibad in badnewflxsc:
-                    os.system('mv ' + ibad + ' ' + pipevar['imworkingdir'] + 'badflxsc/')
+                    os.system('mv ' + ibad + ' ' + pipevar['imworkingdir'] + ''
+                                                                             '/')
 
                 removedframes += badnewflxsc
 

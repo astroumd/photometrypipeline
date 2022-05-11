@@ -107,12 +107,12 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
 
         # check for valid calibration request
         if not instrum.has_cam_bias(cam_i) and ftype is instrum.biasname:
-            af.print_warn("Warning: Camera C{} does not have {} frames.  " +
-                          "Skipping...".format(cam_i, instrum.biasname))
+            af.print_warn(("Warning: Camera C{} does not have {} frames.  " +
+                          "Skipping...").format(cam_i, instrum.biasname))
             continue
         if not instrum.has_cam_dark(cam_i) and ftype is instrum.darkname:
-            af.print_warn("Warning: Camera C{} does not have {} frames.  " +
-                          "Skipping...".format(cam_i, instrum.darkname))
+            af.print_warn(("Warning: Camera C{} does not have {} frames.  " +
+                          "Skipping...").format(cam_i, instrum.darkname))
             continue
 
         # find raw files of selected type for this camera
@@ -238,8 +238,8 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
 
                     if (sfrac1 < amin) or (sfrac1 > amax) or (sfrac2 < amin) or (sfrac2 > amax):
                         af.print_warn(
-                            "Warning: median value outside specified range of {:.0%} - {:.0%} of saturation value in" +
-                            " frame.  Skipping frame {}.".format(amin, amax, fits_fn))
+                            ("Warning: median value outside specified range of {:.0%} - {:.0%} of saturation value in" +
+                            " frame.  Skipping frame {}.").format(amin, amax, fits_fn))
                         continue
 
                     if not noplot:
@@ -263,8 +263,8 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
                 else:
                     if (sfrac < amin) or (sfrac > amax):
                         af.print_warn(
-                            "Warning: median value outside specified range of {:.0%} - {:.0%} of saturation value in" +
-                            " frame.  Skipping frame {}.".format(amin, amax, fits_fn)
+                            ("Warning: median value outside specified range of {:.0%} - {:.0%} of saturation value in" +
+                            " frame.  Skipping frame {}.").format(amin, amax, fits_fn)
                         )
                         continue
 

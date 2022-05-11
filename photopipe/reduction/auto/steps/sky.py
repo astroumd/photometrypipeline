@@ -484,7 +484,7 @@ def skypipecombine(
             if pipevar['debug'] != 0:
                 good2 = np.isfinite(indata)
                 out = usefiles[f].replace('fp', 'skymask2_fp')
-                pf.writeto(out, good2.astype(np.int), head_m, clobber=True)
+                pf.writeto(out, good2.astype(np.int), head_m, overwrite=True)
 
     reflat = np.zeros((ny, nx)) + float('NaN')
 
@@ -541,7 +541,7 @@ def skypipecombine(
         print("Interpolating {} NaN Values".format(bad_count))
     if pipevar['debug'] != 0:
         out = outfile.replace('.fits', 'skymask.fits')
-        pf.writeto(out, good.astype(np.int), head_m, clobber=True)
+        pf.writeto(out, good.astype(np.int), head_m, overwrite=True)
     skyflat = np.copy(reflat)
     t1 = time.perf_counter()
     mi, mj = reflat.shape

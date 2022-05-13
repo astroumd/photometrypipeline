@@ -285,7 +285,7 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
 def find_sats(fname, data, header):
     sat = header['SATURATE']
     saturated = np.where(data > sat, 0, 1)
-    saturated.dtype = np.int16
+    saturated = saturated.astype(np.int16)
     print("# of Saturated Pixels: {}".format(np.sum(saturated)))
     fileroot = os.path.basename(fname)
     filedir = os.path.dirname(fname)

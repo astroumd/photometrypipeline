@@ -239,7 +239,7 @@ def autoproc(
 
         # Check sextractor
         if os.path.isfile('temp.txt'):
-            os.system('rm -f temp.txt')
+            os.remove('temp.txt')
         os.system(pipevar['sexcommand'] + ' -d > temp.txt')
 
         if os.stat('temp.txt').st_size == 0:
@@ -248,7 +248,7 @@ def autoproc(
 
         # Check autoastrometry
         if os.path.isfile('temp.txt'):
-            os.system('rm -f temp.txt')
+            os.remove('temp.txt')
         os.system('python ' + pipevar['autoastrocommand'] + ' > temp.txt')
 
         if os.stat('temp.txt').st_size == 0:
@@ -327,7 +327,6 @@ def autoproc(
         ax.set_title('Time by Process')
         plt.savefig('time_analysis.png')
         plt.clf()
-
 
     # Prints the files that were not flat fielded due to problems with file
     if pipevar['flatfail'] != '':

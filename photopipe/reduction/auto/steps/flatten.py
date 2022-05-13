@@ -144,7 +144,7 @@ def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
         f.close()
 
         if np.shape(data) != np.shape(flat):
-            print(fname + ' could not be dark subtracted because it is not the same' + \
+            print(fname + ' could not be dark subtracted because it is not the same' +
                   ' size as the master dark, remove file to avoid confusion')
             return
 

@@ -218,7 +218,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                 if nocustomcat:
                     # Create catalog star file
                     # (python get_SEDs.py imfile band_filter catfile USNOB_THRESH alloptstars)
-                    # sedcmd = 'python ' + '/opt/project/photopipe/SEDs/get_SEDs_test.py ' + imfile + ' ' + \
+                    # sedcmd = 'python ' + '/opt/project/photopipe/SEDs/satget_SEDs_test.py ' + imfile + ' ' + \
                     #          thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
                     # sedcmd = 'python ' + pipevar['getsedcommand'] + ' ' + imfile + ' ' + \
                     #          thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
@@ -265,7 +265,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                 fileroot = os.path.basename(sfile)
                 filedir = os.path.dirname(sfile)
                 satfile = filedir + "/" + fileroot.replace("tazsfp", "SAT_", 1).replace("tasfp", "SAT_", 1)
-                rmv_sat = False  # TODO: Fix rmv_sat
+                rmv_sat = True  # TODO: Fix rmv_sat
                 try:
                     f = pf.open(satfile)
                 except:

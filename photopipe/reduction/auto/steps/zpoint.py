@@ -265,7 +265,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
                 fileroot = os.path.basename(sfile)
                 filedir = os.path.dirname(sfile)
                 satfile = filedir + "/" + fileroot.replace("tazsfp", "SAT_", 1).replace("tasfp", "SAT_", 1)
-                rmv_sat = True  # TODO: Fix rmv_sat
+                rmv_sat = True
                 try:
                     f = pf.open(satfile)
                 except:

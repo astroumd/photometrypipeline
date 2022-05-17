@@ -1,12 +1,12 @@
-FROM stelais/astromatic
+FROM joedurbak/photopipe-depends
 
 WORKDIR /work
 
-RUN export LANG=C.UTF-8 \
-    && conda update conda \
-    && conda install conda-build \
-    && conda install -c conda-forge astroquery \
-    && pip install astride
+#RUN export LANG=C.UTF-8 \
+#    && conda update conda \
+#    && conda install conda-build \
+#    && conda install -c conda-forge astroquery \
+#    && pip install astride
 
 #RUN apt-get install -y vim nano emacs gedit
 

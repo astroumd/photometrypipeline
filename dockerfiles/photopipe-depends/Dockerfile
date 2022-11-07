@@ -5,8 +5,8 @@ WORKDIR /work
 RUN export LANG=C.UTF-8 \
     && conda update conda \
     && conda install conda-build \
-    && conda install -c conda-forge astroquery \
-    && pip install astride
+    && conda install -y -c conda-forge astroquery \
+    && pip install astride astroscrappy
 
 #RUN apt-get install -y vim nano emacs gedit
 

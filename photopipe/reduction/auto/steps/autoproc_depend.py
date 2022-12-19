@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 # Disable interactive mode
 plt.ioff()
 
+
 def findcals(pipevar, file_format_str):
     calfiles = glob.glob(os.path.join(pipevar['caldir'], file_format_str))
     if len(calfiles) == 0:
@@ -35,6 +36,7 @@ def write_fits(filename, data, header):
         print('attempting to overwrite {} --> {}'.format(temp_filename, filename))
         shutil.move(temp_filename, filename)
         print("write_fits.shutil.move(temp_filename, filename) worked!")
+
 
 def findsexobj(filename, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP_WEIGHT',
                wtimage=None, fwhm=1.5, pix=0.3787, aperture=5.0, elong_cut=1.5, 
@@ -224,7 +226,6 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
         z += [indz]
         modmag[i, :] = obsmag[i, :] + indz
 
-    
     # Find difference of catalog and zeropoint corrected values. Remove any values with 
     # weights set to 0 or lower.  Calculate robust scatter on these values.  If difference 
     # with these weights is not within sigma*robust scatter then set weight to 0
@@ -330,7 +331,7 @@ def robust_scat(diff, wts, nobs, nstars, sigma):
 
 
 def identify_matches(queried_stars, found_stars, match_radius=3.):
-    '''
+    """
     Use a kd-tree (3d) to match two lists of stars, using full spherical coordinate distances.
 
     queried_stars, found_stars: numpy arrays of [ [ra,dec],[ra,dec], ... ] (all in decimal degrees)
@@ -339,7 +340,7 @@ def identify_matches(queried_stars, found_stars, match_radius=3.):
     Returns two arrays corresponding to queried stars:
     indices - an array of the indices (in found_stars) of the best match. Invalid (negative) index if no matches found.
     distances - an array of the distances to the closest match. NaN if no match found.
-    '''
+    """
     # make sure inputs are arrays
     queried_stars = np.array(queried_stars)
     found_stars = np.array(found_stars)
@@ -362,8 +363,3 @@ def identify_matches(queried_stars, found_stars, match_radius=3.):
     ind[np.isnan(dist)] = -9999
 
     return ind, dist
-
-
-
-
-

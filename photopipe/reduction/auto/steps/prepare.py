@@ -89,7 +89,7 @@ def autopipeprepare(pipevar=None):
     if pipevar['verbose']:
         print('Found', len(files), 'files')
 
-    # Finds any master bias files and filter name from header keyword
+    # Finds any master bias files and band_filter name from header keyword
     # Assumes camera name is in header under CAMERA
     biasfiles = apd.findcals(pipevar, 'bias*.fits')
 
@@ -102,7 +102,7 @@ def autopipeprepare(pipevar=None):
     else:
         print('Did not find any BIAS files! Check your data directory path!')
 
-    # Finds any master dark files and filter name from header keyword
+    # Finds any master dark files and band_filter name from header keyword
     # Assumes camera name is in header under CAMERA
     darkfiles = apd.findcals(pipevar, 'dark*.fits')
 
@@ -154,6 +154,7 @@ def autopipeprepare(pipevar=None):
             pipeprepare(f, outname=outnameim, biasfile=biasfile, darkfile=darkfile, verbose=pipevar['verbose'])
         else:
             print('Skipping prepare. File already exists')
+
 
 def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1):
 
@@ -284,6 +285,7 @@ def pipeprepare(filename, outname=None, biasfile=None, darkfile=None, verbose=1)
 def find_sats(fname, data, header):
     sat = header['SATURATE']
     saturated = np.where(data > sat, 0, 1)
+    saturated = saturated.astype(np.int16)
     print("# of Saturated Pixels: {}".format(np.sum(saturated)))
     fileroot = os.path.basename(fname)
     filedir = os.path.dirname(fname)

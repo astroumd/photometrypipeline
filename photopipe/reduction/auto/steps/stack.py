@@ -1,18 +1,24 @@
 import glob
 import os
+import re
+import sys
+
+from astropy import wcs
+from astropy.time import Time
 import astropy.io.fits as pf
 import numpy as np
+
+from photopipe.SEDs.get_SEDs import identify_matches
+from photopipe.SEDs import get_SEDs as seds
 import photopipe.reduction.auto.steps.autoproc_depend as apd
-from astropy import wcs
-import re
-from astropy.time import Time
-import sys
 
 inpipevar = {
     'autoastrocommand': 'autoastrometry', 'getsedcommand': 'get_SEDs', 'sexcommand': 'sex', 'swarpcommand': 'swarp',
     'rmifiles': 0, 'prefix': '', 'datadir': '', 'imworkingdir': '', 'overwrite': 0, 'verbose': 1, 'flatfail': '',
     'fullastrofail': '',	'pipeautopath': '', 'refdatapath': '', 'defaultspath': ''
 }
+
+
 def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
     print('STACK')
     if pipevar is None:
@@ -25,11 +31,11 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
     if not os.path.isfile('default.swarp'):
         os.system(pipevar['swarpcommand'] + ' -d > default.swarp')
 
-    qtcmd = 'True'
+    # qtcmd = 'True'
     quiet = 1
-    if pipevar['verbose'] > 0:
+    if pipevar['verbose']:
         quiet = 0
-        qtcmd = 'False'
+        # qtcmd = 'False'
 
     # Find files that have had zpoint performed on them, stop program if don't exist
     files = glob.glob(pipevar['imworkingdir'] + 't**sfp' + pipevar['prefix'] + '*.fits')
@@ -86,14 +92,13 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
 
         thistargetfilts = set(filefilts[thistarget])
 
-        # Find files that have the same target and same filter and store information
+        # Find files that have the same target and same band_filter and store information
         # on the exposure times and airmass. Only use good Scamp astrometric fit files
         for thistargetfilter in thistargetfilts:
             stacki = (filetargs == targ) & (filefilts == thistargetfilter)
-            # stacki = (filetargs == targ) & (filefilts == filter) &\
+            # stacki = (filetargs == targ) & (filefilts == band_filter) &\
             #          (filearms1 < 2.0e-4) & (filearms1 > 5.0e-6) &\
             #          (filearms2 < 2.0e-4) & (filearms2 > 5.0e-6)
-
 
             if sum(stacki) == 0:
                 continue
@@ -124,9 +129,9 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
 
             # Create output variables that will be used by SWarp
             outfl = pipevar['imworkingdir'] + 'coadd' + targ + '_' + re.sub(r'[^\w]', '', medtime) + '_' + \
-                    thistargetfilter + '.fits'
+                thistargetfilter + '.fits'
             outwt = pipevar['imworkingdir'] + 'coadd' + targ + '_' + re.sub(r'[^\w]', '', medtime) + '_' + \
-                    thistargetfilter + '.weight.fits'
+                thistargetfilter + '.weight.fits'
 
             if pipevar['verbose'] > 0:
                 stackcmd += ' -VERBOSE_TYPE NORMAL '
@@ -135,8 +140,8 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
 
             # Coadd with flux scale
             stackcmd = stackcmd + ' -SUBTRACT_BACK N -WRITE_XML N -IMAGEOUT_NAME ' + \
-                       outfl + ' -WEIGHTOUT_NAME ' + outwt + \
-                       ' -FSCALE_KEYWORD NEWFLXSC ' + newtextslist
+                outfl + ' -WEIGHTOUT_NAME ' + outwt + \
+                ' -FSCALE_KEYWORD NEWFLXSC ' + newtextslist
 
             if pipevar['verbose'] > 0:
                 print(stackcmd)
@@ -157,9 +162,8 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             cpsfdi = 1.34 * float(head['SEEPIX'])
 
             # Run sextractor again on new coadd file
-            apd.findsexobj(outfl, 3.0, pipevar, pix=pixscl, aperture=cpsfdi,
-            #apd.findsexobj(outfl, 1.5, pipevar, pix=pixscl, aperture=cpsfdi,
-                           wtimage=outwt, quiet=quiet)
+            apd.findsexobj(outfl, 3.0, pipevar, pix=pixscl, aperture=cpsfdi, wtimage=outwt, quiet=quiet)
+            # apd.findsexobj(outfl, 1.5, pipevar, pix=pixscl, aperture=cpsfdi, wtimage=outwt, quiet=quiet)
 
             head = pf.getheader(outfl)
 
@@ -210,7 +214,7 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                 cat_data = np.loadtxt(customcat, skiprows=1)
                 cat_coords = cat_data[:, :2]
 
-                cat_matches, tmp = apd.identify_matches(input_coords, cat_coords)
+                cat_matches, tmp = identify_matches(input_coords, cat_coords)
 
                 refmag = np.zeros(len(mag)) + 99
                 mode = np.zeros(len(mag)) + -1
@@ -226,23 +230,23 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             else:
                 nocustomcat = True
 
-            # If custom catalog not provided, catalog doesn't include filter, or
+            # If custom catalog not provided, catalog doesn't include band_filter, or
             # no objects from catalog found in image then
             # use get_SEDs.py to make catalog using 2MASS + (SDSS or APASS or USNOB1)
             if nocustomcat:
                 # Create catalog star file
-                # (python get_SEDs.py imfile filter catfile USNOB_THRESH alloptstars)
-                sedcmd = 'python ' + '/opt/project/photopipe/SEDs/get_SEDs_test.py ' + imfile + ' ' + \
-                         thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
+                # (python get_SEDs.py imfile band_filter catfile USNOB_THRESH alloptstars)
+                # sedcmd = 'python ' + '/opt/project/photopipe/SEDs/get_SEDs_test.py ' + imfile + ' ' + \
+                #          thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
                 # sedcmd = 'python ' + pipevar['getsedcommand'] + ' ' + imfile + ' ' + \
                 #          thistargetfilter + ' ' + catfile + " 15 True " + qtcmd
 
-                if pipevar['verbose'] > 0:
-                    print(sedcmd)
-                os.system(sedcmd)
-
+                # if pipevar['verbose'] > 0:
+                #     print(sedcmd)
+                # os.system(sedcmd)
+                seds.zeropoint(imfile, thistargetfilter, catfile, 15, True, quiet)
                 if not os.path.isfile(catfile):
-                    #zpts += [float('NaN')]
+                    # zpts += [float('NaN')]
                     continue
 
                 # Read in catalog file
@@ -250,19 +254,17 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                 refmag = cvars[catdict[thistargetfilter], :]
                 mode = cvars[catdict['mode'], :]
 
-            # Find catalog filter values and only cutoff values of actual detections
+            # Find catalog band_filter values and only cutoff values of actual detections
             goodind = (mode != -1) & (refmag < 90.0) & (0 < refmag) & (flag < 8) & (elon <= 1.3)
 
             refmag = refmag[goodind]
             obsmag = mag[goodind]
             obserr = mage[goodind]
-            ra_im = wrd[:,0][goodind]
-            dec_im = wrd[:,1][goodind]
-            #file = pipevar['imworkingdir'] + 'SATtest2_' + targ + '_' + thistargetfilter
+            ra_im = wrd[:, 0][goodind]
+            dec_im = wrd[:, 1][goodind]
+            # file = pipevar['imworkingdir'] + 'SATtest2_' + targ + '_' + thistargetfilter
 
-
-
-            #find Sat sources
+            # find Sat sources
             satfile = pipevar['imworkingdir'] + 'SATcoords_' + targ + '_' + thistargetfilter + '.txt'
             var = np.loadtxt(satfile)
             if np.shape(var) != (0,):
@@ -274,11 +276,13 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
                 for i in range(len(ra_im)):
                     key = False
                     for j in range(len(ra_sat)):
-                        if all(np.isclose([ra_sat[j],dec_sat[j]],[ra_im[i],dec_im[i]],atol=thres)):
+                        if all(np.isclose([ra_sat[j], dec_sat[j]], [ra_im[i], dec_im[i]], atol=thres)):
                             key = True
                             continue
-                    if key: sat_ind += [False]
-                    else: sat_ind += [True]
+                    if key:
+                        sat_ind += [False]
+                    else:
+                        sat_ind += [True]
 
                 refmag = refmag[sat_ind]
                 obsmag = obsmag[sat_ind]
@@ -323,7 +327,6 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
 
             cdata = pf.getdata(outfl)
             pf.update(outfl, cdata, chead)
-
 
             # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
             # sky-*.fits, sfp(PREFIX)*.fits, zsfp(PREFIX)*.fits files

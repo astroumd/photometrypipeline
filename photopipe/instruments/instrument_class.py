@@ -44,7 +44,7 @@ class instrument(object):
     @abstractmethod
     def is_cam_split(self, idx):
         # Input: index of camera
-        # Output: boolean saying if indexed camera is a split filter camera
+        # Output: boolean saying if indexed camera is a split band_filter camera
         pass
 
     @abstractmethod
@@ -67,8 +67,8 @@ class instrument(object):
 
     @abstractmethod
     def get_filter(self, h, cam):
-        # Input: header, camera name (ex. 'C0', 'C3a' for split filter camera)
-        # Output: filter name for file
+        # Input: header, camera name (ex. 'C0', 'C3a' for split band_filter camera)
+        # Output: band_filter name for file
         pass
         
     @abstractmethod
@@ -80,7 +80,7 @@ class instrument(object):
     @abstractmethod
     def get_centered_filter(self, h, idx):
         # Input: header, index of camera
-        # Output: filter name at center of indexed camera
+        # Output: band_filter name at center of indexed camera
         pass
 
     @abstractmethod

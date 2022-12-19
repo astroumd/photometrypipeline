@@ -7,7 +7,7 @@
 # PURPOSE:
 #   A fast astrometric solver that uses a combination of pair-distance matching and asterism
 #   matching to solve a field without knowing the position angle.  The full list of steps is:
-#    	1 - Extract all stars from the image.  Attempts to filter out cosmic rays,
+#    	1 - Extract all stars from the image.  Attempts to band_filter out cosmic rays,
 #         	galaxies, bad columns, and so on.
 #     	2 - Query a catalog to get a list of known star positions.
 #     	3 - Trim the catalogs if necessary and try to optimize the search strategy

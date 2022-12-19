@@ -1,24 +1,14 @@
-FROM stelais/astromatic
+FROM joedurbak/photopipe-depends
 
 WORKDIR /work
 
-RUN pip install astride
-RUN conda install -c conda-forge astroquery
-RUN pip install astroscrappy
-
-#RUN apt-get install -y vim nano emacs gedit
-
-#RUN git clone --branch py3 https://c2499497b5dd9fc93f9d67000bc15f1c514b850f@github.com/RIMAS-RATIR-DCT/photometrypipeline.git \
-
-RUN git clone https://github.com/joedurbak/photometrypipeline.git \
+RUN git clone --branch rimas_py3 https://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@github.com/RIMAS-RATIR-DCT/photometrypipeline.git \
     && cd photometrypipeline \
     && python setup.py build \
     && chmod a+x photopipe_cli.py
 
-RUN export LANG=C.UTF-8 \
-    && conda update conda \
-    && conda install conda-build \
-    && conda develop /work/photometrypipeline
+RUN conda develop /work/photometrypipeline
 
+CMD ["git -C /work/photometrypipeline pull"]
 ENTRYPOINT ["/work/photometrypipeline/photopipe_cli.py"]
 CMD ["-h"]

@@ -5,6 +5,7 @@ import glob
 import os
 import shutil
 from zipfile import ZipFile
+import warnings
 
 from photopipe.reduction.preprocess import choose, master
 from photopipe.reduction.auto.autoproc import autoproc
@@ -87,7 +88,7 @@ parser.add_argument(
 )
 parser.add_argument(
     '--nosaveselect', default=False, action="store_true",
-    help="don't save dictionary of selected frames to python pickle file during preprocessing"
+    help="don't save dictionary of selected frames to python json file during preprocessing"
 )
 parser.add_argument(
     '--fmin', default=5, type=int, help='Minimum number of files needed to make a master frame, default: 5'
@@ -158,8 +159,21 @@ parser.add_argument(
     '--nogaia', action="store_true", default=False,
     help="Do not use Gaia catalog for astrometric calibration"
 )
+
+parser.add_argument(
+    '-y', '--yes', action="store_true", default=False,
+    help="Automatically respond 'y' to user input requests"
+)
+
 parser.add_argument('--debug', help='turn on debug outputs', default=False, action='store_true')
+
+parser.add_argument('--warn', help='turn on warning outputs', default=False, action='store_true')
+
 args = parser.parse_args()
+
+if not args.warn:
+    warnings.filterwarnings('ignore')
+
 data_dir = args.datadir + '/'
 cal_dir = os.path.join(args.datadir, 'calibration') + os.path.sep
 selected_dir = os.path.join(args.datadir, 'selected') + os.path.sep
@@ -189,6 +203,24 @@ def str_list_to_int_list(str_list, delimiter=','):
     return [int(i) for i in str_list_to_list(str_list, delimiter=delimiter)]
 
 
+def preprocess_type(ftype, choose_kwargs, fmin=args.fmin, master_dir=cal_dir):
+    _choose_kwargs = choose_kwargs.copy()
+    _choose_kwargs['ftype'] = ftype
+    preprocess_dict = choose.choose_calib(**_choose_kwargs)
+    if preprocess_dict:
+        master_kwargs = {
+            'fn_dict': preprocess_dict,
+            'mtype': ftype,
+            'instrument': _choose_kwargs['instrument'],
+            'fmin': fmin,
+            'master_dir': master_dir,
+            'yes': _choose_kwargs['yes']
+        }
+        master.mkmaster(**master_kwargs)
+    else:
+        print("No files of type {} found, skipping...".format(ftype))
+
+
 def preprocess_cli():
     if args.cams is None:
         if args.instrument == 'lmi':
@@ -204,30 +236,24 @@ def preprocess_cli():
     preprocess_kwargs = {
         'instrument': args.instrument, 'workdir': data_dir, 'cams': cams,
         'auto': not args.noautoselect, 'reject_sat': not args.norejectsat, 'amin': args.amin, 'amax': args.amax,
-        'save_select': not args.nosaveselect, 'noplot': args.noplot,
+        'save_select': not args.nosaveselect, 'noplot': args.noplot, 'yes': args.yes
     }
 
     if not args.nobias:
-        preprocess_kwargs['ftype'] = 'bias'
-        preprocess_dict = choose.choose_calib(**preprocess_kwargs)
-        master.mkmaster(args.instrument, preprocess_dict, preprocess_kwargs['ftype'], args.fmin, master_dir=cal_dir)
+        preprocess_type('bias', preprocess_kwargs)
 
     if not args.noflat:
-        preprocess_kwargs['ftype'] = 'flat'
-        preprocess_dict = choose.choose_calib(**preprocess_kwargs)
-        master.mkmaster(args.instrument, preprocess_dict, preprocess_kwargs['ftype'], args.fmin, master_dir=cal_dir)
+        preprocess_type('flat', preprocess_kwargs)
 
     if not args.nodark:
-        preprocess_kwargs['ftype'] = 'dark'
-        preprocess_dict = choose.choose_calib(**preprocess_kwargs)
-        master.mkmaster(args.instrument, preprocess_dict, preprocess_kwargs['ftype'], args.fmin, master_dir=cal_dir)
+        preprocess_type('dark', preprocess_kwargs)
 
     if not args.noscienceselect:
         science_kwargs = preprocess_kwargs.copy()
         del science_kwargs['reject_sat']
         del science_kwargs['amin']
         del science_kwargs['amax']
-        del science_kwargs['ftype']
+        # del science_kwargs['ftype']
         science_kwargs['targetdir'] = selected_dir
         choose.choose_science(**science_kwargs)
 
@@ -238,7 +264,7 @@ def autoproc_cli():
         'only': None, 'step': args.step, 'mastersky': not args.nomastersky, 'skyflattarg': not args.noskyflattarg,
         'redo': args.redo, 'quiet': args.quiet, 'rmifiles': args.rmifiles,
         'customcat': args.customcat, 'customcatfilt': str_list_to_list(args.customcatfilt),
-        'nogaia': args.nogaia,
+        'nogaia': args.nogaia, 'debug': args.debug
     }
     autoproc(**autoproc_kwargs)
 

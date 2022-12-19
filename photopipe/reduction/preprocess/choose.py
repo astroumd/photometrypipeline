@@ -6,19 +6,18 @@ from matplotlib.patches import Rectangle
 import shutil
 from glob import glob
 import datetime
-import pickle
-import sys
+from six.moves.collections_abc import Iterable
 
 # installed modules
 import astropy.io.fits as pf
 import matplotlib.pylab as pl
 import numpy as np
-from scipy.ndimage.interpolation import zoom
 
 # custom modules/functions
-from photopipe.reduction.dependencies.zscale import zscale
+# from photopipe.reduction.dependencies.zscale import zscale
 from photopipe.reduction.dependencies import astro_functs as af
 from photopipe.instruments.specific_instruments import instrument_dict
+from photopipe.reduction.preprocess import json_helper
 
 # Preprocessing constants
 FITS_IN_KEY = lambda n: 'IMCMB{:03}'.format(int(n))
@@ -26,7 +25,7 @@ FITS_IN_KEY = lambda n: 'IMCMB{:03}'.format(int(n))
 
 
 def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, reject_sat=True, amin=0.2, amax=0.8,
-                 save_select=True, figsize=(8, 5), noplot=False):
+                 save_select=True, figsize=(8, 5), noplot=False, yes=False):
     """
     NAME:
         choose_calib
@@ -42,24 +41,26 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
         reject_sat  - reject frames with saturated pixels
         amin        - minimum fraction of saturation value for median (automated)
         amax        - maximum fraction of saturation value for median (automated)
-        save_select - save dictionary of selected frames to python pickle file
+        save_select - save dictionary of selected frames to python json file
     EXAMPLE:
         file_dict = choose_calib('ratir', ftype = bias, dark or flat name,
             workdir = 'path/to/data/', cams = [#,#,...])
-        *** call mkmaster using dictionary or pickle file ***
+        *** call mkmaster using dictionary or json file ***
     """
     instrum = instrument_dict[instrument]
 
-    if auto and (ftype is instrum.flatname):
+    if auto and (ftype is instrum.flatname) and not yes:
         temp = input(
-            af.bcolors.WARNING + "Warning: automated selection of flats is not recommended! Continue? (y/n): " + af.bcolors.ENDC)
+            af.bcolors.WARNING + "Warning: automated selection of flats is not recommended! Continue? (y/n): " +
+            af.bcolors.ENDC
+        )
         if (temp.lower() != 'y') and (temp.lower() != 'yes'):
             af.print_bold("Exiting...")
             return
 
     # check for non-list camera argument
-    if type(cams) is not list:
-        cams = list(cams)  # convert to list
+    if not isinstance(cams, Iterable):
+        cams = [cams]  # convert to list
 
     # check for non-integer camera designators
     if type(cams[0]) is not int:
@@ -72,7 +73,7 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
     # move to working directory
     start_dir = os.getcwd()
     os.chdir(workdir)
-    wrkdir = os.getcwd()  # TODO
+    # wrkdir = os.getcwd()  # TODO
 
     d = os.getcwd().split('/')[-1]  # name of current directory
     if not auto:
@@ -80,14 +81,13 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
     else:
         af.print_head("\nAutomatically selecting {} frames in {}:".format(ftype, d))
 
-    # dictionary to store selected fits files by camera or filter
+    # dictionary to store selected fits files by camera or band_filter
     fits_list_dict = {}
 
-
-    #if len(fits_check) == 0:
+    # if len(fits_check) == 0:
     if len(glob(instrum.original_file_format())) != 0:
         print("Changing file names:")
-        files = instrum.change_file_names(glob(instrum.original_file_format()))
+        instrum.change_file_names(glob(instrum.original_file_format()))
 
         fits_check_2 = glob('????????T??????C??.fits')
 
@@ -96,8 +96,8 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
             return
 
     # open figure for images if not auto
-    if not auto and not noplot:
-        fig = pl.figure(figsize=figsize)
+    # if not auto and not noplot:
+    fig = pl.figure(figsize=figsize)
 
     # work on FITs files for specified cameras
     for cam_i in cams:
@@ -106,13 +106,13 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
         af.print_under("\n{:^50}".format('CAMERA {}'.format(cam_i)))
 
         # check for valid calibration request
-        if instrum.has_cam_bias(cam_i) == False and ftype is instrum.biasname:
-            af.print_warn("Warning: Camera C{} does not have {} frames.  " +
-                          "Skipping...".format(cam_i, instrum.biasname))
+        if not instrum.has_cam_bias(cam_i) and ftype is instrum.biasname:
+            af.print_warn(("Warning: Camera C{} does not have {} frames.  " +
+                          "Skipping...").format(cam_i, instrum.biasname))
             continue
-        if instrum.has_cam_dark(cam_i) == False and ftype is instrum.darkname:
-            af.print_warn("Warning: Camera C{} does not have {} frames.  " +
-                          "Skipping...".format(cam_i, instrum.darkname))
+        if not instrum.has_cam_dark(cam_i) and ftype is instrum.darkname:
+            af.print_warn(("Warning: Camera C{} does not have {} frames.  " +
+                          "Skipping...").format(cam_i, instrum.darkname))
             continue
 
         # find raw files of selected type for this camera
@@ -142,12 +142,12 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
                     continue
 
             # check if instrument camera is split, if it is make sure correct specs being used
-            if instrum.is_cam_split(cam_i) == True:
-                print('\t* Split filter used')
+            if instrum.is_cam_split(cam_i):
+                print('\t* Split band_filter used')
             else:
                 if (instrum.get_filter(h, 'C{}'.format(cam_i)) not in instrum.possible_filters()) and (
                         ftype is instrum.flatname):
-                    af.print_warn("Warning: invalid filter detected.  Skipping {} band.".format(
+                    af.print_warn("Warning: invalid band_filter detected.  Skipping {} band.".format(
                         instrum.get_filter(h, 'C{}'.format(cam_i))))
                     continue
 
@@ -159,18 +159,23 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
             # return quick image summary
             [im1, m, s, sfrac] = image_summary(im, sat_pt, cam_i, instrum, split=instrum.is_cam_split(cam_i))
 
-            if instrum.is_cam_split(cam_i) == True:
+            if instrum.is_cam_split(cam_i):
                 [m1, m2] = m
                 [s1, s2] = s
                 [im1, im2] = im1
                 [sfrac1, sfrac2] = sfrac
+            else:
+                m1 = m2 = m
+                s1 = s2 = s
+                im1 = im2 = im1
+                sfrac1 = sfrac2 = sfrac
 
                 # if auto select then find values with correct ranges
             if auto:
 
                 # all bias and dark frames are selected
                 if ftype in [instrum.biasname, instrum.darkname]:
-                    addtodict(dict=fits_list_dict, key='C{}'.format(cam_i), value='{}{}'.format(workdir, fits_fn))
+                    addtodict(dictionary=fits_list_dict, key='C{}'.format(cam_i), value='{}{}'.format(workdir, fits_fn))
 
                 # flats are selected based on median value
                 elif ftype is instrum.flatname:
@@ -178,7 +183,7 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
                     vmin = amin * sat_pt
                     vmax = amax * sat_pt
 
-                    if instrum.is_cam_split(cam_i) == True:
+                    if instrum.is_cam_split(cam_i):
 
                         # check whether median values are in specified range
                         # bottom side
@@ -186,7 +191,7 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
                             print('\t* Filter used: {}'.format(instrum.get_filter(h, 'C{}a'.format(cam_i))))
                             af.print_blue("\t* Bottom side selected.")
                             imfits_1 = savefile(fits_id, im1, instrum.get_filter(h, 'C{}a'.format(cam_i)), h)
-                            addtodict(dict=fits_list_dict,
+                            addtodict(dictionary=fits_list_dict,
                                       key=instrum.get_filter(h, 'C{}a'.format(cam_i)),
                                       value='{}{}'.format(workdir, imfits_1))
 
@@ -197,11 +202,11 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
                                 af.print_warn("\t* Bottom side rejected:\tSATURATED.")
 
                         # top side
-                        if m2 > vmin and m2 < vmax:
+                        if vmin < m2 < vmax:
                             print('\t* Filter used: {}'.format(instrum.get_filter(h, 'C{}b'.format(cam_i))))
                             af.print_blue("\t* Top side selected.")
                             imfits_2 = savefile(fits_id, im2, instrum.get_filter(h, 'C{}b'.format(cam_i)), h)
-                            addtodict(dict=fits_list_dict,
+                            addtodict(dictionary=fits_list_dict,
                                       key=instrum.get_filter(h, 'C{}b'.format(cam_i)),
                                       value='{}{}'.format(workdir, imfits_2))
                         else:
@@ -214,9 +219,9 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
                     else:
 
                         # check whether median value is in specified range
-                        if m > vmin and m < vmax:
+                        if vmin < m < vmax:
                             af.print_blue("\t* Frame selected.")
-                            addtodict(dict=fits_list_dict,
+                            addtodict(dictionary=fits_list_dict,
                                       key=instrum.get_filter(h, 'C{}'.format(cam_i)),
                                       value='{}{}'.format(workdir, fits_fn))
 
@@ -233,8 +238,8 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
 
                     if (sfrac1 < amin) or (sfrac1 > amax) or (sfrac2 < amin) or (sfrac2 > amax):
                         af.print_warn(
-                            "Warning: median value outside specified range of {:.0%} - {:.0%} of saturation value in frame.  Skipping frame {}.".format(
-                                amin, amax, fits_fn))
+                            ("Warning: median value outside specified range of {:.0%} - {:.0%} of saturation value in" +
+                            " frame.  Skipping frame {}.").format(amin, amax, fits_fn))
                         continue
 
                     if not noplot:
@@ -258,8 +263,9 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
                 else:
                     if (sfrac < amin) or (sfrac > amax):
                         af.print_warn(
-                            "Warning: median value outside specified range of {:.0%} - {:.0%} of saturation value in frame.  Skipping frame {}.".format(
-                                amin, amax, fits_fn))
+                            ("Warning: median value outside specified range of {:.0%} - {:.0%} of saturation value in" +
+                            " frame.  Skipping frame {}.").format(amin, amax, fits_fn)
+                        )
                         continue
 
                     if not noplot:
@@ -271,26 +277,30 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
                         axhist = fig.add_subplot(122)
                         plot_params_calib(axhist, im1, m, s, sat_pt, hist=True)
 
-                if not noplot: fig.canvas.draw()
+                if not noplot:
+                    fig.canvas.draw()
 
                 # query user until valid response is provided
                 valid_entry = False
                 while not valid_entry:
+                    if yes:
+                        user = 'y'  # TODO: determine if we want this automated with other inputs
 
-                    user = input("\nType Y for YES, N for NO, Q for QUIT: ")
+                    else:
+                        user = input("\nType Y for YES, N for NO, Q for QUIT: ")
 
                     if user.lower() == 'y':
 
-                        if instrum.is_cam_split(cam_i) == True:
+                        if instrum.is_cam_split(cam_i):
                             imfits_1 = savefile(fits_id, im1,
                                                 instrum.get_filter(h, 'C{}a'.format(cam_i)), h)
-                            addtodict(dict=fits_list_dict,
+                            addtodict(dictionary=fits_list_dict,
                                       key=instrum.get_filter(h, 'C{}a'.format(cam_i)),
                                       value='{}{}'.format(workdir, imfits_1))
 
                             imfits_2 = savefile(fits_id, im2,
                                                 instrum.get_filter(h, 'C{}b'.format(cam_i)), h)
-                            addtodict(dict=fits_list_dict,
+                            addtodict(dictionary=fits_list_dict,
                                       key=instrum.get_filter(h, 'C{}b'.format(cam_i)),
                                       value='{}{}'.format(workdir, imfits_2))
 
@@ -299,7 +309,7 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
                                 fl_key = instrum.get_filter(h, 'C{}'.format(cam_i))
                             else:
                                 fl_key = 'C{}'.format(cam_i)
-                            addtodict(dict=fits_list_dict, key=fl_key, value='{}{}'.format(workdir, fits_fn))
+                            addtodict(dictionary=fits_list_dict, key=fl_key, value='{}{}'.format(workdir, fits_fn))
 
                         valid_entry = True
 
@@ -315,7 +325,8 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
                     else:  # invalid case
                         af.print_warn("'{}' is not a valid entry.".format(user))
 
-            if not auto: fig.clear()  # clear image
+            if not auto:
+                fig.clear()  # clear image
             hdulist.close()  # close FITs file
 
     if auto:
@@ -323,14 +334,15 @@ def choose_calib(instrument, ftype, workdir='.', cams=(0, 1, 2, 3), auto=False, 
             af.print_head("\nDisplaying automatically selected {} frames:".format(ftype))
             af.show_list(fits_list_dict)
     else:
-        if not noplot: pl.close('all')  # close image to free memory
+        if not noplot:
+            pl.close('all')  # close image to free memory
 
     if save_select:
         dt = datetime.datetime.now()
-        fnout = '{}_'.format(ftype) + dt.isoformat().split('.')[0].replace('-', '').replace(':',
-                                                                                            '') + '.p'  # python pickle extension
+        fnout = '{}_'.format(ftype) + dt.isoformat().split('.')[0].replace('-', '').replace(':', '') + '.json'
+        # python json extension
         af.print_head("\nSaving selection dictionary to {}".format(fnout))
-        pickle.dump(fits_list_dict, open(fnout, 'wb'))  # save dictionary to pickle
+        json_helper.save_dict_to_json(fits_list_dict, fnout)  # save dictionary to json
 
     os.chdir(start_dir)  # move back to starting directory
 
@@ -352,7 +364,7 @@ def image_summary(im, sat_pt, cam_i, instrum, split=False):
         split   - boolean that tells if camera has split filters
     """
 
-    if split == True:
+    if split:
         im1 = im[instrum.slice('C{}a'.format(cam_i))]
         m1 = np.median(im1)
         s1 = af.robust_sigma(im1)
@@ -376,43 +388,46 @@ def image_summary(im, sat_pt, cam_i, instrum, split=False):
 
         return [im1, m, s, sfrac]
 
-def addtodict(dict=None, key=None, value=None):
+
+def addtodict(dictionary=None, key=None, value=None):
     """
     NAME:
         addtodict
     PURPOSE:
         Adds (key, value) to dictionary by initializing or appending
     INPUTS:
-        dict  - dictionary to add to
+        dictionary  - dictionary to add to
         key   - key to add to dictionary
         value - value of key to add to dictionary
     EXAMPLE:
-        addtodict(dict=dictionary, key='test', value='testing')
+        addtodict(dictionary=dictionary, key='test', value='testing')
     """
 
     try:
-        dict[key].append(value)
+        dictionary[key].append(value)
     except:
-        dict[key] = [value]
+        dictionary[key] = [value]
 
-def savefile(file, im, filter, h):
+
+def savefile(file, im, band_filter, h):
     """
     NAME:
         savefile
     PURPOSE:
-        Adds filter keyword and saves file (usually for split filter cameras)
+        Adds band_filter keyword and saves file (usually for split band_filter cameras)
     INPUT:
         file   - filename without extension
         im     - data
-        filter - filter name to add
+        band_filter - band_filter name to add
         h      - header
     EXAMPLE:
         savefile('test', data, 'Z', header)
     """
-    newfile = '{}_{}.fits'.format(file, filter)
-    h['FILTER'] = filter
-    if os.path.exists(newfile): os.remove(newfile) # delete old copy
-    pf.writeto(newfile, im, header=h, overwrite=True) # save object frame
+    newfile = '{}_{}.fits'.format(file, band_filter)
+    h['FILTER'] = band_filter
+    if os.path.exists(newfile):
+        os.remove(newfile)  # delete old copy
+    pf.writeto(newfile, im, header=h, overwrite=True)  # save object frame
     return newfile
 
 
@@ -456,7 +471,7 @@ def plot_params_calib(ax, im, m, s, sat_pt, hist=False):
         ax.set_xlabel(r"Median is {:.0%} of saturation level.".format(float(m) / sat_pt))
 
 
-def plot_params_science(ax, disp_im, filter, h, central=False, window_zoom=4):
+def plot_params_science(ax, disp_im, band_filter, h, central=False, window_zoom=4):
     """
     NAME:
         plot_params_science
@@ -465,7 +480,7 @@ def plot_params_science(ax, disp_im, filter, h, central=False, window_zoom=4):
     INPUTS:
         ax          - plot reference that we will be using to plot images
         disp_im     - data to plot
-        filter      - filter for labeling plot
+        band_filter      - band_filter for labeling plot
         h           - header
         central     - boolean to center image to zoomed window
         window_zoom - zoom level for closer look
@@ -477,7 +492,7 @@ def plot_params_science(ax, disp_im, filter, h, central=False, window_zoom=4):
     ax.set_xticks([])
     ax.set_yticks([])
     xm, ym = np.array(disp_im.shape, dtype=float) / 2
-    xr = xm / float(window_zoom);
+    xr = xm / float(window_zoom)
     yr = ym / float(window_zoom)
 
     if central:
@@ -492,11 +507,11 @@ def plot_params_science(ax, disp_im, filter, h, central=False, window_zoom=4):
                   cmap=pl.cm.gray, interpolation='none')
         ax.contour(disp_im, levels=[z2], origin='lower', colors='r')
         ax.add_patch(Rectangle((ym - yr, xm - xr), 2 * yr, 2 * xr, ec='b', fc='none', lw=2))
-        ax.set_title(r"{} band".format(filter))
+        ax.set_title(r"{} band".format(band_filter))
 
 
-def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], auto=False, save_select=True,
-                   figsize=(10, 10), window_zoom=4, calibrate=False, noplot=False):
+def choose_science(instrument, workdir='.', targetdir='.', cams=(0, 1, 2, 3), auto=False, save_select=True,
+                   figsize=(10, 10), window_zoom=4, calibrate=False, noplot=False, yes=False):
     """
     PURPOSE:
         Display science images for verification by user
@@ -506,7 +521,7 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
         targetdir   - directory where selected frames and lists are output
         cams        - camera numbers to process data, all by default
         auto        - select all science frames
-        save_select - save dictionary of selected frames to python pickle file
+        save_select - save dictionary of selected frames to python json file
         figsize     - dimensions of figure used to display frames for selection
         window_zoom - zoom level for closer look
     EXAMPLE:
@@ -517,7 +532,7 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
     instrum = instrument_dict[instrument]
 
     # check for non-list camera argument
-    if type(cams) is not list:
+    if not isinstance(cams, Iterable):
         cams = [cams]  # convert to list
 
     # check for non-integer camera designators
@@ -537,7 +552,7 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
     else:
         af.print_head("\nSelecting all science frames in {}:".format(d))
 
-    # dictionary to store selected fits files by camera or filter
+    # dictionary to store selected fits files by camera or band_filter
     fits_list_dict = {}
 
     # remove tailing / from target directory name if present
@@ -550,20 +565,20 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
         os.makedirs(targetdir)
     # warn user if previous files may be overwritten
     else:
-        af.print_warn("Warning: Target directory exists. Existing files will be overwritten.")
-        resp = input("Proceed? (y/n): ")
-        if resp.lower() != 'y':
-            af.print_bold("Exiting...")
-            os.chdir(start_dir)  # move back to starting directory
-            return
-        else:
-            shutil.rmtree(targetdir)
-            os.makedirs(targetdir)
+        if not yes:
+            af.print_warn("Warning: Target directory exists. Existing files will be overwritten.")
+            resp = input("Proceed? (y/n): ")
+            if resp.lower() != 'y':
+                af.print_bold("Exiting...")
+                os.chdir(start_dir)  # move back to starting directory
+                return
+        shutil.rmtree(targetdir)
+        os.makedirs(targetdir)
 
     fits_check = glob('????????T??????C??.fits')
 
     if len(fits_check) == 0:
-        files = instrum.change_file_names(glob(instrum.original_file_format()))
+        instrum.change_file_names(glob(instrum.original_file_format()))
 
         fits_check_2 = glob('????????T??????C??.fits')
 
@@ -583,7 +598,7 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
 
         if calibrate:
             # get master dark and bias frames for current camera if required
-            if instrum.has_cam_bias(cam_i) == True:
+            if instrum.has_cam_bias(cam_i):
                 # if instrum.has_cam_bias(cam_i) == True:
                 mbias_fn = '{}_C{}.fits'.format(instrum.biasname, cam_i)
 
@@ -591,20 +606,20 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
                     af.print_err(
                         'Error: {} not found.  Move master bias file to working directory to proceed.'.format(mbias_fn))
                     continue
-                else:
-                    mbias_data = pf.getdata(mbias_fn)
+                # else:
+                mbias_data = pf.getdata(mbias_fn)
 
-            if instrum.has_cam_dark(cam_i) == True:
+            if instrum.has_cam_dark(cam_i):
                 mdark_fn = '{}_C{}.fits'.format(instrum.darkname, cam_i)
 
                 if not os.path.exists(mdark_fn):
                     af.print_err(
                         'Error: {} not found.  Move master dark file to working directory to proceed.'.format(mdark_fn))
                     continue
-                else:
-                    mdark_data = pf.getdata(mdark_fn)
+                # else:
+                mdark_data = pf.getdata(mdark_fn)
 
-                    # find raw files of selected type for this camera
+        # find raw files of selected type for this camera
         fits_list = glob('????????T??????C{}{}.fits'.format(cam_i, instrum.ftype_post[instrum.objname]))
         if len(fits_list) == 0:
             af.print_warn("Warning: no fits files found.  Skipping camera {}.".format(cam_i))
@@ -622,8 +637,8 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
             h = hdulist[0].header
 
             if calibrate:
-                # get master flat frame for current filter
-                if instrum.is_cam_split(cam_i) == True:
+                # get master flat frame for current band_filter
+                if instrum.is_cam_split(cam_i):
                     mflat_fn1 = '{}_{}.fits'.format(instrum.flatname, instrum.get_filter(h, 'C{}a'.format(cam_i)))
                     if not os.path.exists(mflat_fn1):
                         af.print_err(
@@ -652,16 +667,16 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
                         mflat_data = pf.getdata(mflat_fn)
 
             # get image statistics
-            if instrum.is_cam_split(cam_i) == True:
+            if instrum.is_cam_split(cam_i):
                 im1 = im[instrum.slice('C{}a'.format(cam_i))]
                 im2 = im[instrum.slice('C{}b'.format(cam_i))]
             else:
-                im1 = im[instrum.slice('C{}'.format(cam_i))]
+                im1 = im2 = im[instrum.slice('C{}'.format(cam_i))]
 
             # display image and prompt user
             if not auto:
 
-                if instrum.is_cam_split(cam_i) == True:
+                if instrum.is_cam_split(cam_i):
 
                     disp_im1 = np.copy(im1)
                     disp_im2 = np.copy(im2)
@@ -725,19 +740,19 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
                     fig.set_tight_layout(True)
                     fig.canvas.draw()
 
-            if instrum.is_cam_split(cam_i) == True:
+            if instrum.is_cam_split(cam_i):
                 if instrum.get_centered_filter(h, cam_i).count(instrum.get_filter(h, 'C{}a'.format(cam_i))) != 0:
-                    print("\t* The target is focused on the {} filter.".format(
+                    print("\t* The target is focused on the {} band_filter.".format(
                         instrum.get_filter(h, 'C{}a'.format(cam_i))))
                 elif instrum.get_centered_filter(h, cam_i).count(instrum.get_filter(h, 'C{}b'.format(cam_i))) != 0:
-                    print("\t* The target is focused on the {} filter.".format(
+                    print("\t* The target is focused on the {} band_filter.".format(
                         instrum.get_filter(h, 'C{}b'.format(cam_i))))
                 else:
                     af.print_warn(
-                        "\t* Warning: The target is NOT focused on an split filter. The target is focused on the {} filter.".format(
-                            instrum.get_centered_filter(h, cam_i)))
+                        ("\t* Warning: The target is NOT focused on an split band_filter. The target is focused on " +
+                         "the {} band_filter.").format(instrum.get_centered_filter(h, cam_i)))
             else:
-                # print filter name
+                # print band_filter name
                 print('\t* Filter used: {}'.format(instrum.get_filter(h, 'C{}'.format(cam_i))))
 
             # query user until valid response is provided
@@ -745,7 +760,7 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
             while not valid_entry:
 
                 # either select all if auto, or have user select
-                if auto:
+                if auto or yes:
                     user = 'y'
                 else:
                     user = input("\nType Y for YES, N for NO, Q for QUIT: ")
@@ -761,10 +776,10 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
                     elif instrum.get_centered_filter(h, cam_i).count(filterA) != 0:
                         direction = 'b'
                     elif instrum.get_centered_filter(h, cam_i).lower() == 'r' and (filterB == 'h' or filterA == 'z'):
-                        # keeping frames 'r' centered with split filter 'Z/Y' or 'J/H'
+                        # keeping frames 'r' centered with split band_filter 'Z/Y' or 'J/H'
                         direction = 'b'
                     else:
-                        af.print_warn("\t* Warning: Skipping frame not centered on split filter.")
+                        af.print_warn("\t* Warning: Skipping frame not centered on split band_filter.")
                         user = 'n'
                         direction = ''
 
@@ -772,7 +787,7 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
 
                     h_c = h.copy()
 
-                    if instrum.is_cam_split(cam_i) == True:
+                    if instrum.is_cam_split(cam_i):
 
                         if direction.lower() == 'b':
                             f_img_post = 'a'
@@ -786,19 +801,21 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
                         im_img = im[instrum.slice('C{}{}'.format(cam_i, f_img_post))]
                         hnew = instrum.change_header_keywords(h_c, 'C{}{}'.format(cam_i, f_img_post))
                         pf.writeto(imfits, im_img, header=hnew, overwrite=True)  # save object frame
-                        ## 'has_key()' depreciated; changed  to 'in'
+                        # 'has_key()' depreciated; changed  to 'in'
                         if instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_img_post)) in fits_list_dict:
                             fits_list_dict[instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_img_post))].append(imfits)
                         else:
                             fits_list_dict[instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_img_post))] = [imfits]
 
-                        # filter side with sky, now saved as object, but different list to keep track
-                        skyfits = '{}/{}_{}_{}.fits'.format(targetdir, fits_id, instrum.objname,
-                                                            instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_sky_post)))
+                        # band_filter side with sky, now saved as object, but different list to keep track
+                        skyfits = '{}/{}_{}_{}.fits'.format(
+                            targetdir, fits_id, instrum.objname,
+                            instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_sky_post))
+                        )
                         im_sky = im[instrum.slice('C{}{}'.format(cam_i, f_sky_post))]
                         hnew = instrum.change_header_keywords(h_c, 'C{}{}'.format(cam_i, f_sky_post))
                         pf.writeto(skyfits, im_sky, header=hnew, overwrite=True)  # save sky frame
-                        ## 'has_key()' depreciated; changed  to 'in'
+                        # 'has_key()' depreciated; changed  to 'in'
                         if instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_sky_post)) in fits_list_dict:
                             fits_list_dict[instrum.get_filter(h_c, 'C{}{}'.format(cam_i, f_sky_post))].append(skyfits)
                         else:
@@ -812,7 +829,7 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
                         im_img = im[instrum.slice('C{}'.format(cam_i))]
                         hnew = instrum.change_header_keywords(h_c, 'C{}'.format(cam_i))
                         pf.writeto(imfits, im_img, header=hnew, overwrite=True)
-                        ## 'has_key()' depreciated; changed  to 'in'
+                        # 'has_key()' depreciated; changed  to 'in'
                         if instrum.get_filter(h_c, 'C{}'.format(cam_i)) in fits_list_dict:
                             fits_list_dict[instrum.get_filter(h_c, 'C{}'.format(cam_i))].append(imfits)
                         else:
@@ -847,9 +864,9 @@ def choose_science(instrument, workdir='.', targetdir='.', cams=[0, 1, 2, 3], au
     if save_select:
         dt = datetime.datetime.now()
         fnout = 'object_' + dt.isoformat().split('.')[0].replace('-', '').replace(':',
-                                                                                  '') + '.p'  # python pickle extension
+                                                                                  '') + '.json'  # python json extension
         af.print_head("\nSaving selection dictionary to {}".format(fnout))
-        pickle.dump(fits_list_dict, open(fnout, 'wb'))  # save dictionary to pickle
+        json_helper.save_dict_to_json(fits_list_dict, fnout)  # save dictionary to json
 
     os.chdir(start_dir)  # move back to starting directory
 

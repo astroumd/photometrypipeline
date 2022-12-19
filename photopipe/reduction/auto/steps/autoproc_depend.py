@@ -1,10 +1,11 @@
 import os
 import shutil
 import glob
+
 import astropy.io.fits as pf
 import numpy as np
-import scipy
 import matplotlib.pyplot as plt
+
 # Disable interactive mode
 plt.ioff()
 
@@ -158,6 +159,43 @@ def findsexobj(filename, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP
     os.system('rm -f default.nnw')
 
 
+def robust_scat(diff, wts, nobs, nstars, sigma):
+    """
+    NAME:
+        robust_scat
+    PURPOSE:
+        Calculate robust scatter and set the weight of those above this limit to 0
+    INPUTS:
+        diff   - values to calculate robust scatter over
+        wts    - weighting (0 is bad)
+        nobs   - number of observations to iterate over
+        nstars - number of stars to iterate over
+        sigma  - sigma*robust scatter that is acceptable
+    OUTPUTS:
+        scats  - robust scatter of each observation
+        rmss   - standard deviation (without bad weight points) of each observation
+    EXAMPLE:
+        robust_scat(diff, wts, 1, 12, 3)
+    """
+
+    scats = np.zeros(nobs)
+    rmss = np.zeros(nobs)
+    for i in np.arange(nobs):
+        goodwts = np.where(wts[i, :] > 0)
+        if len(goodwts[0]) == 0:
+            continue
+        gooddiff = diff[i, goodwts]
+
+        # Median absolute deviation
+        scat = 1.48 * np.median(abs(gooddiff - np.median(gooddiff)))
+        for j in np.arange(nstars):
+            if abs(diff[i, j] - np.median(gooddiff)) > (sigma * scat):
+                wts[i, j] = 0
+        scats[i] = scat
+        rmss[i] = np.std(gooddiff)
+    return scats, rmss
+
+
 def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
     """
     NAME:
@@ -176,12 +214,12 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
         scats  - robust scatter of each observation
         rmss   - standard deviation (without bad weight points) of each observation
     EXAMPLE:
-        zpt,scats,rmss = calc_zpt(catmag,obsmag,wts, sigma=3.0)     
+        zpt,scats,rmss = calc_zpt(catmag,obsmag,wts, sigma=3.0)
     """
-  
+
     # Find difference between catalog and observed magnitudes
     diff = catmag - obsmag
-    #print(np.shape(obsmag))
+    # print(np.shape(obsmag))
 
     keep = np.where(wts != 0)
     diff = diff[keep]
@@ -222,28 +260,28 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
     z = []
     modmag = np.copy(obsmag)
     for i in np.arange(nobs):
-        indz = sum(diff[i, :]*wts[i, :])/sum(wts[i, :])
+        indz = sum(diff[i, :] * wts[i, :]) / sum(wts[i, :])
         z += [indz]
         modmag[i, :] = obsmag[i, :] + indz
 
-    # Find difference of catalog and zeropoint corrected values. Remove any values with 
-    # weights set to 0 or lower.  Calculate robust scatter on these values.  If difference 
+    # Find difference of catalog and zeropoint corrected values. Remove any values with
+    # weights set to 0 or lower.  Calculate robust scatter on these values.  If difference
     # with these weights is not within sigma*robust scatter then set weight to 0
     adiff1 = catmag - modmag
     scats, rmss = robust_scat(adiff1, wts, nobs, nstars, sigma)
 
     z2 = []
-    # Recalculate zeropoint using corrected weights (difference still same)        
+    # Recalculate zeropoint using corrected weights (difference still same)
     modmag2 = np.copy(obsmag)
     for i in np.arange(nobs):
-        indz = sum(diff[i, :]*wts[i, :])/sum(wts[i, :])
+        indz = sum(diff[i, :] * wts[i, :]) / sum(wts[i, :])
         z2 += [indz]
         modmag2[i, :] = obsmag[i, :] + indz
-    
+
     adiff2 = catmag - modmag2
     # Recalculate robust scatter and rms scatter value on twice zeropoint corrected mags
     scats, rmss = robust_scat(adiff2, wts, nobs, nstars, sigma)
-    
+
     if plotter is not None:
         plt.plot(catmag_0, diff_0, '*')
         plt.errorbar(catmag_0, diff_0, yerr=1.0 / np.sqrt(wts_0), fmt='.')
@@ -254,7 +292,7 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
         plt.savefig(filename)
         plt.clf()
 
-        plt.hist(1.0/np.sqrt(wts_0), bins=30)
+        plt.hist(1.0 / np.sqrt(wts_0), bins=30)
         plt.title('Error Hist for All Sources')
         plt.ylabel('Counts')
         plt.xlabel('Error in Diff (Obs-Cat)')
@@ -283,7 +321,7 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
         keep = np.where(wts != 0)
         print(np.shape(catmag[keep]))
         plt.plot(catmag[keep], adiff2[keep], '*')
-        plt.errorbar(catmag[keep], adiff2[keep], yerr=1.0/np.sqrt(wts[keep]), fmt='.')
+        plt.errorbar(catmag[keep], adiff2[keep], yerr=1.0 / np.sqrt(wts[keep]), fmt='.')
         plt.title('Post Robust Scatter')
         plt.ylabel('Difference between Catalog and Observed')
         plt.xlabel('Catalog magnitude')
@@ -291,75 +329,3 @@ def calc_zpt(catmag, obsmag, wts, sigma=3.0, plotter=None):
         plt.clf()
 
     return z2, scats, rmss
-
-
-def robust_scat(diff, wts, nobs, nstars, sigma):
-    """
-    NAME:
-        robust_scat
-    PURPOSE:
-        Calculate robust scatter and set the weight of those above this limit to 0
-    INPUTS:
-        diff   - values to calculate robust scatter over
-        wts    - weighting (0 is bad)
-        nobs   - number of observations to iterate over
-        nstars - number of stars to iterate over
-        sigma  - sigma*robust scatter that is acceptable
-    OUTPUTS:
-        scats  - robust scatter of each observation
-        rmss   - standard deviation (without bad weight points) of each observation
-    EXAMPLE:
-        robust_scat(diff, wts, 1, 12, 3)
-    """
-    
-    scats = np.zeros(nobs)
-    rmss = np.zeros(nobs)
-    for i in np.arange(nobs):
-        goodwts = np.where(wts[i, :] > 0)
-        if len(goodwts[0]) == 0:
-            continue
-        gooddiff = diff[i, goodwts]
-        
-        # Median absolute deviation
-        scat = 1.48 * np.median(abs(gooddiff-np.median(gooddiff)))
-        for j in np.arange(nstars):
-            if abs(diff[i, j] - np.median(gooddiff)) > (sigma*scat):
-                wts[i, j] = 0
-        scats[i] = scat
-        rmss[i] = np.std(gooddiff)
-    return scats, rmss
-
-
-def identify_matches(queried_stars, found_stars, match_radius=3.):
-    """
-    Use a kd-tree (3d) to match two lists of stars, using full spherical coordinate distances.
-
-    queried_stars, found_stars: numpy arrays of [ [ra,dec],[ra,dec], ... ] (all in decimal degrees)
-    match_radius: max distance (in arcseconds) allowed to identify a match between two stars.
-
-    Returns two arrays corresponding to queried stars:
-    indices - an array of the indices (in found_stars) of the best match. Invalid (negative) index if no matches found.
-    distances - an array of the distances to the closest match. NaN if no match found.
-    """
-    # make sure inputs are arrays
-    queried_stars = np.array(queried_stars)
-    found_stars = np.array(found_stars)
-
-    ra1, dec1 = queried_stars[:, 0], queried_stars[:, 1]
-    ra2, dec2 = found_stars[:, 0], found_stars[:, 1]
-    dist = 2.778e-4 * match_radius  # convert arcseconds into degrees
-
-    cosd = lambda x: np.cos(np.deg2rad(x))
-    sind = lambda x: np.sin(np.deg2rad(x))
-    mindist = 2 * sind(dist / 2)
-    getxyz = lambda r, d: [cosd(r) * cosd(d), sind(r) * cosd(d), sind(d)]
-    xyz1 = np.array(getxyz(ra1, dec1))
-    xyz2 = np.array(getxyz(ra2, dec2))
-
-    tree2 = scipy.spatial.KDTree(xyz2.transpose())
-    ret = tree2.query(xyz1.transpose(), 1, 0, 2, mindist)
-    dist, ind = ret
-    dist = np.rad2deg(2 * np.arcsin(dist / 2))
-    ind[np.isnan(dist)] = -9999
-
-    return ind, dist

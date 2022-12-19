@@ -213,7 +213,7 @@ class lmi(instrument):
         instrument.__init__(self, 'lmi', 1)
 
     def possible_filters(self):
-        filters = ['U', 'B', 'V', 'R', 'I', 'SDSS-U', 'SDSS-G', 'SDSS-R', 'SDSS-I', 'SDSS-Z']
+        filters = ['U', 'B', 'V', 'R', 'I', 'YISH', 'SDSS-U', 'SDSS-G', 'SDSS-R', 'SDSS-I', 'SDSS-Z']
         return filters
 
     def has_cam_bias(self, idx):

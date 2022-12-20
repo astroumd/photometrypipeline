@@ -251,7 +251,7 @@ def show_list(fits_fns, nx=5, ny=3, size_mult=3.2, zoom_lvl=None, fontsize=8):
             ax.set_yticks([])
 
             try:
-                ax.set_title("{} - {} filter".format(fits_id, h['FILTER']), fontsize=fontsize)  # title with identifier
+                ax.set_title("{} - {} band_filter".format(fits_id, h['FILTER']), fontsize=fontsize)  # title with identifier
             except:
                 ax.set_title("{}".format(fits_id), fontsize=fontsize)  # title with identifier
 

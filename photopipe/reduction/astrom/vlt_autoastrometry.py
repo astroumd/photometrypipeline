@@ -182,7 +182,7 @@ def writeregionfile(filename, objlist, color="green", system=''):
         out.write('fk5\n')
         for ob in objlist:
             i += 1
-            out.write("point(%.7f,%.7f) # point=boxcircle text={%i}\n" % (ob.ra, ob.dec, i))
+            out.write("point(%.7f,%.7f) # point=boxcircle text={%i}\n" % (ob.ra.value, ob.dec.value, i))
     if system == 'img':
         out.write('image\n')
         for ob in objlist:

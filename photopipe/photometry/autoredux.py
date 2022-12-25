@@ -8,7 +8,7 @@ import os
 from shutil import move
 
 
-def autoredux(data_path, prefchar='coadd'):
+def autoredux(data_path, prefchar='coadd', noplot=False):
 
 	# Must be in directory with Coadd Frames
 	os.chdir(data_path)
@@ -46,6 +46,7 @@ def autoredux(data_path, prefchar='coadd'):
 		os.chdir(targ_dir)
 		print('photom: {}'.format(target))
 		photom.photom()
-		print('plotphotom: {}'.format(target))
-		plotphotom.plotphotom()
+		if noplot is False:
+			print('plotphotom: {}'.format(target))
+			plotphotom.plotphotom()
 		print('Processing complete for {}. Results saved to photom.html and photom.json'.format(target))

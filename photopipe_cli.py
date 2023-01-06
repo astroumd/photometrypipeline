@@ -278,7 +278,9 @@ def autoproc_cli():
 
 
 def photometry_cli():
-    autoredux(coadd_dir)
+    photometry_kwargs = {'noplot': args.noplot
+     }
+    autoredux(coadd_dir, **photometry_kwargs)
 
 
 def photopipe_all_cli():

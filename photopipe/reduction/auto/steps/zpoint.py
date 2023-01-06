@@ -376,7 +376,6 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
 
                 data = pf.getdata(f)
                 pf.update(f, data, head)
-
             removedframes = []
             # Removes files that have bad newflxsc values and removes from stack list
             if len(badnewflxsc) > 0:

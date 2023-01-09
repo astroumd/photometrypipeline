@@ -162,8 +162,10 @@ def autopipeastrometry(pipevar=None):
                 continue
 
             # If scamp has already been run, skip
+            # FIXME bring back!
             try:
-                test = head['ASTIRMS1']
+                #test = head['ASTIRMS1']
+                test = head['ASTIRMdefrfrrfgfrremoveme']
                 print('Skipping scamp astrometry for: ', atarg, afilt, ' Files already exist')
                 print('head["ASTIRMS1"]: {}'.format(test))
                 continue
@@ -171,11 +173,12 @@ def autopipeastrometry(pipevar=None):
                 # Run sextractor to find sources, then use those catalogs to run scamp
                 # with loose fitting constraints
                 astrometry(atfimages, scamprun=1, pipevar=pipevar,
-                           nogaia=pipevar['nogaia'])
-
+                           nogaia=pipevar['nogaia'], max_nmatch=100)
+                import pdb
+                pdb.set_trace()
                 # Do same thing again but with more stringent scamp parameters
                 astrometry(atfimages, scamprun=2, pipevar=pipevar,
-                           nogaia=pipevar['nogaia'])
+                           nogaia=pipevar['nogaia'], max_nmatch=500)
 
     # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
     # sky-*.fits, sfp(PREFIX)*.fits, zsfp(PREFIX)*.fits files
@@ -187,7 +190,7 @@ def autopipeastrometry(pipevar=None):
         os.system('rm -f ' + pipevar['imworkingdir'] + 'zsfp' + pipevar['prefix'] + '*.fits')
 
 
-def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False):
+def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False, max_nmatch=None):
     """
     NAME:
         astrometry
@@ -202,6 +205,8 @@ def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False):
         nogaia    - if False, the Gaia catalog will be downloaded and used for
                     the astrometric calibration. If True, the default scamp internal
                     catalogs will be used instead
+        max_nmatch - integer for the maximum number of sources used for
+                    the astrometric calibration (useful for crowded fields)
     EXAMPLE:
         astrometry(atfimages, scamprun=2, pipevar=pipevar)
     FUTURE IMPROVEMENTS:
@@ -280,6 +285,9 @@ vlt_autoastrometry.py ran correctly')
                 str(distdeg) + loose + \
                 "-SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
                 "-CHECKPLOT_DEV NULL -WRITE_XML N"
+    # Max number of matches
+    if max_nmatch is not None:
+        scampcmd += " -MATCH_NMAX " + str(max_nmatch) + " "
     if pipevar['verbose'] > 0:
         scampcmd += " -VERBOSE_TYPE FULL "
     else:

@@ -162,10 +162,8 @@ def autopipeastrometry(pipevar=None):
                 continue
 
             # If scamp has already been run, skip
-            # FIXME bring back!
             try:
-                #test = head['ASTIRMS1']
-                test = head['ASTIRMdefrfrrfgfrremoveme']
+                test = head['ASTIRMS1']
                 print('Skipping scamp astrometry for: ', atarg, afilt, ' Files already exist')
                 print('head["ASTIRMS1"]: {}'.format(test))
                 continue
@@ -240,7 +238,8 @@ def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False, max_nmatch=Non
 
         os.system(sexcom)
 
-        # FIXME what is this ASTR_NUM? Are we sure we want this condition?
+        # FIXME what is this ASTR_NUM? This is probably to check
+        # if astrometry was already run. Are we sure we want this condition?
         ##if head['ASTR_NUM'] > 0:
         acatlist.append(trunfile + '.cat')
 

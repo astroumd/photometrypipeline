@@ -173,9 +173,7 @@ def autopipeastrometry(pipevar=None):
                 # Run sextractor to find sources, then use those catalogs to run scamp
                 # with loose fitting constraints
                 astrometry(atfimages, scamprun=1, pipevar=pipevar,
-                           nogaia=pipevar['nogaia'], max_nmatch=100)
-                import pdb
-                pdb.set_trace()
+                           nogaia=pipevar['nogaia'], max_nmatch=500)
                 # Do same thing again but with more stringent scamp parameters
                 astrometry(atfimages, scamprun=2, pipevar=pipevar,
                            nogaia=pipevar['nogaia'], max_nmatch=500)
@@ -225,6 +223,7 @@ def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False, max_nmatch=Non
 
         trunfile = os.path.splitext(cfile)[0]
 
+        # SExtractor command
         if pipevar['verbose'] > 0:
             sexcom = pipevar['sexcommand'] + ' -CATALOG_NAME ' + trunfile + \
                      '.cat -CATALOG_TYPE FITS_LDAC -FILTER_NAME astrom.conv ' + \
@@ -254,22 +253,23 @@ def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False, max_nmatch=Non
 vlt_autoastrometry.py ran correctly')
                 return
         else:
-            # Prepare the Gaia catalog
-            ra_center = head["CRVAL1"]
-            dec_center = head["CRVAL2"]
-            box = np.max([head["NAXIS1"], head["NAXIS2"]]) * head["PIXSCALE"]
-            # Add 10% to the box size for the catalog search
-            box += box * 0.1
             gaiacat = cfile.replace(".fits", "_gaia.ldac")
             gaiacatlist.append(gaiacat)
-            if pipevar['verbose'] > 0:
-                print("Preparing the Gaia catalog for " + cfile)
-            prepare_gaia_catalog(ra_center, dec_center, box, gaiacat)
-            if pipevar['verbose'] > 0:
-                print("Done, Gaia catalog prepared.")
+            # Prepare the Gaia catalog in the first scamp run
+            if scamprun == 1:
+                ra_center = head["CRVAL1"]
+                dec_center = head["CRVAL2"]
+                box = np.max([head["NAXIS1"], head["NAXIS2"]]) * head["PIXSCALE"]
+                # Add 10% to the box size for the catalog search
+                box += box * 0.1
+                if pipevar['verbose'] > 0:
+                    print("Preparing the Gaia catalog for " + cfile)
+                prepare_gaia_catalog(ra_center, dec_center, box, gaiacat)
+                if pipevar['verbose'] > 0:
+                    print("Done, Gaia catalog prepared.")
 
     if scamprun == 1:
-        loose = ' -MOSAIC_TYPE LOOSE'
+        loose = ' -MOSAIC_TYPE LOOSE '
         distdeg = 1
     else:
         loose = ' '

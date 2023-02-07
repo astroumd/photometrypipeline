@@ -171,11 +171,10 @@ def autopipeastrometry(pipevar=None):
                 # Run sextractor to find sources, then use those catalogs to run scamp
                 # with loose fitting constraints
                 astrometry(atfimages, scamprun=1, pipevar=pipevar,
-                           nogaia=pipevar['nogaia'])
-
+                           nogaia=pipevar['nogaia'], max_nmatch=500)
                 # Do same thing again but with more stringent scamp parameters
                 astrometry(atfimages, scamprun=2, pipevar=pipevar,
-                           nogaia=pipevar['nogaia'])
+                           nogaia=pipevar['nogaia'], max_nmatch=500)
 
     # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
     # sky-*.fits, sfp(PREFIX)*.fits, zsfp(PREFIX)*.fits files
@@ -187,7 +186,7 @@ def autopipeastrometry(pipevar=None):
         os.system('rm -f ' + pipevar['imworkingdir'] + 'zsfp' + pipevar['prefix'] + '*.fits')
 
 
-def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False):
+def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False, max_nmatch=None):
     """
     NAME:
         astrometry
@@ -202,6 +201,8 @@ def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False):
         nogaia    - if False, the Gaia catalog will be downloaded and used for
                     the astrometric calibration. If True, the default scamp internal
                     catalogs will be used instead
+        max_nmatch - integer for the maximum number of sources used for
+                    the astrometric calibration (useful for crowded fields)
     EXAMPLE:
         astrometry(atfimages, scamprun=2, pipevar=pipevar)
     FUTURE IMPROVEMENTS:
@@ -220,6 +221,7 @@ def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False):
 
         trunfile = os.path.splitext(cfile)[0]
 
+        # SExtractor command
         if pipevar['verbose'] > 0:
             sexcom = pipevar['sexcommand'] + ' -CATALOG_NAME ' + trunfile + \
                      '.cat -CATALOG_TYPE FITS_LDAC -FILTER_NAME astrom.conv ' + \
@@ -236,7 +238,8 @@ def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False):
 
         os.system(sexcom)
 
-        # FIXME what is this ASTR_NUM? Are we sure we want this condition?
+        # FIXME what is this ASTR_NUM? This is probably to check
+        # if astrometry was already run. Are we sure we want this condition?
         ##if head['ASTR_NUM'] > 0:
         acatlist.append(trunfile + '.cat')
 
@@ -249,22 +252,23 @@ def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False):
 vlt_autoastrometry.py ran correctly')
                 return
         else:
-            # Prepare the Gaia catalog
-            ra_center = head["CRVAL1"]
-            dec_center = head["CRVAL2"]
-            box = np.max([head["NAXIS1"], head["NAXIS2"]]) * head["PIXSCALE"]
-            # Add 10% to the box size for the catalog search
-            box += box * 0.1
             gaiacat = cfile.replace(".fits", "_gaia.ldac")
             gaiacatlist.append(gaiacat)
-            if pipevar['verbose'] > 0:
-                print("Preparing the Gaia catalog for " + cfile)
-            prepare_gaia_catalog(ra_center, dec_center, box, gaiacat)
-            if pipevar['verbose'] > 0:
-                print("Done, Gaia catalog prepared.")
+            # Prepare the Gaia catalog in the first scamp run
+            if scamprun == 1:
+                ra_center = head["CRVAL1"]
+                dec_center = head["CRVAL2"]
+                box = np.max([head["NAXIS1"], head["NAXIS2"]]) * head["PIXSCALE"]
+                # Add 10% to the box size for the catalog search
+                box += box * 0.1
+                if pipevar['verbose'] > 0:
+                    print("Preparing the Gaia catalog for " + cfile)
+                prepare_gaia_catalog(ra_center, dec_center, box, gaiacat)
+                if pipevar['verbose'] > 0:
+                    print("Done, Gaia catalog prepared.")
 
     if scamprun == 1:
-        loose = ' -MOSAIC_TYPE LOOSE'
+        loose = ' -MOSAIC_TYPE LOOSE '
         distdeg = 1
     else:
         loose = ' '
@@ -280,6 +284,9 @@ vlt_autoastrometry.py ran correctly')
                 str(distdeg) + loose + \
                 "-SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
                 "-CHECKPLOT_DEV NULL -WRITE_XML N"
+    # Max number of matches
+    if max_nmatch is not None:
+        scampcmd += " -MATCH_NMAX " + str(max_nmatch) + " "
     if pipevar['verbose'] > 0:
         scampcmd += " -VERBOSE_TYPE FULL "
     else:

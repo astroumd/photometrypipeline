@@ -124,7 +124,7 @@ def cosmiczap_slow(filename, outname, sigclip=6.0, maxiter=3, verbose=True):
     cosmics.tofits(outname, c.cleanarray, head, verbose=False)
 
 
-def cosmiczap(filename, outname, sigclip=6.0, maxiter=4, maxpercent=0.1,
+def cosmiczap(filename, outname, sigclip=30.0, maxiter=3, maxpercent=0.1,
               verbose=True):
     """
     NAME:

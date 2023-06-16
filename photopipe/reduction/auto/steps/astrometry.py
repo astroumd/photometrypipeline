@@ -51,6 +51,9 @@ def autopipeastrometry(pipevar=None):
         print('Did not find any files! Check your data directory path!')
         return
 
+    # Initialize list of images to skip
+    toskip = []
+
     # Calculate relative astrometric solution
     for f in files:
 
@@ -59,6 +62,7 @@ def autopipeastrometry(pipevar=None):
 
         if os.path.isfile(outfile) and pipevar['overwrite'] == 0:
             print('Skipping astrometry for ' + f + '. File already exists')
+            toskip.append(f)
             continue
 
         head = pf.getheader(f)
@@ -112,27 +116,34 @@ def autopipeastrometry(pipevar=None):
     # parameters to header
     afiles = glob.glob(pipevar['imworkingdir'] + 'azsfp' + pipevar['prefix'] +\
                        '*.fits')
+    #TODO Remove those to skip
+
     # If no files, look for those that were not cosmic ray zapped
     if len(afiles) == 0:
         afiles = glob.glob(pipevar['imworkingdir'] + 'asfp' + \
                            pipevar['prefix'] + '*.fits')
 
-    if len(afiles) == 0 and pipevar['nogaia'] is False:
+    if pipevar['nogaia'] is False:
         # Create a copy of the files if using Gaia
         afiles = glob.glob(pipevar['imworkingdir'] + 'zsfp' + \
                            pipevar['prefix'] + '*.fits')
         if len(afiles) > 0:
             for af in afiles:
                 os.system("cp " + af + " " + af.replace("zsfp", "azsfp"))
+            # Update the definition of the list item
+            afiles = [az.replace("zsfp", "azsfp") for az in afiles]
         else:
             afiles = glob.glob(pipevar['imworkingdir'] + 'sfp' + \
                                pipevar['prefix'] + '*.fits')
             if len(afiles) > 0:
                 for af in afiles:
                     os.system("cp " + af + " " + af.replace("sfp", "asfp"))
+            # Update the definition of the list item
+            afiles = [az.replace("sfp", "asfp") for az in afiles]
 
     if len(afiles) == 0:
-        print('Did not find any files! Check your data directory path!')
+        print('Did not find any files in the form zsfp or sfp! \
+Check your data directory path.')
         return
 
     afiletarg = []
@@ -162,19 +173,19 @@ def autopipeastrometry(pipevar=None):
                 continue
 
             # If scamp has already been run, skip
-            try:
-                test = head['ASTIRMS1']
-                print('Skipping scamp astrometry for: ', atarg, afilt, ' Files already exist')
-                print('head["ASTIRMS1"]: {}'.format(test))
-                continue
-            except KeyError:
-                # Run sextractor to find sources, then use those catalogs to run scamp
-                # with loose fitting constraints
-                astrometry(atfimages, scamprun=1, pipevar=pipevar,
-                           nogaia=pipevar['nogaia'], max_nmatch=500)
-                # Do same thing again but with more stringent scamp parameters
-                astrometry(atfimages, scamprun=2, pipevar=pipevar,
-                           nogaia=pipevar['nogaia'], max_nmatch=500)
+            #try:
+            #    test = head['ASTIRMS1']
+            #    print('Skipping scamp astrometry for: ', atarg, afilt, ' Files already exist')
+            #    print('head["ASTIRMS1"]: {}'.format(test))
+            #    continue
+            #except KeyError:
+            # Run sextractor to find sources, then use those catalogs to run scamp
+            # with loose fitting constraints
+            astrometry(atfimages, scamprun=1, pipevar=pipevar,
+                       nogaia=pipevar['nogaia'], max_nmatch=500)
+            # Do same thing again but with more stringent scamp parameters
+            astrometry(atfimages, scamprun=2, pipevar=pipevar,
+                       nogaia=pipevar['nogaia'], max_nmatch=500)
 
     # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
     # sky-*.fits, sfp(PREFIX)*.fits, zsfp(PREFIX)*.fits files
@@ -235,7 +246,6 @@ def astrometry(atfimages, scamprun=1, pipevar=None, nogaia=False, max_nmatch=Non
                      '-PARAMETERS_NAME astrom.param -DETECT_THRESH 2.0 ' + \
                      '-ANALYSIS_THRESH 2.0 -VERBOSE_TYPE QUIET -PIXEL_SCALE ' + \
                      str(pixscale) + ' ' + cfile
-
         os.system(sexcom)
 
         # FIXME what is this ASTR_NUM? This is probably to check
@@ -268,10 +278,14 @@ vlt_autoastrometry.py ran correctly')
                     print("Done, Gaia catalog prepared.")
 
     if scamprun == 1:
-        loose = ' -MOSAIC_TYPE LOOSE '
+        # FIXME the loose mosaic makes it fail often, removing it.
+        #loose = ' -MOSAIC_TYPE LOOSE '
+        loose = ' '
         distdeg = 1
+        position_maxerr = 2
     else:
         loose = ' '
+        position_maxerr = 1
         try:
             distort = head['PV1_37']
             print("head['PV1_37']={}".format(distort))
@@ -280,7 +294,7 @@ vlt_autoastrometry.py ran correctly')
             distdeg = 3
 
     # Build up the scamp command depending on a number of conditions
-    scampcmd = "scamp -POSITION_MAXERR 0.2 -DISTORT_DEGREES " + \
+    scampcmd = f"scamp -POSITION_MAXERR {position_maxerr} -DISTORT_DEGREES " + \
                 str(distdeg) + loose + \
                 "-SOLVE_PHOTOM N -SN_THRESHOLDS 3.0,10.0 " + \
                 "-CHECKPLOT_DEV NULL -WRITE_XML N"

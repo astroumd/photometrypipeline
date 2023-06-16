@@ -73,7 +73,8 @@ def autopipecrcleanim(pipevar=None):
             print('Cleaning cosmic rays from', f)
 
         # Runs cosmics.py
-        cosmiczap(f, outfile, sigclip=6.0, maxiter=3, verbose=pipevar['verbose'])
+        cosmiczap(f, outfile, sigclip=30.0, maxiter=3, maxpercent=0.1,
+                  verbose=pipevar['verbose'])
 
     # If remove intermediate files keyword set, delete p(PREFIX)*.fits, fp(PREFIX)*.fits,
     # sky-*.fits, sfp(PREFIX)*.fits files
@@ -123,7 +124,8 @@ def cosmiczap_slow(filename, outname, sigclip=6.0, maxiter=3, verbose=True):
     cosmics.tofits(outname, c.cleanarray, head, verbose=False)
 
 
-def cosmiczap(filename, outname, sigclip=6.0, maxiter=4, verbose=True):
+def cosmiczap(filename, outname, sigclip=30.0, maxiter=3, maxpercent=0.1,
+              verbose=True):
     """
     NAME:
         cosmiczap
@@ -138,6 +140,7 @@ def cosmiczap(filename, outname, sigclip=6.0, maxiter=4, verbose=True):
     OPTIONAL KEYWORDS:
         sigclip  - sigma to clip
         maxiter  - maximum number of times to iterate loop
+        maxpercent  - maximum percent of CR to be zipped
         verbose  - higher verbosity
     EXAMPLE:
         cosmiczap(filename, outname)
@@ -153,12 +156,21 @@ def cosmiczap(filename, outname, sigclip=6.0, maxiter=4, verbose=True):
     gain = head['GAIN']
     satlevel = head['SATURATE']
 
-    # Run astroscrappy
-    mask, data_clean = astroscrappy.detect_cosmics(data, inmask=None, inbkg=None, invar=None, sigclip=sigclip, sigfrac=0.3, objlim=5.0, gain=gain, readnoise=18, satlevel=satlevel, niter=maxiter, sepmed=True, cleantype='meanmask', fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=verbose)
-
-    # Total number of zapped pixels
-    tot = np.count_nonzero(mask)
-    head['NPZAP'] = (tot, "Num. of pixels zapped by cosmiczap")
+    # Check that a small number of pixels are removed
+    tot = np.inf
+    while tot * 100 / np.size(data) > maxpercent:
+        # Run astroscrappy
+        mask, data_clean = astroscrappy.detect_cosmics(data, inmask=None, inbkg=None, invar=None, sigclip=sigclip, sigfrac=0.3, objlim=5.0, gain=gain, readnoise=18, satlevel=satlevel, niter=maxiter, sepmed=True, cleantype='meanmask', fsmode='median', psfmodel='gauss', psffwhm=6, psfsize=13, psfk=None, psfbeta=4.765, verbose=verbose)
+        # Total number of zapped pixels
+        tot = np.count_nonzero(mask)
+        percent = tot * 100 / np.size(data)
+        if percent > maxpercent:
+            sigclip += 10.
+            if verbose is True:
+                print(f"{percent}% of CR zipped, too many!")
+                print(f"sigclip increased from {sigclip - 10} to {sigclip}")
+    # Add info to the header
+    head['NPZAP'] = (tot, "Num. of pixels zapped by astroscrappy")
 
     # Time stamp
     date = datetime.datetime.now().isoformat()

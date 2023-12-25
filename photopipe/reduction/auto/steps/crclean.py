@@ -158,7 +158,7 @@ def cosmiczap(filename, outname, sigclip=30.0, maxiter=3, maxpercent=0.1,
 
     # Check that a small number of pixels are removed
     tot = np.inf
-    while tot * 100 / np.size(data) > maxpercent:
+    while tot * 100 / np.size(data) > maxpercent and sigclip < 80:
         # Run astroscrappy
         mask, data_clean = astroscrappy.detect_cosmics(data, inmask=None, inbkg=None, invar=None, sigclip=sigclip, sigfrac=0.3, objlim=5.0, gain=gain, readnoise=18, satlevel=satlevel, niter=maxiter, sepmed=True, cleantype='meanmask', fsmode='median', psfmodel='gauss', psffwhm=6, psfsize=13, psfk=None, psfbeta=4.765, verbose=verbose)
         # Total number of zapped pixels

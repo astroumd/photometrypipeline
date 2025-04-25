@@ -7,6 +7,7 @@ import time
 import astropy.io.fits as pf
 import numpy as np
 import scipy
+from scipy import ndimage
 
 import photopipe.reduction.auto.steps.autoproc_depend as apd
 
@@ -16,6 +17,16 @@ inpipevar = {
     'rmifiles': 0, 'prefix': '', 'datadir': '', 'imworkingdir': '', 'overwrite': 0, 'verbose': 1, 'flatfail': '',
     'fullastrofail': '',	'pipeautopath': '', 'refdatapath': '', 'defaultspath': ''
 }
+
+
+def median_filter_masking(image, size=50):
+    nan_percent = 100 * np.count_nonzero(np.isnan(image)) / (image.shape[0] * image.shape[1])
+    print('start_nan_percentage: {}'.format(nan_percent))
+    median_filter_image = ndimage.median_filter(image, size=size)
+    image[np.isnan(image)] = median_filter_image[np.isnan(image)]
+    nan_percent = 100 * np.count_nonzero(np.isnan(image)) / (image.shape[0] * image.shape[1])
+    print('end_nan_percentage: {}'.format(nan_percent))
+    return image
 
 
 def autopipeskysubmed(pipevar=None):
@@ -538,19 +549,25 @@ def skypipecombine(
         good = np.isfinite(reflat)
         bad = ~good  # Opposite of boolean array good
         bad_count = np.sum(bad)
-        print("Interpolating {} NaN Values".format(bad_count))
+        print("Local median filling {} NaN Values".format(bad_count))
     if pipevar['debug'] != 0:
         out = outfile.replace('.fits', 'skymask.fits')
         pf.writeto(out, good.astype(np.int), head_m, overwrite=True)
-    skyflat = np.copy(reflat)
+
     t1 = time.perf_counter()
-    mi, mj = reflat.shape
-    for mii in ((np.arange(mi / (nsq_piece * 2)) + 1) * 2 * nsq_piece) - nsq_piece:
-        for mji in ((np.arange(mj / (nsq_piece * 2)) + 1) * 2 * nsq_piece) - nsq_piece:
-            sq_piece = np.copy(reflat[int(mii - nsq_piece):int(mii + nsq_piece + 1), int(mji - nsq_piece):int(mji + nsq_piece + 1)])
-            interp_flat = masked_interpolation(sq_piece, method='nearest')
-            skyflat[int(mii - nsq_piece):int(mii + nsq_piece + 1),int(mji - nsq_piece):int(mji + nsq_piece + 1)] = interp_flat
+    skyflat = median_filter_masking(reflat)
     t2 = time.perf_counter()
+
+    # skyflat = np.copy(reflat)
+    # t1 = time.perf_counter()
+    # mi, mj = reflat.shape
+    # for mii in ((np.arange(mi / (nsq_piece * 2)) + 1) * 2 * nsq_piece) - nsq_piece:
+    #     for mji in ((np.arange(mj / (nsq_piece * 2)) + 1) * 2 * nsq_piece) - nsq_piece:
+    #         sq_piece = np.copy(reflat[int(mii - nsq_piece):int(mii + nsq_piece + 1), int(mji - nsq_piece):int(mji + nsq_piece + 1)])
+    #         interp_flat = masked_interpolation(sq_piece, method='nearest')
+    #         skyflat[int(mii - nsq_piece):int(mii + nsq_piece + 1),int(mji - nsq_piece):int(mji + nsq_piece + 1)] = interp_flat
+    # t2 = time.perf_counter()
+
     if pipevar['debug'] != 0:
         print("Interpolation Time: {:0.2f} s".format(t2-t1))
 

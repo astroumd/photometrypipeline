@@ -615,6 +615,7 @@ class OnlineCatalogQuery:
                 row['RAJ2000'], row['DEJ2000'],
                 np.mean(B_list), 0.3/np.sqrt(len(B_list)),  # error estimate copied from _parse_usbob1
                 np.mean(R_list), 0.3/np.sqrt(len(R_list)),  # error estimate copied from _parse_usbob1
+                0, 0  # eliminating Imag due to choices from _parse_usnob1
             ])
         return np.asarray(rows)
 

@@ -290,6 +290,41 @@ class OnlineCatalogQuery:
             container[cont_index] = output
 
     @staticmethod
+    def _parse_sdss_vizier(table):  # [ra, dec, u, u_sigma, g, g_sigma, r, r_sigma, i, i_sigma, z, z_sigma]
+        table_columns = ['RA_ICRS', 'DE_ICRS', 'umag', 'e_umag', 'gmag', 'e_gmag', 'rmag', 'e_rmag', 'imag',
+                         'e_imag', 'zmag', 'e_zmag']
+        error_columns = [c for c in table_columns if c.startswith('e_')]
+        mag_columns = [c for c in table_columns if not c.startswith('e_') and c.endswith('mag')]
+        select_columns = table[table_columns]
+        for c in error_columns:
+            # some objects do not have reported errors - for these,
+            #  assume a conservative error of 0.25mag
+            select_columns[c] = select_columns[c].filled(0.25)
+        for c in mag_columns:
+            select_columns[c] = select_columns[c].filled(0)
+        return np.asarray([select_columns[c].data for c in table_columns]).transpose()
+
+    def _query_sdss_vizier(self, container=None, cont_index=1, trim_mag=21.):
+        ra, dec = self.coords
+        boxsize = self.boxsize/60 * u.arcmin
+        catID = "V/154"
+        v = Vizier(columns=['all'], row_limit=-1)
+        result = v.query_region(coord.SkyCoord(ra, dec, unit=u.deg), radius=boxsize, catalog=catID)
+        o = result[catID + '/sdss16']
+        sdss_objects = self._parse_sdss_vizier(o)
+
+        if len(sdss_objects) == 0:
+            # no matches
+            output = None
+        else:
+            sdss = np.array([obj for obj in sdss_objects if obj[6] < trim_mag])
+            output = sdss
+        if container is None:
+            return output
+        else:
+            container[cont_index] = output
+
+    @staticmethod
     def _parse_panstarrs(s):
         """
         Parse Vizier output.
@@ -426,6 +461,38 @@ class OnlineCatalogQuery:
             container[cont_index] = output
 
     @staticmethod
+    def _parse_2mass_vizier(table):  # [ra, dec, J, J_sigma, H, H_sigma, K, K_sigma]
+        table_columns = ['RAJ2000', 'DEJ2000', 'Jmag', 'e_Jmag', 'Hmag', 'e_Hmag', 'Kmag', 'e_Kmag',]
+        error_columns = [c for c in table_columns if c.startswith('e_')]
+        mag_columns = [c for c in table_columns if not c.startswith('e_') and c.endswith('mag')]
+        select_columns = table[table_columns]
+        for c in error_columns:
+            # some objects do not have reported errors - for these,
+            #  assume a conservative error of 0.25mag
+            select_columns[c] = select_columns[c].filled(0.25)
+        for c in mag_columns:
+            select_columns[c] = select_columns[c].filled(0)
+        return np.asarray([select_columns[c].data for c in table_columns]).transpose()
+
+    def _query_2mass_vizier(self, container=None, cont_index=0):
+        ra, dec = self.coords
+        boxsize = self.boxsize/60 * u.arcmin
+        catID = "II/246"
+        v = Vizier(columns=['all'], row_limit=-1)
+        result = v.query_region(coord.SkyCoord(ra, dec, unit=u.deg), radius=boxsize, catalog=catID)
+        o = result[catID + '/out']
+        mass_objects = self._parse_2mass_vizier(o)  # TODO: should this be in AB??? The current result is in Vega, but I'm pretty sure the previous result was also in Vega
+        if len(mass_objects) == 0:
+            # no matches
+            output = None
+        else:
+            output = mass_objects
+        if container is None:
+            return output
+        else:
+            container[cont_index] = output
+
+    @staticmethod
     def _parse_usnob1(s):
         """
         Parse findusnob1 output.
@@ -531,6 +598,44 @@ class OnlineCatalogQuery:
         else:
             container[cont_index] = output
 
+    @staticmethod
+    def _parse_usnob1_vizier(table):  # [ra, dec, avg_B, B_sigma, avg_R, R_sigma, I, I_sigma]
+        table_columns = ['RAJ2000', 'DEJ2000', 'B1mag', 'B2mag', 'R1mag', 'R2mag']
+        select_columns = table[table_columns]
+        for column in table_columns:
+            select_columns[column] =  select_columns[column].fill(None)
+        # The following is super inefficient, but I can't be bothered to replicate _parse_usnob1 in an efficient way
+        rows = []
+        for row in select_columns:
+            B_list = [b for b in [row['B1mag'], row['B2mag']] if b is not None]
+            R_list = [r for r in [row['R1mag'], row['R2mag']] if r is not None]
+            if not B_list or not R_list:
+                continue
+            rows.append([
+                row['RAJ2000'], row['DEJ2000'],
+                np.mean(B_list), 0.3/np.sqrt(len(B_list)),  # error estimate copied from _parse_usbob1
+                np.mean(R_list), 0.3/np.sqrt(len(R_list)),  # error estimate copied from _parse_usbob1
+            ])
+        return np.asarray(rows)
+
+    def _query_usnob1_vizier(self, container=None, cont_index=2):
+        ra, dec = self.coords
+        boxsize = self.boxsize / 60 * u.arcmin
+        catID = "I/284"
+        v = Vizier(columns=['all'], row_limit=-1)
+        result = v.query_region(coord.SkyCoord(ra, dec, unit=u.deg), radius=boxsize, catalog=catID)
+        o = result[catID + '/out']
+        usnob1_objects = self._parse_usnob1_vizier(o)
+        if len(usnob1_objects) == 0:
+            # no matches
+            output = None
+        else:
+            output = usnob1_objects
+        if container is None:
+            return output
+        else:
+            container[cont_index] = output
+
     def _query_all(self, ignore=None):
         """
         Query all sources, with an independent thread for each
@@ -542,16 +647,16 @@ class OnlineCatalogQuery:
         # results is a container into which the threads will put their responses
         results = [None] * 5
         # only query the ones we want
-        t0 = Thread(target=self._query_2mass, args=(results,))
+        t0 = Thread(target=self._query_2mass_vizier, args=(results,))
         threads = [t0]
         if ignore is None or 'sdss' not in ignore:
-            t1 = Thread(target=self._query_sdss, args=(results,))
+            t1 = Thread(target=self._query_sdss_vizier, args=(results,))
             threads.append(t1)
         if ignore is None or 'panstarrs' not in ignore:
             t2 = Thread(target=self._query_panstarrs, args=(results,))
             threads.append(t2)
         if ignore is None or 'usnob' not in ignore:
-            t3 = Thread(target=self._query_usnob1, args=(results,))
+            t3 = Thread(target=self._query_usnob1_vizier, args=(results,))
             threads.append(t3)
         if ignore is None or 'apass' not in ignore:
             t4 = Thread(target=self._query_apass, args=(results,))

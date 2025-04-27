@@ -214,6 +214,8 @@ class OnlineCatalogQuery:
             return output
         else:
             container[cont_index] = output
+        print('apass')
+        print(output)
 
     @staticmethod
     def _parse_sdss(s):
@@ -323,6 +325,8 @@ class OnlineCatalogQuery:
             return output
         else:
             container[cont_index] = output
+        print('sdss')
+        print(output)
 
     @staticmethod
     def _parse_panstarrs(s):
@@ -491,6 +495,8 @@ class OnlineCatalogQuery:
             return output
         else:
             container[cont_index] = output
+        print('2mass')
+        print(output)
 
     @staticmethod
     def _parse_usnob1(s):
@@ -636,6 +642,8 @@ class OnlineCatalogQuery:
             return output
         else:
             container[cont_index] = output
+        print('usnob1')
+        print(output)
 
     def _query_all(self, ignore=None):
         """

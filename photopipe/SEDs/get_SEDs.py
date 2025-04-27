@@ -637,7 +637,8 @@ class OnlineCatalogQuery:
             # no matches
             output = None
         else:
-            output = usnob1_objects
+            # output = usnob1_objects
+            output = None  # removing usnob1 results for now
         if container is None:
             return output
         else:

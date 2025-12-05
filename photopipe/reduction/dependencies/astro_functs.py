@@ -89,12 +89,12 @@ def imcombine(indata, type='median', ret_std=False):
         print_warn("Warning: data should be 3D stack of frames.")
 
     if type is 'mean':
-        combined = np.mean(indata, axis=0)
+        combined = np.nanmean(indata, axis=0)
     else:
-        combined = np.median(indata, axis=0)
+        combined = np.nanmedian(indata, axis=0)
 
     if ret_std:
-        sigma = np.std(indata, axis=0)
+        sigma = np.nanstd(indata, axis=0)
         return combined, sigma
     else:
         return combined
@@ -122,13 +122,13 @@ def robust_sigma(y, zero=False):
     if zero:
         y0 = 0.
     else:
-        y0 = np.median(y)
+        y0 = np.nanmedian(y)
 
     # first, the median absolute deviation about the median:
-    mad = np.median(np.abs(y - y0)) / .6745
+    mad = np.nanmedian(np.abs(y - y0)) / .6745
     # if the mad=0, try the mean absolute deviation:
     if mad < eps:
-        mad = np.average(np.abs(y - y0)) / .80
+        mad = np.nanmean(np.abs(y - y0)) / .80
     if mad < eps:
         sigma = 0.
         return sigma
@@ -137,14 +137,14 @@ def robust_sigma(y, zero=False):
     u = (y - y0) / (6. * mad)
     uu = u * u
     q = uu <= 1.0
-    count = np.sum(q)
+    count = np.nansum(q)
     if count < 3:
         print_err('Error: robust_sigma - this distribution is too weird! returning -1.')
         sigma = -1.
         return sigma
-    numerator = np.sum((y[q] - y0) ** 2. * (1 - uu[q]) ** 4.)
+    numerator = np.nansum((y[q] - y0) ** 2. * (1 - uu[q]) ** 4.)
     n = y.size
-    den1 = np.sum((1. - uu[q]) * (1. - 5. * uu[q]))
+    den1 = np.nansum((1. - uu[q]) * (1. - 5. * uu[q]))
     sigma = n * numerator / (den1 * (den1 - 1.))
     if sigma > 0.:
         sigma = np.sqrt(sigma)

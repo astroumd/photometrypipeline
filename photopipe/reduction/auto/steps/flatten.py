@@ -133,7 +133,7 @@ def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
 
     flat = pf.getdata(flatname)
 
-    med = np.median(flat)
+    med = np.nanmedian(flat)
     if (med < 0.5) or (med > 2.0):
         print('Warning: flat is not normalized to one')
 
@@ -160,7 +160,7 @@ def flatpipeproc(filename, flatname, flatminval=0, flatmaxval=0):
         fdata = data / flat
 
         head['FLATFLD'] = flatname
-        skycts = np.median(fdata[goodsignal])
+        skycts = np.nanmedian(fdata[goodsignal])
         head['SKYCTS'] = (skycts, 'Sky counts')
 
         try:

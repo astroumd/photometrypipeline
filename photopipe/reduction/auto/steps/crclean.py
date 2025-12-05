@@ -150,7 +150,7 @@ def cosmiczap(filename, outname, sigclip=30.0, maxiter=3, maxpercent=0.1,
         Read readnoise from header? Not present.
         It would be useful to have the median FWHM in the header too
     """
-    data, head = cosmics.fromfits(filename, verbose=False)
+    data, head = cosmics.fromfits(filename, verbose=verbose)
 
     # Gain, saturation level from the header
     gain = head['GAIN']

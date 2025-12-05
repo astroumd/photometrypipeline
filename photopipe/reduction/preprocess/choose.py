@@ -366,11 +366,11 @@ def image_summary(im, sat_pt, cam_i, instrum, split=False):
 
     if split:
         im1 = im[instrum.slice('C{}a'.format(cam_i))]
-        m1 = np.median(im1)
+        m1 = np.nanmedian(im1)
         s1 = af.robust_sigma(im1)
         sfrac1 = float(m1) / sat_pt
         im2 = im[instrum.slice('C{}b'.format(cam_i))]
-        m2 = np.median(im2)
+        m2 = np.nanmedian(im2)
         s2 = af.robust_sigma(im2)
         sfrac2 = float(m2) / sat_pt
         print('\t* Median of left side is {} counts ({:.0%} of saturation level).'.format(m1, sfrac1))
@@ -380,7 +380,7 @@ def image_summary(im, sat_pt, cam_i, instrum, split=False):
 
     else:
         im1 = im[instrum.slice('C{}'.format(cam_i))]
-        m = np.median(im1)
+        m = np.nanmedian(im1)
         print("Median: " + str(m))
         s = af.robust_sigma(im1)
         sfrac = float(m) / sat_pt

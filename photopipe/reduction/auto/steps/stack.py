@@ -109,15 +109,15 @@ def autopipestack(pipevar=None, customcat=None, customcatfilt=None):
             stacktime = filetime[stacki]
             pipevar['stackexps'] = stackexps
 
-            medexp = np.median(stackexps)
-            medair = np.median(stackairm)
+            medexp = np.nanmedian(stackexps)
+            medair = np.nanmedian(stackairm)
             minair = min(stackairm)
             maxair = max(stackairm)
             totexp = sum(stackexps)
             nstack = len(stacklist)
             firsttime = Time(stacktime[0], format='jd', scale='utc').isot
             lasttime = Time(stacktime[-1], format='jd', scale='utc').isot
-            medtime = Time(np.median(stacktime), format='jd', scale='utc').isot
+            medtime = Time(np.nanmedian(stacktime), format='jd', scale='utc').isot
 
             newtextslist = ' '.join(stacklist)
 

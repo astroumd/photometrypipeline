@@ -134,7 +134,7 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./', yes=False):
             filter_arr.append(hdulist[0].header['FILTER'])
             exptime_arr.append(hdulist[0].header['EXPTIME'])
             i += 1
-        data_arr = np.array(data_arr, dtype=np.float)
+        data_arr = np.array(data_arr, dtype=float)
 
         # check that frames match
         for i in range(len(fns) - 1):
@@ -181,14 +181,14 @@ def mkmaster(instrument, fn_dict, mtype, fmin=5, master_dir='./', yes=False):
                     data_arr[i] -= mbd
                 if mdark_fn is not None:
                     data_arr[i] -= mdd * exptime_arr[i]
-                data_arr[i] /= np.median(data_arr[i])
+                data_arr[i] /= np.nanmedian(data_arr[i])
 
         # make master frame
-        master = af.imcombine(data_arr, type='median').astype(np.float)
+        master = af.imcombine(data_arr, type='median').astype(float)
 
         # add master to hdu
         if mtype is instrum.flatname:
-            hdu.data = master / np.median(master)  # normalize master flat
+            hdu.data = master / np.nanmedian(master)  # normalize master flat
         else:
             hdu.data = master
 

@@ -365,7 +365,7 @@ def autopipezpoint(pipevar=None, customcat=None, customcatfilt=None):
             badnewflxsc = []
             # Add relative zeropoint values to headers and calculate flux scale.
             # Remove unphysical fluxscale files
-            medzp = np.median(zpts)
+            medzp = np.nanmedian(zpts)
             for i, f in enumerate(newstack):
                 head = pf.getheader(f)
                 head['NEWFLXSC'] = (1.0 / (10.0 ** ((zpts[i] - medzp) / 2.5)),

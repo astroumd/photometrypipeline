@@ -554,12 +554,12 @@ class OnlineCatalogQuery:
                 if sum([not Bs, not Rs, not I]) > 1:
                     continue
                 if Bs:
-                    B = np.mean(Bs)
+                    B = np.nanmean(Bs)
                     B_err = 0.3 / np.sqrt(len(Bs))
                 else:
                     B = B_err = 0
                 if Rs:
-                    R = np.mean(Rs)
+                    R = np.nanmean(Rs)
                     R_err = 0.3 / np.sqrt(len(Rs))
                 else:
                     R = R_err = 0
@@ -619,8 +619,8 @@ class OnlineCatalogQuery:
                 continue
             rows.append([
                 row['RAJ2000'], row['DEJ2000'],
-                np.mean(B_list), 0.3/np.sqrt(len(B_list)),  # error estimate copied from _parse_usbob1
-                np.mean(R_list), 0.3/np.sqrt(len(R_list)),  # error estimate copied from _parse_usbob1
+                np.nanmean(B_list), 0.3/np.sqrt(len(B_list)),  # error estimate copied from _parse_usbob1
+                np.nanmean(R_list), 0.3/np.sqrt(len(R_list)),  # error estimate copied from _parse_usbob1
                 0, 0  # eliminating Imag due to choices from _parse_usnob1
             ])
         return np.asarray(rows)
@@ -800,7 +800,7 @@ def _error_C(c, model, obs, weights):
     if len(obs) != len(weights):
         print("issue")
     nm = model + c
-    return np.sum(weights * (nm - obs) ** 2)
+    return np.nansum(weights * (nm - obs) ** 2)
 
 
 def choose_model(obs, mask, models=MODELS, allow_cut=False):
@@ -1210,7 +1210,7 @@ def clip_me(inn, sig_clip=3., max_iter=5, convergence=.02):
     """
     for count in range(max_iter):
         in_len = len(inn)
-        inn = inn[np.abs(inn - np.median(inn)) < sig_clip * np.std(inn)]
+        inn = inn[np.abs(inn - np.nanmedian(inn)) < sig_clip * np.nanstd(inn)]
         if float(in_len - len(inn)) / in_len < convergence:
             break
     return inn
@@ -1246,11 +1246,11 @@ def calc_zeropoint(input_coords, catalog_coords, input_mags, catalog_mags, clip=
     zp = np.array(zp_estimates)
     if clip:
         zp = clip_me(zp)
-    mad = np.median(np.abs(zp - np.median(zp)))
+    mad = np.nanmedian(np.abs(zp - np.nanmedian(zp)))
     if return_zps:
-        return np.median(zp), mad, matches, zp
+        return np.nanmedian(zp), mad, matches, zp
     else:
-        return np.median(zp), mad, matches
+        return np.nanmedian(zp), mad, matches
 
 
 def zeropoint(input_file, band, output_file=None, usnob_thresh=15, alloptstars=False, quiet=False):

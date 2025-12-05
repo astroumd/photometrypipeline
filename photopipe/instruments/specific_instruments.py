@@ -1,10 +1,50 @@
-import numpy as np
-import sys
-from .instrument_class import instrument
-from astropy.io import fits as pf
 import re
 import os
 from glob import glob
+import sys
+from datetime import datetime as dt
+
+import numpy as np
+from astropy.io import fits as pf
+from astropy.units import pixel_scale
+from astropy.wcs import WCS
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz
+from astropy.time import Time
+from astropy import units as u
+
+from .instrument_class import instrument
+
+
+def calculate_airmass(hdr):
+    location = EarthLocation.from_geodetic(hdr['LONGITUD'] * u.deg, hdr['LATITUDE'] * u.deg, hdr['ALTITUDE'] * u.meter)
+    coords = SkyCoord(hdr['RA-D'], hdr['DEC-D'], unit=(u.deg, u.deg))
+    time = (hdr['JD-BEG'] + hdr['JD-END']) / 2
+    time = Time(time, format='jd', scale='utc')
+    altaz = coords.transform_to(AltAz(location=location, obstime=time))
+    return altaz.alt.deg, altaz.az.deg, altaz.secz.value
+
+
+def gen_wcs(hdr):
+    image_width = hdr['NAXIS1']
+    image_height = hdr['NAXIS2']
+    # pixscale = hdr['PIXSCALE'] / 3600
+    pixscale = 0.193
+    plate_scale = pixscale * u.arcsec
+    image_width = 925
+    image_height = 925
+
+    w = WCS(naxis=hdr['NAXIS'])
+    w.wcs.crpix = [image_width/2, image_height/2]
+    coords = SkyCoord(hdr['RA-D'], hdr['DEC-D'], unit=(u.deg, u.deg))
+    coords = coords.spherical_offsets_by(d_lon=(77-2)*plate_scale, d_lat=-25*plate_scale)
+    w.wcs.crval = [coords.ra.deg, coords.dec.deg]
+    theta = np.deg2rad(5)  # TODO: get this from the fits header
+    pixscale = pixscale / 3600
+    # w.wcs.cdelt = [pixscale, pixscale]
+    w.wcs.cd = [[-pixscale * np.cos(theta), pixscale * np.sin(theta)],
+                [pixscale * np.sin(theta), pixscale * np.cos(theta)]]
+    w.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    return w
 
 
 class ratir(instrument):
@@ -371,29 +411,27 @@ class rimas(instrument):
     def is_cam_split(self, idx):
         CAM_SPLIT = [False, False]
         return CAM_SPLIT[idx]
-        
+
+# 653274189
     def change_header_keywords(self, h, cam):
         # set keyword values
         h['WAVELENG'] = 'IR'
-        h['GAIN'] = 3.  # PLACEHOLDER FOR TESTING
+        h['GAIN'] = h['GAIN0']  # TODO: fix this in the asdetector header
         h['EXPTIME'] = float(h['EXPTIME'])  # Needs to be float, can change later
         h['SATURATE'] = float(h['SATURATE'])
-        h['AIRMASS'] = 1.  # PLACEHOLDER FOR TESTING
+        h['ALT'], h['AZ'], h['AIRMASS'] = calculate_airmass(h)
+        h['SECZ'] =  h['AIRMASS']
+        # idate = h['DATEOBS']  # DATEOBS needs to be DATE-OBS and use Lmi format
+        # idatet = idate[0:4] + '-' + idate[4:6] + '-' + idate[6:8] + 'T'
+        # h['DATE-OBS'] = idatet + idate[9:11] + ':' + idate[11:13] + ':' + idate[13:15] + '.' + idate[15:17]
+        h['DATE-OBS'] = h['DATE']
+        h['DATEOBS'] = h['DATE']
+        h['OBSDATE'] = h['DATE']
+        h['CAMERA'] = int(h['ASICINDX'])
+        h['OBJECT'] = h['OBJNAME']
+        h['OBSTYPE'] = h['OBJTYPE']
 
-        idate = h['DATEOBS']  # DATEOBS needs to be DATE-OBS and use Lmi format
-        idatet = idate[0:4] + '-' + idate[4:6] + '-' + idate[6:8] + 'T'
-        h['DATE-OBS'] = idatet + idate[9:11] + ':' + idate[11:13] + ':' + idate[13:15] + '.' + idate[15:17]
-
-        cam_filter = h['FILTER{}'.format(h['CAMERA'].strip())]
-        if (h['SLITWID'].lower() == 'blocked') or (h['FILTER2'].lower() == 'blocked'):
-            h['FILTER'] = 'blocked'
-        elif h['FILTER2'].lower() != 'open':
-            if cam_filter.lower() == 'open':
-                h['FILTER'] = h['FILTER2']
-            else:
-                h['FILTER'] = "{}+{}".format(h['FILTER2'], cam_filter)
-        else:
-            h['FILTER'] = cam_filter
+        h['FILTER'] = self.get_filter(h, h['CAMERA'])
 
         if h['OBJECT'] == '':
             h['TARGNAME'] = h['OBSTYPE']
@@ -401,15 +439,38 @@ class rimas(instrument):
             h['OBJNAME'] = h['OBSTYPE']
         else:
             h['TARGNAME'] = h['OBJNAME']
-    
+        wcs = gen_wcs(h)
+        wcs_header = wcs.to_header(relax=True)
+        wcs_header['CD1_1'] = wcs_header['PC1_1']
+        wcs_header['CD2_2'] = wcs_header['PC2_2']
+        del wcs_header['PC1_1']
+        del wcs_header['PC2_2']
+        try:
+            wcs_header['CD2_1'] = wcs_header['PC2_1']
+            wcs_header['CD1_2'] = wcs_header['PC1_2']
+            del wcs_header['PC2_1']
+            del wcs_header['PC1_2']
+        except KeyError:
+            pass
+        h.update(wcs_header)
         return h
         
     def slice(self, cam):
         # Currently using LMI Slice as Placeholder
-        C0_SLICE = np.s_[:, :]
-        C1_SLICE = np.s_[:, :]
-        slicedict = {'C0': C0_SLICE, 'C1': C1_SLICE}
+        # C0_SLICE = np.s_[:, :]
+        # C1_SLICE = np.s_[:, :]
 
+        # Crop for data before 2025/11/3
+        array_size = 925
+        C0_xstart = 48
+        C0_ystart = 39
+        C1_xstart = 45
+        C1_ystart = 36
+
+        C0_SLICE = np.s_[C0_ystart:C0_ystart+array_size, C0_xstart:C0_xstart+array_size]
+        C1_SLICE = np.s_[C1_ystart:C1_ystart+array_size, C1_xstart:C1_xstart+array_size]
+
+        slicedict = {'C0': C0_SLICE, 'C1': C1_SLICE}
         return slicedict[cam]
         
     def get_cam_sat(self, h, idx):
@@ -426,25 +487,39 @@ class rimas(instrument):
         return h['EXPTIME']
 
     def get_filter(self, h, cam):
-        return h['FILTER']
+        cam_filter = h['FILTER{}'.format(h['ASICINDX']+1)].strip()
+        filter2 = h['FILTER3'].lower().strip()
+        filter3 = h['FILTER4'].lower().strip()
+        if filter2 == 'blank':
+            h['FILTER'] = 'blank'
+        elif filter2 != 'open':
+            if cam_filter.lower().strip() == 'open':
+                h['FILTER'] = filter2
+            else:
+                h['FILTER'] = "{}+{}".format(filter2.upper(), cam_filter)
+        else:
+            h['FILTER'] = cam_filter
+        print(h['FILTER'])
+        return h['FILTER'].strip()
             
     def get_centered_filter(self, h, idx):
         return h['FILTER']  
 
     def change_file_names(self, files):
         obstype_postdict = {
-            'SKY FLAT': 'f', 'DOME FLAT': 'f',
-            'BIAS': 'b', 'OBJECT': 'o'}
+            'SKY_FLAT': 'f', 'DOME_FLAT': 'f',
+            'DARK': 'd', 'SCIENCE': 'o', 'SCIENCE CROWDED': 'o'}
 
         for _file in files:
             pyim = pf.open(_file)
             h = pyim[0].header
 
-            obstype_post = obstype_postdict[h['OBSTYPE']]
-            idate = h['DATEOBS']
-            camnum = h['CAMERA']
-            newname = idate[0:8] + 'T' + idate[9:15] + 'C' + camnum
-
+            obstype_post = obstype_postdict[h['OBJTYPE'].upper().strip()]
+            idate = h['DATE-BEG']
+            camnum = h['ASICINDX']
+            date_format = '%Y-%m-%dT%H:%M:%S.%f'
+            new_date_format = '%Y%m%dT%H%M%S'
+            newname = dt.strptime(idate, date_format).strftime(new_date_format) + 'C' + str(camnum)
             newname += obstype_post + '.fits'
             print(newname)
             os.rename(_file, newname)
@@ -452,7 +527,7 @@ class rimas(instrument):
         return
         
     def original_file_format(self):
-        file_format = 'rimas.????.??.C?.fits'
+        file_format = '????????.rimas.????.??.fits'
         return file_format  
 
 

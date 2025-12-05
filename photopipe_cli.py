@@ -264,7 +264,7 @@ def autoproc_cli():
         'only': None, 'step': args.step, 'mastersky': not args.nomastersky, 'skyflattarg': not args.noskyflattarg,
         'redo': args.redo, 'quiet': args.quiet, 'rmifiles': args.rmifiles,
         'customcat': args.customcat, 'customcatfilt': str_list_to_list(args.customcatfilt),
-        'nogaia': args.nogaia, 'debug': args.debug
+        'nogaia': args.nogaia, 'debug': args.debug, 'nocrclean': args.nocrclean,
     }
     autoproc(**autoproc_kwargs)
 

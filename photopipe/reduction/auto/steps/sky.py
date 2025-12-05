@@ -399,7 +399,7 @@ def skypipecombine(
     #    return
 
     # Median of sigma clipped medians
-    medsky = np.median(skymeds)
+    medsky = np.nanmedian(skymeds)
 
     # Scale each file by median of sigma clipped medians divided by median of data
     # Corrects for each flat's changing sky background
@@ -511,7 +511,7 @@ def skypipecombine(
             me, st = medclip2d(vector, clipsig=3, maxiter=5, overaxis=0)
             reflat[y, :] = me
 
-        # reflat=np.median(data, axis=0)
+        # reflat=np.nanmedian(data, axis=0)
 
         # # Keep sources as NaN Value
 
@@ -542,7 +542,7 @@ def skypipecombine(
 
                 cslice = np.sort(cslice)
                 cslice = cslice[itrimlo:ctgood - itrimhi]
-                reflat[y, x] = np.mean(cslice)
+                reflat[y, x] = np.nanmean(cslice)
 
     # Interpolates sky flat to remove NaN Values in case of source overlap
     if pipevar['verbose']:
@@ -634,7 +634,7 @@ def skypipeproc(filename, flatname, outfile, flatminval=None, flatmaxval=None):
     # Open flat
     flat = pf.getdata(flatname)
 
-    # med = np.median(flat)
+    # med = np.nanmedian(flat)
 
     # For each input file check if same size as flats (required). If there is a minimum
     # or maximum flat value set, forces values outside of that range to NaN. Use finite

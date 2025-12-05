@@ -134,7 +134,7 @@ def findsexobj(filename, sigma, pipevar, masksfx=None, zeropt=25.0, maptype='MAP
         if sum(keep) <= 1: 
             seepix = None
         else:
-            seepix = np.median(fwhmim[keep])        
+            seepix = np.nanmedian(fwhmim[keep])
     else:
         print('Failed to find Sextractor output file!')
         seepix = None
@@ -187,12 +187,12 @@ def robust_scat(diff, wts, nobs, nstars, sigma):
         gooddiff = diff[i, goodwts]
 
         # Median absolute deviation
-        scat = 1.48 * np.median(abs(gooddiff - np.median(gooddiff)))
+        scat = 1.48 * np.nanmedian(abs(gooddiff - np.nanmedian(gooddiff)))
         for j in np.arange(nstars):
-            if abs(diff[i, j] - np.median(gooddiff)) > (sigma * scat):
+            if abs(diff[i, j] - np.nanmedian(gooddiff)) > (sigma * scat):
                 wts[i, j] = 0
         scats[i] = scat
-        rmss[i] = np.std(gooddiff)
+        rmss[i] = np.nanstd(gooddiff)
     return scats, rmss
 
 

@@ -259,7 +259,7 @@ class cosmicsimage:
                 # This never happened, but you never know ...
                 raise RuntimeError("Mega error in clean !")
             elif np.alen(goodcutout) > 0:
-                replacementvalue = np.median(goodcutout)
+                replacementvalue = np.nanmedian(goodcutout)
             else:
                 # i.e. no good pixels : Shit, a huge cosmic, we will have to improvise ...
                 print("OH NO, I HAVE A HUUUUUUUGE COSMIC !!!!!")
@@ -389,7 +389,7 @@ class cosmicsimage:
         Estimates the background level. This could be used to fill pixels in large cosmics.
         """
         if self.backgroundlevel is None:
-            self.backgroundlevel = np.median(self.rawarray.ravel())
+            self.backgroundlevel = np.nanmedian(self.rawarray.ravel())
         return self.backgroundlevel
 
     def lacosmiciteration(self, verbose=None):

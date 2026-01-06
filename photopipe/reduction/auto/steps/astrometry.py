@@ -335,10 +335,11 @@ vlt_autoastrometry.py ran correctly')
     for cfile in atfimages:
         trunfile = os.path.splitext(cfile)[0]
 
-        if pipevar['verbose'] > 0:
-            os.system('missfits -WRITE_XML N ' + cfile)
-        else:
-            os.system('missfits -WRITE_XML N -VERBOSE_TYPE QUIET' + cfile)
+        # if pipevar['verbose'] > 0:
+        apd.combine_header_and_fits(cfile.replace(".fits", ".head"), cfile)
+            # os.system('missfits -WRITE_XML N ' + cfile)
+        # else:
+        #     os.system('missfits -WRITE_XML N -VERBOSE_TYPE QUIET' + cfile)
         os.system('rm ' + trunfile + '.head ' + cfile + '.back')
 
         if scamprun != 1:

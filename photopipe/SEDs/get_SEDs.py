@@ -312,8 +312,12 @@ class OnlineCatalogQuery:
         catID = "V/154"
         v = Vizier(columns=['all'], row_limit=-1)
         result = v.query_region(coord.SkyCoord(ra, dec, unit=u.deg), radius=boxsize, catalog=catID)
-        o = result[catID + '/sdss16']
-        sdss_objects = self._parse_sdss_vizier(o)
+        ntables = len(list(result.keys()))
+        if ntables == 0:
+            sdss_objects = []
+        else:
+            o = result[catID + '/sdss16']
+            sdss_objects = self._parse_sdss_vizier(o)
 
         if len(sdss_objects) == 0:
             # no matches
@@ -378,10 +382,12 @@ class OnlineCatalogQuery:
         v = Vizier(columns=['all'], row_limit=-1)
         catID = "II/349"
         result = v.query_region(coord.SkyCoord(ra, dec, unit=u.deg), radius=boxsize, catalog=catID)
-        o = result[catID + '/ps1']
-
-        # parse the response
-        panstarrs_objects = self._parse_panstarrs(o)
+        if len(result) == 0:
+            panstarrs_objects = []
+        else:
+            o = result[catID + '/ps1']
+            # parse the response
+            panstarrs_objects = self._parse_panstarrs(o)
 
         if len(panstarrs_objects) == 0:
             # no matches
@@ -631,8 +637,12 @@ class OnlineCatalogQuery:
         catID = "I/284"
         v = Vizier(columns=['all'], row_limit=-1)
         result = v.query_region(coord.SkyCoord(ra, dec, unit=u.deg), radius=boxsize, catalog=catID)
-        o = result[catID + '/out']
-        usnob1_objects = self._parse_usnob1_vizier(o)
+        ntables = len(result)
+        if ntables == 0:
+            usnob1_objects = []
+        else:
+            o = result[catID + '/out']
+            usnob1_objects = self._parse_usnob1_vizier(o)
         if len(usnob1_objects) == 0:
             # no matches
             output = None

@@ -38,7 +38,7 @@ def gen_wcs(hdr):
     coords = SkyCoord(hdr['RA-D'], hdr['DEC-D'], unit=(u.deg, u.deg))
     coords = coords.spherical_offsets_by(d_lon=(77-2)*plate_scale, d_lat=-25*plate_scale)
     w.wcs.crval = [coords.ra.deg, coords.dec.deg]
-    theta = np.deg2rad(5)  # TODO: get this from the fits header
+    theta = np.deg2rad(5.3)  # TODO: get this from the fits header
     pixscale = pixscale / 3600
     # w.wcs.cdelt = [pixscale, pixscale]
     w.wcs.cd = [[-pixscale * np.cos(theta), pixscale * np.sin(theta)],

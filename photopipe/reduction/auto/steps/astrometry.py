@@ -336,11 +336,11 @@ vlt_autoastrometry.py ran correctly')
         trunfile = os.path.splitext(cfile)[0]
 
         # if pipevar['verbose'] > 0:
-        apd.combine_header_and_fits(cfile.replace(".fits", ".head"), cfile)
+        apd.combine_header_and_fits(cfile.replace(".fits", ".head"), cfile, remove_header_file=False)
             # os.system('missfits -WRITE_XML N ' + cfile)
         # else:
         #     os.system('missfits -WRITE_XML N -VERBOSE_TYPE QUIET' + cfile)
-        os.system('rm ' + trunfile + '.head ' + cfile + '.back')
+        # os.system('rm ' + trunfile + '.head ' + cfile + '.back')
 
         if scamprun != 1:
             him = pf.getheader(cfile)

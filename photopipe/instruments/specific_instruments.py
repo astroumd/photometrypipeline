@@ -24,29 +24,6 @@ def calculate_airmass(hdr):
     return altaz.alt.deg, altaz.az.deg, altaz.secz.value
 
 
-def gen_wcs(hdr):
-    image_width = hdr['NAXIS1']
-    image_height = hdr['NAXIS2']
-    # pixscale = hdr['PIXSCALE'] / 3600
-    pixscale = 0.193
-    plate_scale = pixscale * u.arcsec
-    image_width = 925
-    image_height = 925
-
-    w = WCS(naxis=hdr['NAXIS'])
-    w.wcs.crpix = [image_width/2, image_height/2]
-    coords = SkyCoord(hdr['RA-D'], hdr['DEC-D'], unit=(u.deg, u.deg))
-    coords = coords.spherical_offsets_by(d_lon=(77-2)*plate_scale, d_lat=-25*plate_scale)
-    w.wcs.crval = [coords.ra.deg, coords.dec.deg]
-    theta = np.deg2rad(5.3)  # TODO: get this from the fits header
-    pixscale = pixscale / 3600
-    # w.wcs.cdelt = [pixscale, pixscale]
-    w.wcs.cd = [[-pixscale * np.cos(theta), pixscale * np.sin(theta)],
-                [pixscale * np.sin(theta), pixscale * np.cos(theta)]]
-    w.wcs.ctype = ['RA---TAN', 'DEC--TAN']
-    return w
-
-
 class ratir(instrument):
     def __init__(self):
         instrument.__init__(self, 'ratir', 4)
@@ -412,6 +389,29 @@ class rimas(instrument):
         CAM_SPLIT = [False, False]
         return CAM_SPLIT[idx]
 
+    def gen_wcs(self, hdr):
+        image_width = hdr['NAXIS1']
+        image_height = hdr['NAXIS2']
+        # pixscale = hdr['PIXSCALE'] / 3600
+        pixscale = hdr.get('PIXSCALE', 0.19)
+        plate_scale = pixscale * u.arcsec
+        # image_width = 925  # for earlier iterations such as 20251009
+        # image_height = 925  # for earlier iterations such as 20251009
+
+        w = WCS(naxis=hdr['NAXIS'])
+        w.wcs.crpix = [image_width / 2, image_height / 2]
+        coords = SkyCoord(hdr['RA-D'], hdr['DEC-D'], unit=(u.deg, u.deg))
+        coords = coords.spherical_offsets_by(d_lon=(75 + 13) * plate_scale, d_lat=(-25 - 8) * plate_scale)  # TODO: do this offset at the telescope level
+        w.wcs.crval = [coords.ra.deg, coords.dec.deg]
+        # theta = np.deg2rad(5.3)  # for earlier iterations such as 20251009
+        theta = np.deg2rad(hdr['ROT'])
+        pixscale = pixscale / 3600
+        # w.wcs.cdelt = [pixscale, pixscale]
+        w.wcs.cd = [[-pixscale * np.cos(theta), pixscale * np.sin(theta)],
+                    [pixscale * np.sin(theta), pixscale * np.cos(theta)]]
+        w.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+        return w
+
 # 653274189
     def change_header_keywords(self, h, cam):
         # set keyword values
@@ -419,8 +419,9 @@ class rimas(instrument):
         h['GAIN'] = h['GAIN0']  # TODO: fix this in the asdetector header
         h['EXPTIME'] = float(h['EXPTIME'])  # Needs to be float, can change later
         h['SATURATE'] = float(h['SATURATE'])
-        h['ALT'], h['AZ'], h['AIRMASS'] = calculate_airmass(h)
-        h['SECZ'] =  h['AIRMASS']
+        h['ALT'], az, airmass = calculate_airmass(h)  # TODO: fix ALT value from labview
+        h['AZ'] = h['AZIMUTH']
+        h['SECZ'] =  h.get('AIRMASS', airmass)
         # idate = h['DATEOBS']  # DATEOBS needs to be DATE-OBS and use Lmi format
         # idatet = idate[0:4] + '-' + idate[4:6] + '-' + idate[6:8] + 'T'
         # h['DATE-OBS'] = idatet + idate[9:11] + ':' + idate[11:13] + ':' + idate[13:15] + '.' + idate[15:17]
@@ -439,7 +440,7 @@ class rimas(instrument):
             h['OBJNAME'] = h['OBSTYPE']
         else:
             h['TARGNAME'] = h['OBJNAME']
-        wcs = gen_wcs(h)
+        wcs = self.gen_wcs(h)
         wcs_header = wcs.to_header(relax=True)
         wcs_header['CD1_1'] = wcs_header['PC1_1']
         wcs_header['CD2_2'] = wcs_header['PC2_2']
@@ -459,16 +460,17 @@ class rimas(instrument):
         # Currently using LMI Slice as Placeholder
         # C0_SLICE = np.s_[:, :]
         # C1_SLICE = np.s_[:, :]
-
         # Crop for data before 2025/11/3
         array_size = 925
         C0_xstart = 48
         C0_ystart = 39
         C1_xstart = 45
         C1_ystart = 36
-
         C0_SLICE = np.s_[C0_ystart:C0_ystart+array_size, C0_xstart:C0_xstart+array_size]
         C1_SLICE = np.s_[C1_ystart:C1_ystart+array_size, C1_xstart:C1_xstart+array_size]
+
+        C0_SLICE = np.s_[:, :]  # slice is already performed by the detector software
+        C1_SLICE = np.s_[:, :]  # slice is already performed by the detector software
 
         slicedict = {'C0': C0_SLICE, 'C1': C1_SLICE}
         return slicedict[cam]

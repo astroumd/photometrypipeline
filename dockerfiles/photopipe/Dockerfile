@@ -2,7 +2,7 @@ FROM joedurbak/photopipe-depends
 
 WORKDIR /work
 
-RUN git clone --branch rimas_py3 https://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@github.com/RIMAS-RATIR-DCT/photometrypipeline.git \
+RUN git clone https://github.com/joedurbak/photometrypipeline.git \
     && cd photometrypipeline \
     && python setup.py build \
     && chmod a+x photopipe_cli.py

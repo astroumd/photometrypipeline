@@ -1,7 +1,7 @@
-FROM conda/miniconda2
+FROM continuumio/anaconda3
 
 WORKDIR /work
-VOLUME ///c/Users/durba/Documents/LMI /mnt/data/
+VOLUME /myvolume
 
 RUN conda install numpy scipy matplotlib astropy jsonschema ipython
 # && conda install -c cefca pyfits
@@ -25,7 +25,9 @@ RUN apt-get update -y \
 	make \
 	wget
 
-RUN cp /usr/bin/sextractor /usr/bin/sex && cp /usr/bin/SWarp /usr/bin/swarp
+RUN ln -s /usr/bin/sextractor /usr/bin/sex \
+    && ln -s /usr/bin/sextractor /usr/bin/source-extractor \
+    && ln -s /usr/bin/SWarp /usr/bin/swarp
 
 RUN mkdir dependencies && cd dependencies
 

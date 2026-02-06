@@ -3,17 +3,17 @@ NAME:
     plotphotom
 PURPOSE:
     Read in prefchar*(FILTER).multi.ref.fits and finalphot(FILTER).am.  Find number
-    of unique stars and saves each filter's magnitude and error to the same star. 
+    of unique stars and saves each band_filter's magnitude and error to the same star.
     Saves this to finalmags.txt.  Creates color plot with all of the images overlaid
-    (red = J/H, green = z/y, blue = r/i) and creates plot of each filter field with
+    (red = J/H, green = z/y, blue = r/i) and creates plot of each band_filter field with
     green circles around each object.  Saves as coadd*(FILTER).png
     Creates a text file for each source with all SEDs from each finalphot(FILTER).am file.
     Calls printhtml which create HTML to view all information.
     Can now take in different filters.
 OUTPUTS:
-    finalmags.txt          - text file with all the magnitudes for each filter of each source
+    finalmags.txt          - text file with all the magnitudes for each band_filter of each source
     color.png              - overlay of all filters (red = J/H, green = z/y, blue = r/i)
-    coadd*(FILTER).png     - images of each filter field with green circles over source
+    coadd*(FILTER).png     - images of each band_filter field with green circles over source
     seds/(INDEX).seds.txt - text file with all SEDs for each source
     photom.html             - html showing all information
     
@@ -25,13 +25,22 @@ Modified on 7/31/2014 by Vicki Toy (vtoy@astro.umd.edu)
 """
 
 import glob
+import os
+import sys
+import time
+import json
+import codecs
+import re
+
 import numpy as np
 import astropy.io.fits as pf
 from scipy.ndimage.interpolation import zoom
-from scipy.misc import bytescale
-#import pylab as pl
+# from scipy.misc import bytescale
+# import pylab as pl
 import scipy as sp
 from astropy import wcs
+from astropy.visualization import (ZScaleInterval, ImageNormalize)
+import imageio
 
 import matplotlib
 matplotlib.use('Agg')
@@ -40,132 +49,146 @@ import matplotlib.pyplot as pl
 pl.ioff()
 
 from photopipe.photometry.dependencies import photprocesslibrary as pplib
-import printhtml
-import os
-import sys
-import itertools, time, json, codecs, re
+from photopipe.photometry import printhtml
+
 
 def plotphotom(prefchar='coadd'):
-    #Initialize arrays
-    filters = ['r','i','z','y','J','H']
+    # Initialize arrays
+    filters = ['r', 'i', 'z', 'y', 'J', 'H']
     arr_size = 10000
     
-    #Creates a list of names: ['ra', 'dec', '(FILTER)mag', '(FILTER)magerr'] including
-    #all filters in filters list
-    #Also initializes filter index dictionary for use later
+    # Creates a list of names: ['ra', 'dec', '(FILTER)mag', '(FILTER)magerr'] including
+    # all filters in filters list
+    # Also initializes band_filter index dictionary for use later
     names = ['ra', 'dec', 'catindex']
     ifiltdict = {}
-    for filter in filters:
-        names.extend([filter+'mag', filter+'magerr', filter+'flux', filter+'fluxerr'])
-        ifiltdict[filter] = -1
+    for band_filter in filters:
+        names.extend([band_filter+'mag', band_filter+'magerr', band_filter+'flux', band_filter+'fluxerr'])
+        ifiltdict[band_filter] = -1
 
-    #Create dictionary with keys from names list and all set to np.zeros(arr_size)
-    #easily changed for other filters
+    # Create dictionary with keys from names list and all set to np.zeros(arr_size)
+    # easily changed for other filters
     plotdict = {}
     for name in names:
         plotdict[name] = np.zeros(arr_size)
 
     # retrieve detection files
-    zffiles = pplib.choosefiles( prefchar+'*_?.ref.multi.fits' )
+    zffiles = pplib.choosefiles(prefchar+'*.ref.multi.fits')
 
-    #Save filter and data from each file into arrays and find overlapping stars
-    #between filter files using final photometry file (comparing distances from RA and DEC)
+    # Save band_filter and data from each file into arrays and find overlapping stars
+    # between band_filter files using final photometry file (comparing distances from RA and DEC)
     cfilterarr = []
     imgarr = []
-    harr   = []
-    harr_map = [ { 'key': 'FILTER', 'title': 'Filter' } , { 'key': 'DATE1', 'title': 'start' }, { 'key': 'DATEN', 'title': 'stop' }, { 'key': 'TOTALEXP', 'title': 'exposure', 'format': '%.2f' }]
+    harr = []
+    harr_map = [
+        {'key': 'FILTER', 'title': 'Filter'},
+        {'key': 'DATE1', 'title': 'start'},
+        {'key': 'DATEN', 'title': 'stop'},
+        {'key': 'TOTALEXP', 'title': 'exposure', 'format': '%.2f'}
+    ]
     nstars = 0
 
+    index = []
     for i in range(len(zffiles)):
-    
-        #Find filter of each file and make sure that has the right capitalization
+        print(zffiles[i])
+        # Find band_filter of each file and make sure that has the right capitalization
         cfilter = zffiles[i].split('_')[-1].split('.')[0]
+        if cfilter in ('SDSS-U', 'SDSS-G', 'SDSS-R', 'SDSS-I', 'SDSS-Z'):
+            cfilter = cfilter[-1].lower()
         if cfilter == 'Z' or cfilter == 'Y':
             cfilter = cfilter.lower()
+        if cfilter not in filters:
+            index += [i]
+            continue
         cfilterarr.append(cfilter)
         
-        #Save data scaled by scale factor to imgarr
+        # Save data scaled by scale factor to imgarr
         ifile = zffiles[i]
         hdulist = pf.open(ifile)
         h = hdulist[0].header
         img = hdulist[0].data
         im_size = np.shape(img)
         scalefactor = 1.
-        img = zoom( img, 1./scalefactor, order=0 )
+        img = zoom(img, 1./scalefactor, order=0)
         imgarr.append(img)
         harr.append(h)
         
-        #Read in finalphot[FILTER].am which has the instrument corrected photometry
+        # Read in finalphot[FILTER].am which has the instrument corrected photometry
         pfile = 'finalphot' + cfilter + '.am'
         try:
             x, y, ra, dec, mag, magerr, flux, fluxerr, catindex = np.loadtxt(pfile, unpack=True)
         except IOError as error:
-            print error
+            print(error)
             continue
 
         clen = len(mag)
         
-        #For first file initialize variables for following files, use temporary variables
-        #for comparison
+        # For first file initialize variables for following files, use temporary variables
+        # for comparison
         if i == 0:
-            plotdict['ra'][0:clen]  = ra
+            plotdict['ra'][0:clen] = ra
             plotdict['dec'][0:clen] = dec
             
-            plotdict[cfilter+'mag'][0:clen]    = mag
+            plotdict[cfilter+'mag'][0:clen] = mag
             plotdict[cfilter+'magerr'][0:clen] = magerr
 
-            plotdict[cfilter+'flux'][0:clen]    = flux
+            plotdict[cfilter+'flux'][0:clen] = flux
             plotdict[cfilter+'fluxerr'][0:clen] = fluxerr
             plotdict['catindex'][0:clen] = catindex
 
             nstars = clen
         else:
-            compra      = ra
-            compdec     = dec
-            compmag     = mag
-            compmagerr  = magerr
-            compflux    = flux
+            compra = ra
+            compdec = dec
+            compmag = mag
+            compmagerr = magerr
+            compflux = flux
             compfluxerr = fluxerr
             compcatindex = catindex
             
-            #For each source in file find any sources that are within 1 arcsecond
-            #if these exist then store information in same index but different filter's magnitude
-            #array.  If these don't exist, put on the end of filter's (and position) arrays
-            #to signify a new source
+            # For each source in file find any sources that are within 1 arcsecond
+            # if these exist then store information in same index but different band_filter's magnitude
+            # array.  If these don't exist, put on the end of band_filter's (and position) arrays
+            # to signify a new source
 
             for j in range(len(compra)):
-                smatch = pplib.nearest( compra[j]*np.cos(compdec[j]*np.pi/180.), compdec[j], 
-                                        plotdict['ra']*np.cos(plotdict['dec']*np.pi/180.), plotdict['dec'], maxdist=1./3600. )
+                smatch = pplib.nearest(
+                    compra[j]*np.cos(compdec[j]*np.pi/180.), compdec[j],
+                    plotdict['ra']*np.cos(plotdict['dec']*np.pi/180.), plotdict['dec'], maxdist=1./3600.
+                )
                
                 if any(smatch):
-                    plotdict[cfilter+'mag'][smatch]     = compmag[j]
-                    plotdict[cfilter+'magerr'][smatch]  = compmagerr[j]
-                    plotdict[cfilter+'flux'][smatch]    = compflux[j]
+                    plotdict[cfilter+'mag'][smatch] = compmag[j]
+                    plotdict[cfilter+'magerr'][smatch] = compmagerr[j]
+                    plotdict[cfilter+'flux'][smatch] = compflux[j]
                     plotdict[cfilter+'fluxerr'][smatch] = compfluxerr[j]
                     plotdict['catindex'][smatch] = compcatindex[j]
 
                 else:
-                    plotdict['ra'][nstars]  = compra[j]
+                    plotdict['ra'][nstars] = compra[j]
                     plotdict['dec'][nstars] = compdec[j]
-                    plotdict[cfilter+'mag'][nstars]     = compmag[j]
-                    plotdict[cfilter+'magerr'][nstars]  = compmagerr[j]
-                    plotdict[cfilter+'flux'][nstars]    = compflux[j]
+                    plotdict[cfilter+'mag'][nstars] = compmag[j]
+                    plotdict[cfilter+'magerr'][nstars] = compmagerr[j]
+                    plotdict[cfilter+'flux'][nstars] = compflux[j]
                     plotdict[cfilter+'fluxerr'][nstars] = compfluxerr[j]
                     plotdict['catindex'][nstars] = compcatindex[j]
                     nstars += 1
-    
+
+    for i in sorted(index, reverse=True):
+        del zffiles[i]
+
     imgarr = np.array(imgarr)
     
-    #Save stars to finalmags.txt with correct format and removes zeros
+    # Save stars to finalmags.txt with correct format and removes zeros
     store = np.zeros(nstars)
     for name in names:
-        store = np.vstack( (store,plotdict[name][:nstars]) )
+        store = np.vstack((store, plotdict[name][:nstars]))
     
-    store = store[1:, :] #Removes 0's from initialization
+    store = store[1:, :]  # Removes 0's from initialization
 
-    #Finds sources that are cut off on at least one filter using weight maps
-    #and checking if 25% of the number of pixels in a 10 pixel radius circle
-    #are 0 in the weight map of each filter (i.e. cut off)
+    # Finds sources that are cut off on at least one band_filter using weight maps
+    # and checking if 25% of the number of pixels in a 10 pixel radius circle
+    # are 0 in the weight map of each band_filter (i.e. cut off)
     sra = store[0]
     sdec = store[1]   
     removesource = []
@@ -176,15 +199,16 @@ def plotphotom(prefchar='coadd'):
             wmultifile = file[:-4]+'weight.fits'
             hlist = pf.open(wmultifile)
             wdata = hlist[0].data
-            wh    = hlist[0].header
-            w     = wcs.WCS(wh)
-            spix  = w.wcs_world2pix(sra[s],sdec[s], 1)
+            wh = hlist[0].header
+            w = wcs.WCS(wh)
+            spix = w.wcs_world2pix(sra[s], sdec[s], 1)
             
-            wcir  = pplib.circle(spix[0],spix[1],10)
-            ncir  = len(wcir)
+            wcir = pplib.circle(spix[0], spix[1], 10)
+            ncir = len(wcir)
             for coord in wcir:
                 if (wh['NAXIS1'] > coord[0] > 0) & (wh['NAXIS2'] > coord[1] > 0):
-                    if wdata[int(coord[1])][int(coord[0])] == 0: nzero += 1
+                    if wdata[int(coord[1])][int(coord[0])] == 0:
+                        nzero += 1
                 else:
                     ncir -= 1
             if nzero >= 0.25*ncir: 
@@ -194,40 +218,39 @@ def plotphotom(prefchar='coadd'):
     store = np.delete(store, removesource, axis=1)
     np.savetxt('finalmags.txt', store.T, fmt='%12.6f %12.6f %i ' + '%12.6f ' * 24)
     
-    #Find the index of the file that corresponds to each filter and save 
-    #to ifiltdict (initialized to -1)
-    for item in ifiltdict:
+    # Find the index of the file that corresponds to each band_filter and save
+    # to ifiltdict (initialized to -1)
+    for item in ifiltdict.keys():
         try:
             ifiltdict[item] = cfilterarr.index(item)
         except ValueError:
             pass
 
-    #Determines colors based on which filters are present.  
-    #Red = J/H, green = z/y, blue = r/i
-    #If neither filter present, set to 0, if one present, use imgarr of data from that filter
-    #if both present use half from imgarr of data from each filter  
-    def fcolor(filt1, filt2, ifiltdict, imgarr):
-    
-        if filt1 and filt2 in ifiltdict:
-            if ifiltdict[filt1] >= 0 and ifiltdict[filt2] >= 0:
-                x = imgarr[ifiltdict[filt1],:,:] * 0.5 + imgarr[ifiltdict[filt2],:,:] * 0.5
-            if ifiltdict[filt1] >= 0 and ifiltdict[filt2] < 0:
-                x = imgarr[ifiltdict[filt1],:,:]
-            if ifiltdict[filt2] >= 0 and ifiltdict[filt1] < 0:
-                x = imgarr[ifiltdict[filt2],:,:]
-            if ifiltdict[filt2] < 0 and ifiltdict[filt1] < 0:
-                x = 0
+    # Determines colors based on which filters are present.
+    # Red = J/H, green = z/y, blue = r/i
+    # If neither band_filter present, set to 0, if one present, use imgarr of data from that band_filter
+    # if both present use half from imgarr of data from each band_filter
+    def fcolor(filt1, filt2, ifiltdictionary, imgarray):
+        _x = 0
+        if filt1 and filt2 in ifiltdictionary:
+            if ifiltdictionary[filt1] >= 0 and ifiltdictionary[filt2] >= 0:
+                _x = imgarray[ifiltdictionary[filt1], :, :] * 0.5 + imgarray[ifiltdict[filt2], :, :] * 0.5
+            if ifiltdictionary[filt1] >= 0 > ifiltdictionary[filt2]:
+                _x = imgarray[ifiltdictionary[filt1], :, :]
+            if ifiltdictionary[filt2] >= 0 > ifiltdictionary[filt1]:
+                _x = imgarray[ifiltdict[filt2], :, :]
+            if ifiltdictionary[filt2] < 0 and ifiltdictionary[filt1] < 0:
+                _x = 0
         else:
-            print 'Valid filters were not supplied, set color to 0'
-            x = 0
-            
-        return x 
+            print('Valid filters were not supplied, set color to 0')
+            _x = 0
+        return _x
         
-    red   = fcolor('J', 'H', ifiltdict, imgarr)    
+    red = fcolor('J', 'H', ifiltdict, imgarr)
     green = fcolor('z', 'y', ifiltdict, imgarr) 
-    blue  = fcolor('r', 'i', ifiltdict, imgarr)
+    blue = fcolor('r', 'i', ifiltdict, imgarr)
 
-    #Determine image size base on if color filter exists (priority: red, green, blue in that order)
+    # Determine image size base on if color band_filter exists (priority: red, green, blue in that order)
     if np.size(red) > 1:
         im_size = np.shape(red)
     elif np.size(green) > 1:
@@ -237,72 +260,76 @@ def plotphotom(prefchar='coadd'):
     else:
         im_size = np.zeros(2)
 
-    def bytearr( x, y, z ):
-        return np.zeros((x,y,z)).astype(np.uint8)
+    def bytearr(a0, a1, a2):
+        return np.zeros((int(a0), int(a1), int(a2))).astype(np.uint8)
     
-    #Create color of image and save to color.png    
-    color = bytearr( im_size[0], im_size[1], 3 )     
+    # Create color of image and save to color.png
+    color = bytearr(im_size[0], im_size[1], 3)
         
-    #Changes color into bytescale range and saves to color array
+    # Changes color into bytescale range and saves to color array
     if np.size(blue) > 1:
-        blue  = bytescale(blue,  0, 8, 250)
-        color[:,:,2] = blue * 0.5
+        blue = new_bytescale(blue,  0, 8, 250)
+        color[:, :, 2] = blue * 0.5
     if np.size(green) > 1:
-        green = bytescale(green, 0, 8, 250)
-        color[:,:,1] = green * 0.5
+        green = new_bytescale(green, 0, 8, 250)
+        color[:, :, 1] = green * 0.5
     if np.size(red) > 1:
-        red   = bytescale(red,   0, 8, 250)
-        color[:,:,0] = red * 0.5
+        red = new_bytescale(red,   0, 8, 250)
+        color[:, :, 0] = red * 0.5
         
-    color = color[::-1,:]
+    color = color[::-1, :]
     fig = pl.figure('color image')
     pl.axis('off')
-    pl.imshow( color, interpolation='None', origin='lower' )
-    sp.misc.imsave( 'color.png', color )
+    pl.imshow(color, interpolation='None', origin='lower')
+    imageio.imwrite('color.png', color)
     
-    #Find aperture size to make circles around sources that match sextractor aperture
-    pline=''
+    # Find aperture size to make circles around sources that match sextractor aperture
+    pline = ''
     sfile = open('ratir_weighted.sex', 'r')
     for line in sfile:
-        if 'PHOT_APERTURES' in line: pline=line
+        if 'PHOT_APERTURES' in line:
+            pline = line
     sfile.close()
     
     bpline = pline.split()  
     
     if len(bpline) != 0:
-        aper = int(bpline[1])/2.0 #radius
+        aper = int(bpline[1])/2.0  # radius
     else:
         aper = 10
     
-    objra  = store[0]
+    objra = store[0]
     objdec = store[1]
 
-    #Initialize dictionary for photometry json file
-    jsondict = { "createdAt": time.time(), "header": ['id'] + names, "filters": filters, "colorImgSrc": "color.png", "abMagPlotSrc": "photcomp.png", "aperture": aper, "scaleFactor": scalefactor, "filterImages": [], "data": [] }
-    #
-    
-    #Plot each image with circles on star identification
+    # Initialize dictionary for photometry json file
+    jsondict = {
+        "createdAt": time.time(), "header": ['id'] + names, "filters": filters, "colorImgSrc": "color.png",
+        "abMagPlotSrc": "photcomp.png", "aperture": aper, "scaleFactor": scalefactor, "filterImages": [], "data": []
+    }
+
+    # Plot each image with circles on star identification
     for i in range(len(zffiles)):
-        ifile   = zffiles[i]
+        ifile = zffiles[i]
         ofile = ifile.split('.')[0] + '.png'
 
-        img     = imgarr[i]
-        h       = harr[i]
+        img = imgarr[i]
+        # img = ImageNormalize(img, interval=ZScaleInterval())
+        h = harr[i]
         cfilter = cfilterarr[i]
         
-        scale   = bytescale(img, 0, 10, 255)
-        dpi     = 72. # px per inch
+        scale = new_bytescale(img, -1, -1, 255)
+        dpi = 72.  # px per inch
         figsize = (np.array(img.shape)/dpi)[::-1]
-        fig     = pl.figure(i)
+        fig = pl.figure(i)
         
-        pl.imshow( scale, interpolation='None', cmap=pl.cm.gray, origin='lower' )
-        xlims   = pl.xlim()
-        ylims   = pl.ylim()
+        pl.imshow(scale, interpolation='None', cmap=pl.cm.gray, origin='lower')
+        xlims = pl.xlim()
+        ylims = pl.ylim()
         
         # Parse the WCS keywords in the primary HDU     
-        w       = wcs.WCS(h)
-        world   = np.transpose([objra, objdec])
-        pixcrd  = w.wcs_world2pix(world, 1)
+        w = wcs.WCS(h)
+        world = np.transpose([objra, objdec])
+        pixcrd = w.wcs_world2pix(world, 1)
         
         fs = 20
         fw = 'normal'
@@ -310,78 +337,98 @@ def plotphotom(prefchar='coadd'):
 
         a = pl.gca()
         a.set_frame_on(False)
-        a.set_xticks([]); a.set_yticks([])
+        a.set_xticks([])
+        a.set_yticks([])
         pl.axis('off')
         pl.xlim(xlims)
         pl.ylim(ylims)
         fig.set_size_inches(figsize[0], figsize[1])
-        pl.savefig('o_' + ofile, bbox_inches='tight', pad_inches=0, transparent=True, dpi=dpi )
+        pl.savefig('o_' + ofile, bbox_inches='tight', pad_inches=0, transparent=True, dpi=dpi)
 
-        jsondict["filterImages"].append(dict({ "src": 'o_' + ofile, "filter": cfilter }, **extract_header(h, harr_map[1:])))
+        jsondict["filterImages"].append(
+            dict(
+                {"src": 'o_' + ofile, "band_filter": cfilter}, **extract_header(h, harr_map[1:])
+            )
+        )
 
-        #For each star create a circle and plot in green
-        #If pixel coordinates of star (from WCS conversion of RA and DEC) and within the 
-        #x and y limits, then put text on right side, otherwise put on left
+        # For each star create a circle and plot in green
+        # If pixel coordinates of star (from WCS conversion of RA and DEC) and within the
+        # x and y limits, then put text on right side, otherwise put on left
         for j in range(len(objra)):
-            ctemp = pplib.circle( pixcrd[j][0]/scalefactor, pixcrd[j][1]/scalefactor, aper ).T
-            pl.plot( ctemp[0], ctemp[1], c='#00ff00', lw=lw )
+            ctemp = pplib.circle(pixcrd[j][0]/scalefactor, pixcrd[j][1]/scalefactor, aper).T
+            pl.plot(ctemp[0], ctemp[1], c='#00ff00', lw=lw)
             texttoright = True
             if pixcrd[j][0]/scalefactor+40 < xlims[1] and pixcrd[j][1]/scalefactor+20 < ylims[1]:
-                pl.text( pixcrd[j][0]/scalefactor+15, pixcrd[j][1]/scalefactor, `j`, color='#00ff00', fontsize=fs, fontweight=fw )
+                pl.text(
+                    pixcrd[j][0]/scalefactor+15, pixcrd[j][1]/scalefactor, repr(j), color='#00ff00', fontsize=fs,
+                    fontweight=fw
+                )
             else:
                 texttoright = False
-                pl.text( pixcrd[j][0]/scalefactor-45, pixcrd[j][1]/scalefactor-20, `j`, color='#00ff00', fontsize=fs, fontweight=fw )
+                pl.text(
+                    pixcrd[j][0]/scalefactor-45, pixcrd[j][1]/scalefactor-20, repr(j), color='#00ff00', fontsize=fs,
+                    fontweight=fw
+                )
 
             if i == 0: 
-                #Store source data to json
-                jsondict["data"].append(dict({ "id": j, "x": pixcrd[j][0], "y": pixcrd[j][1], "textToRight": texttoright }, **dict(itertools.izip(names,store[:len(names),j]))))
+                # Store source data to json
+                jsondict["data"].append(
+                    dict(
+                        {"id": j, "x": pixcrd[j][0], "y": pixcrd[j][1], "textToRight": texttoright},
+                        **dict(zip(names, store[:len(names), j]))
+                    )
+                )
 
-        jsondict.update({ "referenceWidth": figsize[0] * dpi, "referenceHeight": figsize[1] * dpi })
-        #Label plot and remove axes, save to filename+.png
+        jsondict.update({"referenceWidth": figsize[0] * dpi, "referenceHeight": figsize[1] * dpi})
+        # Label plot and remove axes, save to filename+.png
 #        pl.text( 0.2*xlims[1], 0.9*ylims[1], cfilter+'-Band', color='r', fontsize=fs, fontweight=fw )
-        pl.text( xlims[0] + 3, ylims[1] - fs - 3, cfilter+'-Band', color='r', fontsize=fs, fontweight=fw )
-        pl.savefig( ofile, bbox_inches='tight', pad_inches=0, transparent=True, dpi=dpi )
+        pl.text(xlims[0] + 3, ylims[1] - fs - 3, cfilter+'-Band', color='r', fontsize=fs, fontweight=fw)
+        pl.savefig(ofile, bbox_inches='tight', pad_inches=0, transparent=True, dpi=dpi)
     
     with open('photometry.json', 'wb') as f:
         json.dump(jsondict, codecs.getwriter('utf-8')(f), ensure_ascii=False)
 
-    #Prepare SEDs for plot
-    plotseds()
+    ######################################
+    # Prepare SEDs for plot
+    # plotseds()
+    ######################################
 
-    #Create HTML to do quick look at data    
-    printhtml.printhtml(filters, names, set(['catindex']), harr, harr_map)
+    # Create HTML to do quick look at data
+    printhtml.printhtml(filters, names, {'catindex'}, harr, harr_map)
+
 
 def plotseds(prefchar='coadd'):
     files = glob.glob(prefchar + '*.seds.cat')
 
     if len(files) == 0:
-        print 'Did not find any cat files! Check your data directory path!'
+        print('Did not find any cat files! Check your data directory path!')
         return
 
     try:
         finalmags = np.loadtxt('./finalmags.txt')
-        final_catindex = finalmags[:,2]
+        final_catindex = finalmags[:, 2]
     except IOError as error:
-        print error
+        print(error)
         return
     
     catindex_dict = final_catindex.tolist()
     source_dict = {}
 
     for file in files:
-        filter = file.split('_')[-1].split('.')[0]
-
-        if filter == 'Z' or filter == 'Y':
-            filter = filter.lower()
+        band_filter = file.split('_')[-1].split('.')[0]
+        if band_filter in ('SDSS-U', 'SDSS-G', 'SDSS-R', 'SDSS-I', 'SDSS-Z'):
+            band_filter = band_filter[-1].lower()
+        if band_filter == 'Z' or band_filter == 'Y':
+            band_filter = band_filter.lower()
 
         timestamp = extract_timestamp(file)
 
         data = np.loadtxt(file, unpack=False)
         for i in range(len(data)):
             if i in catindex_dict:
-                sed = np.append(data[i], [timestamp, filter])
+                sed = np.append(data[i], [timestamp, band_filter])
                 
-                if not i in source_dict:
+                if i not in source_dict:
                     source_dict[i] = np.array([sed])
                 else:
                     duplicate = False
@@ -398,24 +445,33 @@ def plotseds(prefchar='coadd'):
         filename = './seds/' + str(i) + '.seds.txt'
         np.savetxt(filename, source_dict[i], fmt='%s')
 
+
 def make_path(path):
-        dir = os.path.dirname(path)
-        if not os.path.exists(dir):
-                os.makedirs(dir)
-                
+    directory = os.path.dirname(path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+
 def extract_timestamp(filename):
     regex = r"([0-9]{8}T[0-9]{6}[0-9]{0,3})"
     matches = re.finditer(regex, filename, re.MULTILINE)
-
     for matchNum, match in enumerate(matches):
         return match.group()
+    return None
 
-    return None            
 
 def extract_header(header, header_map):
     result = {}
-
     for key in header_map:
         result[key['title']] = header[key['key']]
-
     return result
+
+
+def new_bytescale(data, cl=-1, ch=-1, high=255, low=0):
+    if cl == -1 and ch == -1:
+        cl = np.amin(data)
+        ch = np.amax(data)
+    a = (high-low)/(ch-cl)
+    b = high - a*ch
+    new_data = data.copy() * a + b
+    return new_data.astype(np.uint8)

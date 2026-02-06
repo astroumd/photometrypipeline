@@ -1,4 +1,5 @@
-from photopipe.reduction import preproc
+from photopipe.reduction.preprocess import choose
+from photopipe.reduction.preprocess import master
 from photopipe.reduction.auto.autoproc import autoproc
 from shutil import move
 import os
@@ -24,7 +25,7 @@ zf.extractall(copy_path)
 print('extraction complete')
 
 print('start bias calibration')
-bias_calib = preproc.choose_calib(
+bias_calib = choose.choose_calib(
     'lmi',
     'bias',
     workdir=copy_path+os.path.sep,
@@ -37,7 +38,7 @@ bias_calib = preproc.choose_calib(
 )
 
 print('start flat calibration')
-flat_calib = preproc.choose_calib(
+flat_calib = choose.choose_calib(
     'lmi',
     'flat',
     workdir=copy_path+os.path.sep,
@@ -50,7 +51,7 @@ flat_calib = preproc.choose_calib(
 )
 
 print('start choose science')
-science_dict = preproc.choose_science(
+science_dict = choose.choose_science(
     'lmi',
     workdir=copy_path+os.path.sep,
     targetdir=selected_path+os.path.sep,
@@ -62,9 +63,9 @@ science_dict = preproc.choose_science(
 )
 
 print('start mkmaster bias')
-preproc.mkmaster('lmi', bias_calib, 'bias')
+master.mkmaster('lmi', bias_calib, 'bias')
 print('start mkmaster flat')
-preproc.mkmaster('lmi', flat_calib, 'flat')
+master.mkmaster('lmi', flat_calib, 'flat')
 
 print('start move files master biases to selected folder')
 for f in glob.glob(os.path.join(base_path, 'bias*.fits')):

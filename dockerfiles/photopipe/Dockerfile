@@ -1,15 +1,14 @@
-FROM joedurbak/astromatic
+FROM joedurbak/photopipe-depends
 
 WORKDIR /work
 
-RUN apt-get install -y vim nano emacs gedit
+RUN git clone --branch rimas_py3 https://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@github.com/RIMAS-RATIR-DCT/photometrypipeline.git \
+    && cd photometrypipeline \
+    && python setup.py build \
+    && chmod a+x photopipe_cli.py
 
-RUN git clone  https://github.com/astroumd/photometrypipeline.git \
-	&& cd photometrypipeline \
-	&& python setup.py build \
-	&& rm /usr/local/lib/python2.7/site-packages/matplotlib/mpl-data/matplotlibrc \
-	&& cp /work/photometrypipeline/matplotlibrc /usr/local/lib/python2.7/site-packages/matplotlib/mpl-data/matplotlibrc
+RUN conda develop /work/photometrypipeline
 
-RUN conda install conda-build \
-    && conda develop /work/photometrypipeline
-	
+CMD ["git -C /work/photometrypipeline pull"]
+ENTRYPOINT ["/work/photometrypipeline/photopipe_cli.py"]
+CMD ["-h"]

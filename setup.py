@@ -54,8 +54,8 @@ class CustomInstall(install):
                 sys.stdout.write(execute_path)
 
         except subprocess.CalledProcessError as e:
-            print bcolors.FAIL + 'Failed to install the dependencies. Please try again.' + bcolors.ENDC
-            print e
+            print(bcolors.FAIL + 'Failed to install the dependencies. Please try again.' + bcolors.ENDC)
+            print(e)
             sys.exit(1)
 
         try:
@@ -63,8 +63,8 @@ class CustomInstall(install):
                 sys.stdout.write(execute_path)
 
         except subprocess.CalledProcessError as e:
-            print bcolors.FAIL + 'Failed to install AstrOmatic software. Please try again.' + bcolors.ENDC
-            print e
+            print(bcolors.FAIL + 'Failed to install AstrOmatic software. Please try again.' + bcolors.ENDC)
+            print(e)
             sys.exit(1)
 
         install.run(self)
@@ -74,8 +74,8 @@ class CustomInstall(install):
                 sys.stdout.write(execute_path)
 
         except subprocess.CalledProcessError as e:
-            print bcolors.FAIL + 'Failed to complete the post installation script. Please try again.' + bcolors.ENDC
-            print e
+            print(bcolors.FAIL + 'Failed to complete the post installation script. Please try again.' + bcolors.ENDC)
+            print(e)
             sys.exit(1)
 
 
@@ -181,5 +181,5 @@ setup(
     # http://stackoverflow.com/a/37283972
     cmdclass={
         'install': CustomInstall
-    }, install_requires=['numpy', 'astropy', 'matplotlib', 'scipy']
+    }, install_requires=['numpy', 'astropy', 'matplotlib', 'scipy', 'six', 'astroquery']
 )
